@@ -1,0 +1,15 @@
+# ml-digital-art-identity — dependencies dasar (sesuaikan dgn kebutuhan)
+# Isi berikut sekadar starter; bebas diubah.
+
+numpy>=1.24,<2
+pandas>=2.0
+pillow>=10.0
+pyyaml>=6.0
+
+# Perceptual hashing (unique-key / fingerprint)
+imagehash>=4.3
+
+# Kalau butuh training model deteksi AI-generated-image:
+# torch>=2.2
+# torchvision>=0.17
+# scikit-learn>=1.3

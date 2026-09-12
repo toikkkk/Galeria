@@ -1,0 +1,11 @@
+fastapi>=0.110
+uvicorn[standard]>=0.29
+python-multipart>=0.0.9    # upload file (UploadFile)
+pillow>=10.0
+numpy>=1.24,<2
+onnxruntime>=1.18           # jalankan ml-visual-search/export/model.onnx tanpa PyTorch penuh
+pydantic>=2.6
+
+# Kalau nanti pakai database sungguhan utk katalog karya:
+# sqlalchemy>=2.0
+# psycopg2-binary>=2.9       # kalau Postgres (+ pgvector utk vector search skala besar)

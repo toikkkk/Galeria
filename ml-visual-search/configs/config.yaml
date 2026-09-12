@@ -1,0 +1,185 @@
+# ============================================================================
+# GALERIA — Konfigurasi Modeling (ml/)
+# ----------------------------------------------------------------------------
+# SEMUA hyperparameter dan path dibaca dari file ini. Jangan hardcode di script.
+# Path relatif diselesaikan terhadap root modul modeling (folder ml/).
+# ============================================================================
+
+seed: 42
+device: cuda            # "cuda" atau "cpu" (otomatis fallback ke cpu bila GPU tak ada)
+
+# ------------------------------------------------------------------ data ------
+data:
+  # Gambar WikiArt ASLI (copy dari C:/wikiart_sample). JANGAN diubah isinya.
+  raw_dir: "data/raw"
+  # Hasil `python -m src.preprocess` (gambar sudah di-embed persegi + resize).
+  processed_dir: "data/processed"
+
+  # Folder gambar yang DIPAKAI training/eval. Dua pilihan:
+  #   "data/processed" -> sudah jalankan src.preprocess; set image.pad_to_square: false
+  #   "data/raw"       -> padding on-the-fly; set image.pad_to_square: true
+  image_dir: "data/processed"
+
+  # File split hasil EDA (kolom: filename, artist, genre, style,
+  #                              artist_name, genre_name, style_name).
+  # Nama file sama di raw/ maupun processed/, jadi CSV yang sama tetap valid.
+  train_csv: "data/raw/train_split.csv"
+  val_csv:   "data/raw/val_split.csv"
+  test_csv:  "data/raw/test_split.csv"
+  metadata_csv: "data/raw/metadata.csv"
+
+  filename_column: "filename"     # kolom nama file gambar di CSV
+
+  # Target klasifikasi: "style_name" (default), "genre_name", atau "artist_name".
+  # Pakai kolom *_name (bukan kode integer "style") supaya confusion matrix &
+  # laporan langsung terbaca. Pretext task proyek = style (12 kelas pada subset,
+  # setelah exclude minoritas). Jumlah kelas TIDAK di-hardcode -- dibaca dari CSV.
+  label_column: "style_name"
+  label_name_column: "style_name"
+
+  # Folder artefak turunan (label_to_idx.json, index embedding, dsb).
+  cache_dir: "data/cache"
+
+# ----------------------------------------------------------------- image ------
+image:
+  size: 224                       # ukuran crop akhir (input model)
+  resize: 256                     # Resize sebelum crop (train: RandomCrop, eval: CenterCrop)
+  mean: [0.485, 0.456, 0.406]     # normalisasi ImageNet (pretrained ResNet)
+  std:  [0.229, 0.224, 0.225]
+
+  # --- Embed ke kanvas persegi (arahan dosen) ---------------------------------
+  # Gambar "di-embed" di tengah kanvas persegi dengan padding kiri-kanan
+  # (potret) atau atas-bawah (lanskap) SEBELUM resize. Menjaga seluruh
+  # komposisi lukisan (tidak ada tepi yang ter-crop) & rasio aspek asli.
+  # EDA: rasio aspek subset WikiArt 0.35-3.28 -> crop biasa bisa memotong
+  # bagian penting / RandomResizedCrop mendistorsi.
+  #
+  # ALUR YANG DIPAKAI: padding dikerjakan sekali di depan via `src.preprocess`
+  # (hasil di data/processed/). Karena itu default di bawah = false.
+  # Set true HANYA bila image_dir diarahkan ke data/raw (padding on-the-fly).
+  pad_to_square: false
+  pad_mode: "edge"               # "edge" (replikasi tepi, aman utk rasio ekstrem)
+                                  # | "reflect" (cermin) | "constant" (border solid)
+  pad_fill: 255                   # warna border bila pad_mode == "constant" (255=putih, 0=hitam)
+
+# ------------------------------------------------------------ preprocess ------
+# `python -m src.preprocess` : baca data/raw -> SquarePad -> resize -> tulis
+# data/processed sebagai JPG seragam. Dijalankan SEKALI sebelum training.
+preprocess:
+  out_size: 256                  # sisi gambar hasil (persegi). Training crop 224 dari sini.
+  pad_mode: "edge"               # samakan dengan image.pad_mode
+  pad_fill: 255
+  jpeg_quality: 95
+  overwrite: false               # true = timpa file yang sudah ada di data/processed
+
+# ------------------------------------------------------- augmentation ---------
+# Hanya dipakai pada split TRAIN. val/test/embedding memakai transform deterministik.
+# Pipeline sesuai CLAUDE.md: Resize(256) -> RandomCrop(224) -> HFlip -> ColorJitter
+#                            -> RandomRotation(10) -> Normalize.
+# JANGAN tambahkan vertical flip atau cutout agresif -- merusak komposisi &
+# detail gaya lukisan (lihat CLAUDE.md bagian "Rencana Teknis Model").
+augmentation:
+  horizontal_flip: 0.5
+  rotation_degrees: 10
+  color_jitter:                   # "ringan" -- jangan dinaikkan agresif
+    brightness: 0.2
+    contrast: 0.2
+    saturation: 0.2
+    hue: 0.05
+  # TrivialAugmentWide: augmentasi kuat tanpa tuning, cocok utk data kecil.
+  # Menggantikan color_jitter + rotation di atas bila true. TIDAK ada flip
+  # vertikal / cutout (aman utk CLAUDE.md). horizontal_flip tetap dipakai.
+  trivial_augment: true
+
+# ----------------------------------------------------------------- model ------
+model:
+  # Pilihan: resnet50 resnet101 | convnext_tiny convnext_small convnext_base
+  #          | efficientnet_v2_s | swin_v2_t | vit_b_16
+  # CLAUDE.md baseline = resnet50. convnext_small = lebih kuat (ImageNet ~83%),
+  # ukuran ~50M. convnext_base / vit_b_16 lebih besar TAPI rawan overfit di 787
+  # gambar. embedding_dim terdeteksi otomatis (nilai di bawah hanya informatif).
+  name: "convnext_small"
+  pretrained: true                # muat bobot ImageNet
+  # Mode training backbone:
+  #   "freeze_backbone"  -> hanya classifier head
+  #   "finetune_partial" -> ResNet: N block terakhir; lain: fraksi param terdalam
+  #   "finetune_all"     -> semua layer
+  train_mode: "finetune_partial"
+  unfreeze_last_n_blocks: 2       # dipakai HANYA untuk resnet*
+  unfreeze_frac: 0.4             # dinaikkan 0.35->0.4 (data 5x lebih banyak, aman)
+  dropout: 0.4                    # lawan overfitting (gap val/test)
+  embedding_dim: 2048             # informatif; nilai asli auto-detect saat build
+
+# ----------------------------------------------------------------- train ------
+train:
+  epochs: 40
+  batch_size: 24                 # dataset kini 3.918 train img (~163 step/epoch).
+                                  # RTX 2050 4 GB: bs24 aman utk convnext_small.
+                                  # OOM -> turunkan ke 16; lancar -> naikkan ke 32.
+  num_workers: 2                 # Windows: 2 aman; 0 kalau dijalankan dari Jupyter
+  optimizer: "adamw"             # "adamw" | "adam" | "sgd"
+  learning_rate: 0.0003          # LR untuk classifier head
+  backbone_lr_mult: 0.1          # LR backbone (layer3/4) = lr * ini -> adaptasi pelan, aman
+  weight_decay: 0.0005           # naik dari 1e-4 -> regularisasi lebih kuat
+  scheduler: "cosine"           # "cosine" | "step" | "none"
+  step_size: 10                  # dipakai bila scheduler == "step"
+  gamma: 0.1
+  label_smoothing: 0.1
+  mixed_precision: true          # AMP (torch.cuda.amp)
+  grad_clip_norm: 1.0
+  early_stopping_patience: 10
+  # Mitigasi imbalance parah (rasio s/d 307x di label style) via
+  # WeightedRandomSampler berbasis inverse-frekuensi kelas di training set.
+  # Bila aktif, train loader TIDAK memakai shuffle (sampler yang mengatur urutan).
+  use_weighted_sampler: true
+
+# ------------------------------------------------------------ checkpoint ------
+checkpoint:
+  dir: "checkpoints"
+  save_best_only: true
+  # Metrik acuan best model. "val_macro_f1" lebih adil dari "val_accuracy"
+  # karena imbalance (Impressionism 215 vs Analytical_Cubism 4 di train).
+  monitor: "val_macro_f1"       # "val_macro_f1" | "val_accuracy"
+  resume_from: null              # path .pth untuk lanjut training, atau null
+
+# --------------------------------------------------------------- output ------
+output:
+  dir: "outputs"
+  log_file: "outputs/train.log"
+  history_plot_path: "outputs/training_history.png"
+  history_json_path: "outputs/history.json"
+  confusion_matrix_path: "outputs/confusion_matrix.png"
+  metrics_report_path: "outputs/metrics_report.json"
+
+# ------------------------------------------------------------- evaluate ------
+eval:
+  tta: true                      # rata-rata prediksi original + horizontal-flip
+  subset_min_support: 8          # macro-F1 subset: hanya kelas dengan >= N sampel test
+
+# ------------------------------------------------------------ embedding ------
+# Ekstraksi embedding katalog untuk Visual Search (basis Digital Art Identity).
+embedding:
+  source_csv: "data/raw/metadata.csv"        # katalog yang diindeks
+  output_path: "data/cache/catalog_embeddings.npz"
+  faiss_index_path: "data/cache/catalog.faiss"
+  layer: "penultimate"          # "penultimate" (sebelum fc) | "head"
+  batch_size: 64
+  l2_normalize: true            # normalisasi L2 -> cosine similarity = dot product
+
+# --------------------------------------------------------------- export ------
+# `python -m src.export` : checkpoint .pth -> format siap dipakai backend/.
+export:
+  checkpoint: "checkpoints/best.pth"
+  torchscript_path: "export/model.torchscript"
+  onnx_path: "export/model.onnx"
+  onnx_opset: 17
+  output: "embedding"           # "embedding" (encoder utk Visual Search) | "logits"
+
+# ------------------------------------------------------------- baseline ------
+# Pembanding OPSIONAL (lihat CLAUDE.md): CLIP pretrained tanpa fine-tuning,
+# untuk membandingkan kualitas embedding vs ResNet50 fine-tuned. Belum
+# diimplementasikan -- disediakan agar param tidak di-hardcode saat dikerjakan.
+baseline_clip:
+  enabled: false
+  model_name: "ViT-B/32"
+  output_path: "outputs/embeddings_clip.npz"
