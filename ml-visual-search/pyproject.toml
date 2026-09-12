@@ -1,0 +1,18 @@
+# Membuat package `src` bisa di-import dari mana saja (mis. notebooks/) setelah:
+#     cd ml
+#     pip install -e .
+#
+# Untuk menjalankan script tetap: `python -m src.train` dari folder ml/.
+
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "galeria-ml"
+version = "0.1.0"
+description = "GALERIA — Visual Search encoder (ResNet50 fine-tuned WikiArt)"
+requires-python = ">=3.10"
+
+[tool.setuptools]
+packages = ["src"]

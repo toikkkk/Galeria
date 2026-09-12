@@ -1,0 +1,69 @@
+# ============================================================================
+# GALERIA — monorepo .gitignore
+# ============================================================================
+
+# --- Python (ml-visual-search/, ml-digital-art-identity/, backend/) --------
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+env/
+.ipynb_checkpoints/
+
+# --- ml-visual-search/ -- dataset & artefak besar (JANGAN di-commit) -------
+# WikiArt = lisensi riset non-komersial + ~500 MB x2 (raw+processed). Bagikan
+# lewat Google Drive, bukan git.
+ml-visual-search/data/raw/*
+!ml-visual-search/data/raw/.gitkeep
+ml-visual-search/data/processed/*
+!ml-visual-search/data/processed/.gitkeep
+ml-visual-search/data/cache/*
+!ml-visual-search/data/cache/.gitkeep
+ml-visual-search/checkpoints/*
+!ml-visual-search/checkpoints/.gitkeep
+ml-visual-search/outputs/*
+!ml-visual-search/outputs/.gitkeep
+ml-visual-search/export/*
+!ml-visual-search/export/.gitkeep
+
+# --- ml-digital-art-identity/ -- sama polanya, folder anggota lain ---------
+ml-digital-art-identity/data/*
+!ml-digital-art-identity/data/.gitkeep
+ml-digital-art-identity/checkpoints/*
+!ml-digital-art-identity/checkpoints/.gitkeep
+ml-digital-art-identity/outputs/*
+!ml-digital-art-identity/outputs/.gitkeep
+
+# --- Model/data besar (di folder ml-* mana pun) -----------------------------
+*.pth
+*.onnx
+*.torchscript
+*.pt
+*.tflite
+*.mlmodel
+*.npz
+optuna_study.db
+*.db
+
+# --- Backend (FastAPI) ------------------------------------------------------
+backend/.env
+backend/**/__pycache__/
+
+# --- Mobile (Flutter) -------------------------------------------------------
+# Flutter's own `mobile/.gitignore` (dari `flutter create`) sudah cover
+# .dart_tool/, build/, *.iml, .idea/, dll di dalam mobile/ — baris di bawah
+# jaga-jaga kalau nested .gitignore itu tidak sengaja terhapus.
+mobile/build/
+mobile/.dart_tool/
+mobile/.flutter-plugins
+mobile/.flutter-plugins-dependencies
+mobile/android/local.properties
+mobile/android/**/gradle-wrapper.jar
+mobile/ios/Pods/
+mobile/**/*.iml
+
+# --- Editor / OS -------------------------------------------------------------
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
