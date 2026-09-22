@@ -1,0 +1,140 @@
+<!DOCTYPE html><html lang="id" class="h-full" style="width: 390px; height: 884px; overflow: hidden; position: relative;"><head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>GALERIA - Layar Sambutan</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin="">
+  <link href="https://fonts.googleapis.com/css2?family=EB+Garamond:ital,wght@0,400;0,500;0,600;0,700;1,400&amp;family=Plus+Jakarta+Sans:wght@400;500;600;700&amp;display=swap" rel="stylesheet">
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            brand: {
+              bg: '#FAF8F5',
+              surface: '#FFFFFF',
+              primary: '#1C1C1C',
+              accent: '#C9A227',
+              muted: '#8A8580',
+              border: '#E8E4DF'
+            }
+          },
+          fontFamily: {
+            serif: ['"EB Garamond"', 'serif'],
+            sans: ['"Plus Jakarta Sans"', 'sans-serif']
+          }
+        }
+      }
+    }
+  </script>
+  <style>
+    body {
+      font-family: 'Plus Jakarta Sans', sans-serif;
+      -webkit-font-smoothing: antialiased;
+      background-color: #FAF8F5;
+    }
+    .font-garamond {
+      font-family: 'EB Garamond', serif;
+    }
+  </style>
+</head>
+<body class="h-full bg-[#FAF8F5] text-[#1C1C1C] antialiased flex flex-col justify-between overflow-hidden select-none">
+
+  <!-- Main Container: Mobile Frame 393x852 proportion -->
+  <main class="relative w-full h-full max-w-[430px] mx-auto flex flex-col justify-between bg-[#FAF8F5] shadow-2xl overflow-hidden">
+
+    <!-- Top Two Thirds Section: Full-Bleed Artwork Collage with Overlay -->
+    <div class="relative w-full h-[64%] overflow-hidden bg-[#151413]">
+      
+      <!-- Top Bar / Brand Badge -->
+      <div class="absolute top-0 left-0 right-0 z-20 pt-10 px-6 flex items-center justify-between pointer-events-none">
+        <div class="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-[#1C1C1C]/60 backdrop-blur-md border border-white/10 shadow-sm">
+          <img src="https://lh3.googleusercontent.com/aida/AEtjO1UZ5j_K1S_esTzrS4rxztdo-rhnTC_PqoW_ax2vZ6aifVVwubhepgnNlb1rjRmC3RYcDOlnt5jt7NvqKbUvnMzO8go8fv0T0qMoq-iGIiljdl4p8KjBCFll39PzVgxtXdsO-AFsXYrAZW1yHXeDSiQVBiW9PwZql_4g6R6ca5PfuTUAoNqal8zJYaDuDocwRk9nkF9RHt5dDM_XePCYzm-QRlbAEFBgB1B6Kp2b-ecQJiFxS2dj0FpNlLw" alt="GALERIA Icon" class="w-4 h-4 object-contain brightness-0 invert opacity-90">
+          <span class="font-garamond tracking-[0.2em] text-xs uppercase font-medium text-[#FAF8F5]">GALERIA</span>
+        </div>
+        <div class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-[#C9A227]/20 backdrop-blur-md border border-[#C9A227]/40">
+          <span class="w-1.5 h-1.5 rounded-full bg-[#C9A227]"></span>
+          <span class="text-[10px] tracking-widest uppercase font-semibold text-[#F3E3B6]">Kurasi Asli</span>
+        </div>
+      </div>
+
+      <!-- Artwork Collage Gallery Grid -->
+      <div class="absolute inset-0 grid grid-cols-12 gap-2.5 p-3 pt-12 transform scale-105">
+        
+        <!-- Left Featured Painting (Renaissance Portrait) -->
+        <div class="col-span-7 h-[106%] relative rounded-lg overflow-hidden shadow-2xl ring-1 ring-black/40">
+          <img src="https://lh3.googleusercontent.com/aida-public/AB6AXuAK2xiYon0alRXwCAoGGAZE576RMeipmY4GYSOFaR9CP3zrxahSkTSuilr9sW-axDxccDIG7RzIfOzZDx3MRWRb6cVk6F3RCL-TJeeKoQS4zVPllZoEF4KwT9Q-5T9GkqEeQ0YwofXuEgN4Jkkj5YM_chXwxN0FV_TB3EECxfsPxa35rhnlbDAb0MNTZayO6OQQkkudQie0J-c0OhKJTJszGv1BoyCa0kB9JxP7Z5c5_bp-3XgRcp2z" alt="Lukisan Potret Klasik" class="w-full h-full object-cover object-center">
+          <div class="absolute inset-0 bg-black/10"></div>
+        </div>
+
+        <!-- Right Stack of Two Paintings -->
+        <div class="col-span-5 flex flex-col gap-2.5 h-[106%]">
+          <!-- Top Right Painting (Landscape) -->
+          <div class="h-1/2 relative rounded-lg overflow-hidden shadow-xl ring-1 ring-black/40">
+            <img src="https://lh3.googleusercontent.com/aida-public/AB6AXuAQ0GG1whOPmpVde2Mdw-X1k9rk2SWYtdwONpGW0lQ05-o4wG_D1rHFizxqufLUV2eokBxW55yf445w_PLmfbVkLULPTqIMDysFOvufSCrKsGy-9CSB3g6A5KQ-1H1TyanyRT4fv89fhg4kRmTnr2cBHETCsPgEU0a1p58qMe_-Nao_gVK05wOALOJE3iSLwUtXA-ZbX5l9TImmcdwD9TT4A61tKsE2mmmWH7Eg3_mTdWdmdN849Qrr" alt="Lukisan Lanskap Impresionis" class="w-full h-full object-cover object-center">
+            <div class="absolute inset-0 bg-black/10"></div>
+          </div>
+          <!-- Bottom Right Painting (Modern Abstract) -->
+          <div class="h-1/2 relative rounded-lg overflow-hidden shadow-xl ring-1 ring-black/40">
+            <img src="https://lh3.googleusercontent.com/aida-public/AB6AXuCLSByOXwP2bA37nhvL0iDrbB6ze4Q_9Z2XUc90kYy2KZJRP0hjl2NeyzhdQSFdX66te05VAzWgjss06EFRUAOieVmlLhoZfDqNN5cdbqVHVawbiaQMWPR24gZhyPHIB-qTeQh1XU9lOvxfFiM3Pf0J4sjGQK-Il39shPk34vifLjm0V5PjwWE5kWYv0qAeu9MgkFbVXLCaWF4SLLVTSGuq4rjMwUXLDiuxhVjkN21ySDPqsT6kgoDJ" alt="Lukisan Abstrak Kontemporer" class="w-full h-full object-cover object-center">
+            <div class="absolute inset-0 bg-black/10"></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Bottom Gradient Overlay on Artwork Collage -->
+      <div class="absolute inset-x-0 bottom-0 h-4/5 bg-gradient-to-t from-[#121110] via-[#121110]/80 via-40% to-transparent pointer-events-none"></div>
+
+      <!-- Headline and Supporting Copy positioned over the gradient -->
+      <div class="absolute inset-x-0 bottom-0 z-20 px-6 pb-6 text-left">
+        <div class="inline-block w-8 h-[2px] bg-[#C9A227] mb-3"></div>
+        <h1 class="font-garamond text-3xl sm:text-[34px] leading-[1.18] font-normal text-[#FAF8F5] tracking-tight">
+          Temukan dan miliki<br>karya seni asli
+        </h1>
+        <p class="mt-2 text-sm text-[#DBD6CE] font-normal tracking-wide leading-relaxed line-clamp-2">
+          Akses eksklusif lelang dan koleksi terverifikasi dari galeri terkemuka.
+        </p>
+      </div>
+
+    </div>
+
+    <!-- Bottom Card Area on Off-White Background -->
+    <div class="relative w-full flex-1 bg-[#FAF8F5] px-6 pt-5 pb-8 flex flex-col justify-between border-t border-[#EAE6DF] shadow-[0_-12px_30px_rgba(0,0,0,0.06)] rounded-t-[20px] -mt-3 z-30">
+      
+      <!-- Action Buttons Area -->
+      <div class="w-full flex flex-col gap-3">
+        <!-- Primary Action Button: "Masuk" (Dark, 48px height) -->
+        <button type="button" class="w-full h-12 rounded-xl bg-[#1C1C1C] hover:bg-[#2b2b2b] active:scale-[0.99] text-[#FAF8F5] font-semibold text-[15px] tracking-wide shadow-md transition-all flex items-center justify-center gap-2 border border-[#1C1C1C]">
+          <span>Masuk</span>
+          <svg class="w-4 h-4 text-[#C9A227]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14 5l7 7m0 0l-7 7m7-7H3"></path>
+          </svg>
+        </button>
+
+        <!-- Secondary Action Button: "Daftar" (Outlined, 48px height) -->
+        <button type="button" class="w-full h-12 rounded-xl bg-white hover:bg-[#FAF8F5] active:scale-[0.99] text-[#1C1C1C] font-semibold text-[15px] tracking-wide border border-[#1C1C1C]/25 hover:border-[#1C1C1C]/50 transition-all flex items-center justify-center shadow-sm">
+          <span>Daftar</span>
+        </button>
+      </div>
+
+      <!-- Footer Action & Trust Line -->
+      <div class="w-full text-center pt-2">
+        <a href="#guest" class="inline-block text-[13px] font-medium text-[#8A8580] hover:text-[#1C1C1C] transition-colors py-1.5 underline-offset-4 hover:underline">
+          Lanjut sebagai tamu
+        </a>
+        
+        <!-- Subtle verification badge footer -->
+        <div class="mt-3 flex items-center justify-center gap-2 text-[11px] text-[#A39E98] uppercase tracking-widest">
+          <span>Keaslian Terjamin</span>
+          <span class="inline-block w-1 h-1 rounded-full bg-[#C9A227]"></span>
+          <span>Sertifikat Digital</span>
+        </div>
+      </div>
+
+    </div>
+
+  </main>
+
+
+<div id="snapdom-sandbox" data-snapdom-sandbox="true" aria-hidden="true" style="position: absolute; left: -9999px; top: -9999px; width: 0px; height: 0px; overflow: hidden;"></div></body></html>

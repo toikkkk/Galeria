@@ -13,12 +13,11 @@ flutter pub get
 flutter run                 # pilih device/emulator yang aktif
 ```
 
-⚠️ **Catatan environment**: saat `flutter create`, muncul peringatan Java
-(26.0.0) vs Gradle (8.14) berpotensi konflik untuk build Android. Kalau
-`flutter run`/build Android gagal karena ini:
-```bash
-flutter config --jdk-dir=<path ke JDK 17-24>
-```
+⚠️ **Setup Android SDK/emulator/JDK (sampai `flutter run` jalan)**: lihat
+panduan lengkap step-by-step + tabel troubleshooting di
+[`docs/SETUP_ANDROID.md`](docs/SETUP_ANDROID.md) — mencakup instalasi SDK
+Command-line Tools, bikin emulator (AVD), dan fix konflik JDK vs Gradle yang
+paling sering muncul (`flutter config --jdk-dir=...`).
 
 ## Rencana fitur & pemetaan ke backend
 
