@@ -1,0 +1,183 @@
+<!DOCTYPE html>
+
+<html lang="id"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>GALERIA - Event Berhasil Diterbitkan</title>
+<!-- Google Fonts & Material Symbols -->
+<link href="https://fonts.googleapis.com" rel="preconnect"/>
+<link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect"/>
+<link href="https://fonts.googleapis.com/css2?family=EB+Garamond:ital,wght@0,400..700;1,400..700&amp;family=Manrope:wght@400;500;600;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200" rel="stylesheet"/>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            'galeria-bg': '#FAF8F5',
+            'galeria-dark': '#1C1C1C',
+            'galeria-gold': '#C9A227',
+            'galeria-gold-light': '#F9F5EA',
+            'galeria-gold-border': '#E6D7A3',
+            'galeria-muted': '#6B7280',
+          },
+          fontFamily: {
+            serif: ['"EB Garamond"', 'serif'],
+            sans: ['"Manrope"', 'sans-serif'],
+          }
+        }
+      }
+    }
+  </script>
+<style>
+    body {
+      background-color: #FAF8F5;
+      font-family: 'Manrope', sans-serif;
+      -webkit-font-smoothing: antialiased;
+    }
+    .material-symbols-outlined {
+      font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+    }
+    .material-symbols-fill {
+      font-variation-settings: 'FILL' 1, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+    }
+  </style>
+</head>
+<body class="bg-[#FAF8F5] text-galeria-dark min-h-screen flex flex-col justify-between p-5 sm:p-6 max-w-[393px] mx-auto">
+<!-- Main Content Container -->
+<div class="flex-1 flex flex-col">
+<!-- Status Bar Area (Mobile Standard) -->
+<div class="flex justify-between items-center text-xs text-galeria-dark/80 font-medium pt-1 px-1 mb-5">
+<span>09:41</span>
+<div class="flex items-center space-x-1.5">
+<span class="material-symbols-outlined text-[15px]">signal_cellular_4_bar</span>
+<span class="material-symbols-outlined text-[15px]">wifi</span>
+<span class="material-symbols-outlined text-[17px]">battery_full</span>
+</div>
+</div>
+<!-- Success Confirmation Header -->
+<div class="flex flex-col items-center text-center mt-2 mb-6">
+<!-- Soft Gold Circle with Calendar Icon -->
+<div class="w-16 h-16 rounded-full bg-[#F5EED9] border border-galeria-gold-border/80 flex items-center justify-center mb-4 shadow-sm">
+<div class="w-11 h-11 rounded-full bg-[#EEDB9F]/50 flex items-center justify-center">
+<span class="material-symbols-outlined text-[#A88414] text-[26px]">event_available</span>
+</div>
+</div>
+<!-- Elegant Serif Headline -->
+<h1 class="font-serif text-[28px] font-medium leading-tight text-galeria-dark tracking-tight">
+        Event Berhasil Diterbitkan
+      </h1>
+<p class="text-sm text-galeria-muted mt-2 max-w-[300px] leading-relaxed">
+        Event kamu sedang ditinjau tim kurator dan akan tayang dalam 1x24 jam.
+      </p>
+</div>
+<!-- Event Summary Card -->
+<div class="bg-white rounded-2xl border border-galeria-gold/40 shadow-sm overflow-hidden transition hover:shadow-md">
+<!-- Poster Thumbnail with Badges -->
+<div class="relative w-full h-[146px] bg-stone-900 overflow-hidden group">
+<img alt="Poster Pameran Tunggal: Jejak Cahaya Nusantara" class="w-full h-full object-cover object-center transform transition duration-500 hover:scale-105" src="https://lh3.googleusercontent.com/aida/AEtjO1XHfj5z8R_jaWanuKdR5cNwd6xq1trW_RZQKvnmV4NtJDb_ncLURHywTwV9Gs8hdI9di820oODOoXMg8_2DLTgff8lCIhH2R1tK-IGTko1HZ5JQ8pVEBscFCXQdaZQLnumDuMFHAlX7N8vSfTx5Rv8-w9M2-caGeYE4KII--_n5zKGN00BD3sZbmpreFw_lCHA0L_lvynbZ6ptCbY2N9A9FZcBG_IqxoRJdica2BHNTt6Y8UwcV65OH"/>
+<div class="absolute inset-0 bg-gradient-to-t from-black/75 via-black/20 to-transparent"></div>
+<!-- Top Badge -->
+<div class="absolute top-3 left-3">
+<span class="bg-black/60 backdrop-blur-md text-[#E5C973] border border-[#E5C973]/40 text-[10px] uppercase font-semibold px-2.5 py-0.5 rounded-full tracking-wider">
+            PAMERAN GALERI FISIK
+          </span>
+</div>
+<!-- Bottom Organizer & Accreditation -->
+<div class="absolute bottom-2.5 left-3.5 right-3.5 flex justify-between items-end">
+<span class="text-white/95 text-xs font-medium drop-shadow-sm">Sanggar Rupa Nusantara</span>
+<span class="text-[10px] tracking-wide text-[#F3E2A8] font-mono bg-black/50 px-2 py-0.5 rounded backdrop-blur-sm border border-[#F3E2A8]/30">PRO ACCREDITED</span>
+</div>
+</div>
+<!-- Card Body Content -->
+<div class="p-4 space-y-3">
+<!-- Event Title -->
+<div class="border-b border-stone-100 pb-3">
+<h2 class="font-serif text-[19px] font-semibold text-galeria-dark leading-snug">
+            Pameran Tunggal: Jejak Cahaya Nusantara
+          </h2>
+</div>
+<!-- Event Details Metadata -->
+<div class="space-y-2.5 text-[13px] text-galeria-dark/85 pt-0.5">
+<!-- Schedule -->
+<div class="flex items-center gap-2.5">
+<span class="material-symbols-outlined text-galeria-gold text-[18px]">calendar_today</span>
+<span class="font-medium text-stone-800">20 - 26 Okt 2026</span>
+<span class="text-xs text-galeria-muted font-normal">• 10:00 - 20:00 WIB</span>
+</div>
+<!-- Location -->
+<div class="flex items-start gap-2.5">
+<span class="material-symbols-outlined text-galeria-gold text-[18px] mt-0.5">location_on</span>
+<span class="text-stone-700 leading-tight">Galeri Nasional Indonesia, Jakarta Pusat</span>
+</div>
+<!-- Tickets & Quota -->
+<div class="flex items-center gap-2.5">
+<span class="material-symbols-outlined text-galeria-gold text-[18px]">confirmation_number</span>
+<span class="text-stone-700">150 tiket · mulai <strong class="text-galeria-dark font-semibold">Rp 50.000</strong></span>
+</div>
+</div>
+<!-- Publication Status Chip -->
+<div class="pt-2 flex items-center justify-between border-t border-stone-100">
+<span class="text-xs text-galeria-muted font-normal">Status Publikasi:</span>
+<div class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-amber-50 border border-amber-200 text-amber-800 text-xs font-semibold">
+<span class="w-1.5 h-1.5 rounded-full bg-amber-500 animate-pulse"></span>
+            Menunggu Kurasi
+          </div>
+</div>
+</div>
+</div>
+<!-- Share Event Card -->
+<div class="mt-4 bg-white rounded-2xl border border-stone-200/80 p-3.5 shadow-sm">
+<div class="flex items-center justify-between mb-3 px-1">
+<span class="text-xs font-semibold uppercase tracking-wider text-galeria-dark flex items-center gap-1.5">
+<span class="material-symbols-outlined text-galeria-gold text-base">share</span>
+          Bagikan Event
+        </span>
+<span class="text-[11px] text-galeria-muted">Ajak kurator &amp; penikmat seni</span>
+</div>
+<div class="grid grid-cols-4 gap-2">
+<!-- Salin Tautan -->
+<button class="flex flex-col items-center gap-1.5 p-2 rounded-xl hover:bg-stone-50 active:scale-95 transition group">
+<div class="w-11 h-11 rounded-full bg-stone-100 group-hover:bg-galeria-gold/10 group-hover:border-galeria-gold/50 border border-stone-200 flex items-center justify-center transition">
+<span class="material-symbols-outlined text-stone-700 group-hover:text-galeria-gold text-[20px]">link</span>
+</div>
+<span class="text-[11px] text-stone-600 font-medium">Salin Tautan</span>
+</button>
+<!-- WhatsApp -->
+<button class="flex flex-col items-center gap-1.5 p-2 rounded-xl hover:bg-emerald-50/50 active:scale-95 transition group">
+<div class="w-11 h-11 rounded-full bg-[#E8F8F0] border border-[#25D366]/30 flex items-center justify-center transition">
+<span class="material-symbols-outlined text-[#1EA952] text-[20px]">chat</span>
+</div>
+<span class="text-[11px] text-stone-600 font-medium">WhatsApp</span>
+</button>
+<!-- Instagram -->
+<button class="flex flex-col items-center gap-1.5 p-2 rounded-xl hover:bg-pink-50/50 active:scale-95 transition group">
+<div class="w-11 h-11 rounded-full bg-[#FDF0F5] border border-[#E1306C]/30 flex items-center justify-center transition">
+<span class="material-symbols-outlined text-[#D62976] text-[20px]">photo_camera</span>
+</div>
+<span class="text-[11px] text-stone-600 font-medium">Instagram</span>
+</button>
+<!-- Komunitas -->
+<button class="flex flex-col items-center gap-1.5 p-2 rounded-xl hover:bg-amber-50/50 active:scale-95 transition group">
+<div class="w-11 h-11 rounded-full bg-galeria-gold-light border border-galeria-gold/30 flex items-center justify-center transition">
+<span class="material-symbols-outlined text-[#A88414] text-[20px]">groups</span>
+</div>
+<span class="text-[11px] text-stone-600 font-medium">Komunitas</span>
+</button>
+</div>
+</div>
+</div>
+<!-- Bottom Action Buttons (Pinned) -->
+<div class="pt-5 pb-2 space-y-3 text-center">
+<!-- Primary Button: Kelola Event -->
+<button class="w-full h-12 bg-galeria-dark hover:bg-black text-white font-medium text-sm rounded-xl flex items-center justify-center gap-2 shadow-sm transition active:scale-[0.99]">
+<span>Kelola Event</span>
+<span class="material-symbols-outlined text-base text-galeria-gold">arrow_forward</span>
+</button>
+<!-- Secondary Link: Kembali ke Dasbor -->
+<button class="text-xs font-semibold text-stone-600 hover:text-galeria-dark transition py-1 inline-flex items-center gap-1">
+<span>Kembali ke Dasbor</span>
+</button>
+</div>
+</body></html>

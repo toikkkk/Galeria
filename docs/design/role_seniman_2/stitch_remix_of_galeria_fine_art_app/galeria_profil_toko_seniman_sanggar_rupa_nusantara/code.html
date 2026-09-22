@@ -1,0 +1,515 @@
+<!DOCTYPE html><html class="bg-surface" lang="id"><head><meta charset="utf-8"><meta content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" name="viewport"><link href="https://fonts.googleapis.com" rel="preconnect"><link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect"><link href="https://fonts.googleapis.com/css2?family=EB+Garamond:ital,wght@0,400;0,500;0,600;1,400;1,500&amp;family=Manrope:wght@400;500;600;700&amp;display=swap" rel="stylesheet"><link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"><script src="https://cdn.tailwindcss.com"></script><script id="tailwind-config">tailwind.config = {
+  darkMode: "class",
+  theme: {
+    extend: {
+      "colors": {
+        "surface-tint": "#5f5e5e",
+        "secondary-fixed": "#ffe08e",
+        "on-primary-fixed-variant": "#474746",
+        "on-tertiary-fixed": "#002113",
+        "on-error-container": "#93000a",
+        "on-secondary-container": "#735a00",
+        "surface-container": "#efeeeb",
+        "surface-bright": "#fbf9f6",
+        "on-secondary-fixed": "#241a00",
+        "on-tertiary-fixed-variant": "#005236",
+        "background": "#fbf9f6",
+        "inverse-primary": "#c8c6c5",
+        "tertiary-fixed": "#a4f3ca",
+        "on-primary-container": "#858484",
+        "error-container": "#ffdad6",
+        "on-secondary": "#ffffff",
+        "on-surface-variant": "#444748",
+        "surface-container-low": "#f5f3f0",
+        "inverse-on-surface": "#f2f0ed",
+        "on-tertiary": "#ffffff",
+        "on-surface": "#1b1c1a",
+        "surface-variant": "#e4e2df",
+        "tertiary": "#000000",
+        "secondary": "#755b00",
+        "tertiary-container": "#002113",
+        "surface-container-high": "#eae8e5",
+        "outline": "#747878",
+        "surface": "#fbf9f6",
+        "on-background": "#1b1c1a",
+        "tertiary-fixed-dim": "#88d6af",
+        "surface-dim": "#dbdad7",
+        "surface-container-highest": "#e4e2df",
+        "primary": "#010101",
+        "primary-container": "#1c1c1c",
+        "on-tertiary-container": "#45926f",
+        "on-primary": "#ffffff",
+        "secondary-container": "#fed255",
+        "primary-fixed": "#e5e2e1",
+        "primary-fixed-dim": "#c8c6c5",
+        "outline-variant": "#c4c7c7",
+        "error": "#ba1a1a",
+        "on-error": "#ffffff",
+        "on-secondary-fixed-variant": "#584400",
+        "surface-container-lowest": "#ffffff",
+        "inverse-surface": "#30312f",
+        "secondary-fixed-dim": "#ecc246",
+        "on-primary-fixed": "#1b1b1b"
+      },
+      "borderRadius": {
+        "DEFAULT": "0.125rem",
+        "lg": "0.25rem",
+        "xl": "0.5rem",
+        "full": "0.75rem"
+      },
+      "spacing": {
+        "margin-edge": "1.5rem",
+        "space-sm": "0.75rem",
+        "bottom-nav-height": "4.5rem",
+        "gutter-screen": "1.5rem",
+        "space-lg": "1.5rem",
+        "space-2xl": "3rem",
+        "space-3xl": "4rem",
+        "space-md": "1rem",
+        "touch-target": "3rem",
+        "card-inner": "1.25rem",
+        "space-xl": "2rem",
+        "space-xxs": "0.25rem",
+        "space-xs": "0.5rem"
+      },
+      "fontFamily": {
+        "price-display": ["Manrope"],
+        "display-lg": ["EB Garamond"],
+        "headline-md": ["EB Garamond"],
+        "display-md": ["EB Garamond"],
+        "price-card": ["Manrope"],
+        "headline-sm": ["EB Garamond"],
+        "body-sm": ["Manrope"],
+        "headline-lg": ["EB Garamond"],
+        "label-md": ["Manrope"],
+        "label-sm": ["Manrope"],
+        "body-lg": ["Manrope"],
+        "body-md": ["Manrope"],
+        "overline": ["Manrope"]
+      },
+      "fontSize": {
+        "price-display": ["24px", {"lineHeight": "32px", "letterSpacing": "-0.02em", "fontWeight": "600"}],
+        "display-lg": ["36px", {"lineHeight": "44px", "letterSpacing": "-0.02em", "fontWeight": "400"}],
+        "headline-md": ["22px", {"lineHeight": "28px", "letterSpacing": "0em", "fontWeight": "500"}],
+        "display-md": ["30px", {"lineHeight": "38px", "letterSpacing": "-0.015em", "fontWeight": "400"}],
+        "price-card": ["16px", {"lineHeight": "22px", "letterSpacing": "-0.01em", "fontWeight": "600"}],
+        "headline-sm": ["18px", {"lineHeight": "24px", "letterSpacing": "0.01em", "fontWeight": "600"}],
+        "body-sm": ["12px", {"lineHeight": "18px", "letterSpacing": "0.015em", "fontWeight": "400"}],
+        "headline-lg": ["26px", {"lineHeight": "34px", "letterSpacing": "-0.01em", "fontWeight": "500"}],
+        "label-md": ["13px", {"lineHeight": "18px", "letterSpacing": "0.02em", "fontWeight": "600"}],
+        "label-sm": ["11px", {"lineHeight": "16px", "letterSpacing": "0.06em", "fontWeight": "600"}],
+        "body-lg": ["16px", {"lineHeight": "26px", "letterSpacing": "0em", "fontWeight": "400"}],
+        "body-md": ["14px", {"lineHeight": "22px", "letterSpacing": "0.01em", "fontWeight": "400"}],
+        "overline": ["10px", {"lineHeight": "14px", "letterSpacing": "0.12em", "fontWeight": "700"}]
+      }
+    }
+  }
+}</script><style>@layer base{html,body{width:100%;margin:0;padding:0;background-color:#fbf9f6;color:#1b1c1a;-webkit-tap-highlight-color:transparent;}body{overscroll-behavior-y:none;}.pb-safe{padding-bottom:env(safe-area-inset-bottom,0px);}.pt-safe{padding-top:env(safe-area-inset-top,0px);}.material-symbols-outlined{font-variation-settings:'FILL' 0,'wght' 300,'GRAD' 0,'opsz' 24;display:inline-block;vertical-align:middle;line-height:1;}main>:first-child{margin-top:0!important;}main>:last-child{margin-bottom:0!important;}}::-webkit-scrollbar{display:none;}</style></head><body class="min-h-screen bg-surface font-body-md text-body-md text-on-surface flex flex-col antialiased selection:bg-secondary-fixed selection:text-on-secondary-fixed"><header class="fixed top-0 inset-x-0 z-50 bg-surface/85 backdrop-blur-xl pt-safe shadow-[0_1px_8px_rgba(27,28,26,0.03)]"><div class="h-16 px-margin-edge flex items-center justify-between"><div class="flex items-center gap-space-xs"><span class="font-headline-lg text-headline-lg text-primary tracking-tight font-medium">GALERIA</span></div><h1 class="text-label-md font-label-md uppercase tracking-[0.16em] text-on-surface-variant line-clamp-1">Jelajahi Galeri</h1><div class="flex items-center justify-end"><div class="w-8 h-8 rounded-full bg-primary flex items-center justify-center"><span class="material-symbols-outlined text-on-primary text-[18px]">person</span></div></div></div></header><main class="flex-1 flex flex-col relative w-full pt-16 bg-surface pb-space-2xl"><div class="flex flex-col w-full">
+<!-- 1. Header / Gallery Cover Section -->
+<section class="relative w-full h-56 overflow-hidden bg-surface-container-highest">
+<div class="w-full h-full bg-cover bg-center" data-alt="Exquisite museum gallery corridor interior with classical vaulted archways, wooden floor, and museum spotlights illuminating curated framed classical and modern oil paintings on warm cream walls." style="background-image: url('https://lh3.googleusercontent.com/aida-public/AB6AXuBmclVGszmG3Ie6THCcNM8NnH8koqfGfRSNEcEa2krDOb8gfO4Yf_g62l9G88FHudpyzfN2cILpZ4KUUWAPfV_FIs8RymwGxKCSJ0gesdXBKN0575gVMLRvr0wZePrCSHNskCPXYDeaA27HP98sOxX-1IprqOmSBiio2NYq8yECEWpnoEb-ylc6RnXF9ZWEWX8inbk09aTBHn1YpIKABWPyx5jZ4omcT0P66HE8PTAGGSsLW3iFvA')">
+<div class="absolute inset-0 bg-gradient-to-t from-primary/80 via-primary/30 to-primary/40"></div>
+</div>
+<!-- Floating Top Nav Action Controls -->
+<div class="absolute top-3 inset-x-margin-edge flex items-center justify-between z-10">
+<button aria-label="Kembali ke Galeri" class="w-10 h-10 rounded-full bg-primary/60 backdrop-blur-md flex items-center justify-center text-on-primary shadow-sm active:scale-95 transition-transform" type="button">
+<span class="material-symbols-outlined text-[20px]">arrow_back</span>
+</button>
+<div class="flex items-center gap-space-xs">
+<button aria-label="Bagikan Profil Galeri" class="w-10 h-10 rounded-full bg-primary/60 backdrop-blur-md flex items-center justify-center text-on-primary shadow-sm active:scale-95 transition-transform" type="button">
+<span class="material-symbols-outlined text-[20px]">share</span>
+</button>
+<button aria-label="Favoritkan Galeri" class="w-10 h-10 rounded-full bg-primary/60 backdrop-blur-md flex items-center justify-center text-on-primary shadow-sm active:scale-95 transition-transform" type="button">
+<span class="material-symbols-outlined text-[20px]">bookmark</span>
+</button>
+</div>
+</div>
+<!-- Curated Archival Tag floating top-left inside cover -->
+<div class="absolute bottom-4 right-margin-edge bg-surface-container-lowest/90 backdrop-blur-md px-2.5 py-1 rounded-full shadow-sm flex items-center gap-1.5">
+<span class="w-1.5 h-1.5 rounded-full bg-secondary"></span>
+<span class="font-overline text-overline uppercase tracking-widest text-on-surface">Salon Resmi 2026</span>
+</div>
+</section>
+<!-- 2. Artist / Gallery Bio Section -->
+<section class="relative px-margin-edge pt-0">
+<!-- Overlapping Distinctive Emblem Avatar -->
+<div class="-mt-9 mb-space-sm flex items-end justify-between">
+<div class="relative w-18 h-18 w-[72px] h-[72px] rounded-xl bg-primary-container p-0.5 shadow-md flex items-center justify-center">
+<div class="w-full h-full rounded-[10px] bg-primary flex flex-col items-center justify-center text-center shadow-inner">
+<span class="font-display-md text-headline-md font-medium text-secondary-container tracking-wider">SR</span>
+<span class="font-overline text-[8px] uppercase tracking-widest text-on-primary-container -mt-1">Nusantara</span>
+</div>
+<div class="absolute -bottom-1 -right-1 w-5 h-5 rounded-full bg-secondary-container text-on-secondary-container flex items-center justify-center shadow">
+<span class="material-symbols-outlined text-[13px] font-bold">verified</span>
+</div>
+</div>
+<div class="flex items-center gap-1 bg-surface-container px-2.5 py-1 rounded-full text-on-surface-variant">
+<span class="material-symbols-outlined text-[15px] text-secondary">verified_user</span>
+<span class="font-label-sm text-label-sm">Akreditasi DAI No. 894/24</span>
+</div>
+</div>
+<!-- Gallery Name & Attributes -->
+<div class="space-y-1">
+<div class="flex items-center gap-1.5">
+<h2 class="font-headline-lg text-headline-lg text-on-surface tracking-tight">Sanggar Rupa Nusantara</h2>
+</div>
+<p class="font-label-md text-label-md text-on-surface-variant flex items-center gap-1.5">
+<span class="material-symbols-outlined text-[15px] text-secondary">workspace_premium</span>
+        Kurator Terakreditasi · Salon Utama · Jakarta Selatan
+      </p>
+<p class="font-body-sm text-body-sm text-on-surface-variant pt-1 leading-relaxed">
+        Kolektif kurasi karya seni rupa murni Indonesia era klasik hingga kontemporer. Menghadirkan lukisan otentik bersertifikat DAI dan provenansi teruji.
+      </p>
+</div>
+<!-- 3. Stat Blocks Row -->
+<div class="mt-space-md grid grid-cols-4 bg-surface-container-lowest rounded-xl p-space-sm shadow-sm text-center divide-x-0">
+<div class="flex flex-col items-center">
+<span class="font-headline-sm text-headline-sm text-on-surface">12</span>
+<span class="font-overline text-[10px] text-on-surface-variant uppercase mt-0.5">Karya Aktif</span>
+</div>
+<div class="flex flex-col items-center">
+<span class="font-headline-sm text-headline-sm text-on-surface">48</span>
+<span class="font-overline text-[10px] text-on-surface-variant uppercase mt-0.5">Terjual</span>
+</div>
+<div class="flex flex-col items-center">
+<span class="font-headline-sm text-headline-sm text-on-surface">1.240</span>
+<span class="font-overline text-[10px] text-on-surface-variant uppercase mt-0.5">Pengikut</span>
+</div>
+<div class="flex flex-col items-center">
+<div class="flex items-center gap-0.5">
+<span class="font-headline-sm text-headline-sm text-on-surface">4.9</span>
+<span class="text-secondary text-[14px] leading-none">★</span>
+</div>
+<span class="font-overline text-[10px] text-on-surface-variant uppercase mt-0.5">128 Ulasan</span>
+</div>
+</div>
+<!-- 4. Action Buttons (Follow + Chat) -->
+
+<!-- 5. Trust Badges Strip -->
+<div class="mt-space-md flex items-center gap-2 overflow-x-auto no-scrollbar py-0.5">
+<div class="flex-shrink-0 flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-surface-container text-on-surface font-label-sm text-label-sm">
+<span class="material-symbols-outlined text-[16px] text-tertiary-fixed-dim">check_circle</span>
+<span class="">Identitas Terverifikasi</span>
+</div>
+<div class="flex-shrink-0 flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-surface-container text-on-surface font-label-sm text-label-sm">
+<span class="material-symbols-outlined text-[16px] text-secondary">shield</span>
+<span class="">Escrow Aman DAI</span>
+</div>
+<div class="flex-shrink-0 flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-surface-container text-on-surface font-label-sm text-label-sm">
+<span class="material-symbols-outlined text-[16px] text-on-surface-variant">inventory_2</span>
+<span class="">Peti Standar Museum</span>
+</div>
+</div>
+</section>
+<!-- 6. Filter Chips & Controls Row -->
+<section class="mt-space-lg px-margin-edge">
+<div class="flex items-center justify-between gap-space-xs">
+<div class="flex items-center gap-2 overflow-x-auto no-scrollbar py-1 flex-1">
+<button class="flex-shrink-0 px-4 py-2 rounded-full bg-primary text-on-primary font-label-sm text-label-sm shadow-sm" type="button">
+          Semua (12)
+        </button>
+<button class="flex-shrink-0 px-4 py-2 rounded-full bg-surface-container text-on-surface-variant font-label-sm text-label-sm hover:bg-surface-container-high" type="button">
+          Tersedia (8)
+        </button>
+<button class="flex-shrink-0 px-4 py-2 rounded-full bg-surface-container text-on-surface-variant font-label-sm text-label-sm hover:bg-surface-container-high" type="button">
+          Sedang Dilelang (2)
+        </button>
+<button class="flex-shrink-0 px-4 py-2 rounded-full bg-surface-container text-on-surface-variant font-label-sm text-label-sm hover:bg-surface-container-high" type="button">
+          Terjual (48)
+        </button>
+</div>
+<button aria-label="Ganti Tampilan Grid" class="flex-shrink-0 w-9 h-9 rounded-full bg-surface-container flex items-center justify-center text-on-surface-variant hover:text-on-surface" type="button">
+<span class="material-symbols-outlined text-[18px]">view_agenda</span>
+</button>
+</div>
+</section>
+<!-- 7. 2-Column Staggered Grid of Artwork Cards -->
+<section class="mt-space-md px-margin-edge">
+<div class="grid grid-cols-2 gap-3">
+<!-- Card 1: Live Auction Highlight -->
+<article class="flex flex-col bg-surface-container-lowest rounded-xl overflow-hidden shadow-sm hover:shadow-md transition-shadow">
+<div class="relative w-full aspect-[4/5] bg-surface-container overflow-hidden">
+<img class="w-full h-full object-cover" data-alt="Classical Renaissance oil portrait of an aristocratic noblewoman with lace ruff collar, crimson velvet dress, intricate gold embroidery, and ruby necklace in museum frame." src="https://lh3.googleusercontent.com/aida-public/AB6AXuC4y4CHAmba_E_hJCZPvj96FayjOXa42w6knEUzQP1V-sz22pGd7vxC4urR9S46fLXm6fRKQj9L7OfNTjzw8XF8kqlEDG3I8d2LemRFYkBQD4Bl5O6UW1qQWBRU81NuwoUP5d4tYKmJC88XA6rB6J7Bs2H9zpGIiCFVz6ilcWr1bk_pbRqnYpmxIv6XZud9DbMI9-erLB05J82W4T-ZUtM9WMvdurEslQUD9OWUuJLhya4iVNBXcA">
+<!-- Asli Badge -->
+<div class="absolute top-2 left-2 bg-primary/80 backdrop-blur-sm px-2 py-0.5 rounded flex items-center gap-1">
+<span class="material-symbols-outlined text-[11px] text-secondary-container">verified</span>
+<span class="font-overline text-[9px] uppercase tracking-wider text-on-primary">Asli</span>
+</div>
+<!-- Favorite Heart -->
+<button class="absolute top-2 right-2 bg-surface-container-lowest/80 backdrop-blur-md px-2 py-0.5 rounded-full flex items-center gap-1 shadow-sm text-on-surface" type="button">
+<span class="material-symbols-outlined text-[12px] text-error">favorite</span>
+<span class="font-overline text-[10px]">342</span>
+</button>
+<!-- Auction Timer Pill -->
+<div class="absolute bottom-2 inset-x-2 bg-error/90 backdrop-blur-sm text-on-error px-2 py-1 rounded flex items-center justify-center gap-1 text-center shadow-sm">
+<span class="material-symbols-outlined text-[12px]">schedule</span>
+<span class="font-label-sm text-[10px] tracking-tight font-semibold">02:14:37</span>
+</div>
+</div>
+<div class="p-2.5 flex flex-col flex-1 justify-between">
+<div>
+<h3 class="font-headline-sm text-[15px] leading-snug text-on-surface line-clamp-1 italic font-serif">Sang Putri Mahkota</h3>
+<p class="font-body-sm text-[11px] text-on-surface-variant truncate mt-0.5">Cat Minyak · 120 × 90 cm</p>
+</div>
+<div class="mt-2 pt-2 bg-surface-container-low/50 -mx-2.5 -mb-2.5 p-2.5">
+<span class="font-overline text-[9px] text-on-surface-variant uppercase block">Tawaran Tertinggi</span>
+<p class="font-price-card text-[14px] font-bold text-on-surface">Rp 48.000.000</p>
+<div class="flex items-center justify-between mt-1 text-on-surface-variant font-overline text-[9px]">
+<span class="flex items-center text-secondary font-bold">★ 4.9 <span class="font-normal text-on-surface-variant ml-0.5">(12)</span></span>
+<span>1.2rb dilihat</span>
+</div>
+</div>
+</div>
+</article>
+<!-- Card 2: Serene Landscape Watercolor -->
+<article class="flex flex-col bg-surface-container-lowest rounded-xl overflow-hidden shadow-sm hover:shadow-md transition-shadow">
+<div class="relative w-full aspect-[4/5] bg-surface-container overflow-hidden">
+<img class="w-full h-full object-cover" data-alt="Calm misty morning lake landscape watercolor painting with soft reflections, mountain silhouettes, pine trees, and travelers strolling on muddy bank at dawn." src="https://lh3.googleusercontent.com/aida-public/AB6AXuC404_ytUM5z23KDQRm7O1usdsl6WjqWzEBstrG9Vm-QLGW7eoR-yRmK0O0aKsEQe4DpQgnSuuZze924jFnJV3uKJQDJp6mmTIeGt1WWrLimWDFZAFk3_vnv_qy56wodoG6LMrNQHhZx56IW37WmhuUG-c3VKa02YHNXwLtPGoxbCs3QiC5NxbyR78LogxrIpOZkOclxfuDvOaU88VB66iSGGuPPhv5rZuOvgxpFs4bS5j-lYieTQ">
+<div class="absolute top-2 left-2 bg-primary/80 backdrop-blur-sm px-2 py-0.5 rounded flex items-center gap-1">
+<span class="material-symbols-outlined text-[11px] text-secondary-container">verified</span>
+<span class="font-overline text-[9px] uppercase tracking-wider text-on-primary">Asli</span>
+</div>
+<button class="absolute top-2 right-2 bg-surface-container-lowest/80 backdrop-blur-md px-2 py-0.5 rounded-full flex items-center gap-1 shadow-sm text-on-surface" type="button">
+<span class="material-symbols-outlined text-[12px] text-on-surface-variant">favorite</span>
+<span class="font-overline text-[10px]">198</span>
+</button>
+</div>
+<div class="p-2.5 flex flex-col flex-1 justify-between">
+<div>
+<h3 class="font-headline-sm text-[15px] leading-snug text-on-surface line-clamp-1 italic font-serif">Kabut di Ranu Kumbolo</h3>
+<p class="font-body-sm text-[11px] text-on-surface-variant truncate mt-0.5">Cat Air · 60 × 40 cm</p>
+</div>
+<div class="mt-2 pt-2 bg-surface-container-low/50 -mx-2.5 -mb-2.5 p-2.5">
+<span class="font-overline text-[9px] text-on-surface-variant uppercase block">Harga Tetap</span>
+<p class="font-price-card text-[14px] font-bold text-on-surface">Rp 18.500.000</p>
+<div class="flex items-center justify-between mt-1 text-on-surface-variant font-overline text-[9px]">
+<span class="flex items-center text-secondary font-bold">★ 4.8 <span class="font-normal text-on-surface-variant ml-0.5">(8)</span></span>
+<span>890 dilihat</span>
+</div>
+</div>
+</div>
+</article>
+<!-- Card 3: Sold Artwork with Ribbon -->
+<article class="flex flex-col bg-surface-container-lowest rounded-xl overflow-hidden shadow-sm opacity-90">
+<div class="relative w-full aspect-[4/5] bg-surface-container overflow-hidden">
+<img class="w-full h-full object-cover filter grayscale-[25%]" data-alt="Heavy textured abstract expressionist painting featuring vibrant deep lapis lazuli blues, cracking impasto strokes, and shimmering gold leaf veins mounted on gallery wall." src="https://lh3.googleusercontent.com/aida-public/AB6AXuAdNXLsPNjj7ki1ZV10ieJR4YJjtIGPf7gV5XPmhZRFrP6fzzY8iYC7W-zWwkFOnel6e-DwPsgOkhtyrOMYIcooGsiFd6Y-k3jqbPP_snCvJeKPsByCICMe3Pf3ididQAoKGB5rFDGKjcYkjXiYzB2UgdIB-v2WfrhkXnU1aY1jPe_gsWkGo-77a6vxNwfku4iPtL3fbQV0PWxpV_6LVttBpgEgFA2wQeDOuTNCfxlMHBzAbnUpiw">
+<!-- Diagonal Ribbon / Badge -->
+<div class="absolute top-3 left-2 bg-primary/95 text-secondary-container px-2.5 py-1 rounded shadow flex items-center gap-1">
+<span class="material-symbols-outlined text-[12px]">lock</span>
+<span class="font-label-sm text-[10px] tracking-wider uppercase font-bold">Terjual</span>
+</div>
+<button class="absolute top-2 right-2 bg-surface-container-lowest/80 backdrop-blur-md px-2 py-0.5 rounded-full flex items-center gap-1 shadow-sm text-on-surface" type="button">
+<span class="material-symbols-outlined text-[12px] text-error">favorite</span>
+<span class="font-overline text-[10px]">276</span>
+</button>
+</div>
+<div class="p-2.5 flex flex-col flex-1 justify-between">
+<div>
+<h3 class="font-headline-sm text-[15px] leading-snug text-on-surface line-clamp-1 italic font-serif">Emas &amp; Lapis Lazuli</h3>
+<p class="font-body-sm text-[11px] text-on-surface-variant truncate mt-0.5">Akrilik &amp; Emas · 80 × 60 cm</p>
+</div>
+<div class="mt-2 pt-2 bg-surface-container-low/50 -mx-2.5 -mb-2.5 p-2.5">
+<span class="font-overline text-[9px] text-on-surface-variant uppercase block">Harga Realisasi</span>
+<p class="font-price-card text-[14px] font-bold text-on-surface-variant line-through">Rp 32.500.000</p>
+<div class="flex items-center justify-between mt-1 text-on-surface-variant font-overline text-[9px]">
+<span class="flex items-center text-secondary font-bold">★ 5.0 <span class="font-normal text-on-surface-variant ml-0.5">(20)</span></span>
+<span>1.6rb dilihat</span>
+</div>
+</div>
+</div>
+</article>
+<!-- Card 4: Benoa Bay Oil Painting -->
+<article class="flex flex-col bg-surface-container-lowest rounded-xl overflow-hidden shadow-sm hover:shadow-md transition-shadow">
+<div class="relative w-full aspect-[4/5] bg-surface-container overflow-hidden">
+<img alt="Balinese sunset over Benoa bay ocean oil painting" class="w-full h-full object-cover" src="https://lh3.googleusercontent.com/aida-public/AB6AXuA2qKdxeL238-D6phz4i5OsX9Pvf8zFLpQErwWIZ9Ox1lwwuOpXvtXODv4egbaC1MFtrWCA7nD5WJkW6h-5OYg3B8VXnEguZK4EMHpfA5HIbV9a2UL_SS5Dm3975VQpE34xuBb1qOwdL9iEePmjflczTxUZBkksbuwAJRfnkQAUy4J-gk5PLT0InzJkNFcejGrYhp60flmUAGGxiohGeqcsDZ1VbUJ4NfslSWMZLu5sG7Zor_T2wg">
+<div class="absolute top-2 left-2 bg-primary/80 backdrop-blur-sm px-2 py-0.5 rounded flex items-center gap-1">
+<span class="material-symbols-outlined text-[11px] text-secondary-container">verified</span>
+<span class="font-overline text-[9px] uppercase tracking-wider text-on-primary">Asli</span>
+</div>
+<button class="absolute top-2 right-2 bg-surface-container-lowest/80 backdrop-blur-md px-2 py-0.5 rounded-full flex items-center gap-1 shadow-sm text-on-surface" type="button">
+<span class="material-symbols-outlined text-[12px] text-on-surface-variant">favorite</span>
+<span class="font-overline text-[10px]">154</span>
+</button>
+</div>
+<div class="p-2.5 flex flex-col flex-1 justify-between">
+<div>
+<h3 class="font-headline-sm text-[15px] leading-snug text-on-surface line-clamp-1 italic font-serif">Senja di Teluk Benoa</h3>
+<p class="font-body-sm text-[11px] text-on-surface-variant truncate mt-0.5">Cat Minyak · 100 × 70 cm</p>
+</div>
+<div class="mt-2 pt-2 bg-surface-container-low/50 -mx-2.5 -mb-2.5 p-2.5">
+<span class="font-overline text-[9px] text-on-surface-variant uppercase block">Penawaran Langsung</span>
+<p class="font-price-card text-[14px] font-bold text-on-surface">Rp 28.000.000</p>
+<div class="flex items-center justify-between mt-1 text-on-surface-variant font-overline text-[9px]">
+<span class="flex items-center text-secondary font-bold">★ 4.9 <span class="font-normal text-on-surface-variant ml-0.5">(6)</span></span>
+<span>720 dilihat</span>
+</div>
+</div>
+</div>
+</article>
+<!-- Card 5: Rice Terrace Pastoral Landscape -->
+<article class="flex flex-col bg-surface-container-lowest rounded-xl overflow-hidden shadow-sm hover:shadow-md transition-shadow">
+<div class="relative w-full aspect-[4/5] bg-surface-container overflow-hidden">
+<img class="w-full h-full object-cover" data-alt="Lush tropical green Ubud rice terraces in morning sun, fine art oil painting with golden light reflecting on flooded paddies and towering coconut palms." src="https://lh3.googleusercontent.com/aida-public/AB6AXuBxXrq1uY5C7tzDAkIWiF_pQYFFfAsAd68efhLQ5KHs0mNbljPtdGiCZfD62wUGdiLChVYLuJA4kS52upMx6tMMy9dTJBUOO-tPKiQxZDFX29Ver5LXz8BN4lCLgH7s-ZtcX5OCGo_e6AO3t5neja0Sw12qvqyMGCUSVN9csZ-5P-h-jBEojEqap64RWQ29u3JUFInvxPM1Qs7iz-9nIBc3gyQiFefgqUwsVOLRFc1aWSaQpUo9pg">
+<div class="absolute top-2 left-2 bg-primary/80 backdrop-blur-sm px-2 py-0.5 rounded flex items-center gap-1">
+<span class="material-symbols-outlined text-[11px] text-secondary-container">verified</span>
+<span class="font-overline text-[9px] uppercase tracking-wider text-on-primary">Asli</span>
+</div>
+<button class="absolute top-2 right-2 bg-surface-container-lowest/80 backdrop-blur-md px-2 py-0.5 rounded-full flex items-center gap-1 shadow-sm text-on-surface" type="button">
+<span class="material-symbols-outlined text-[12px] text-on-surface-variant">favorite</span>
+<span class="font-overline text-[10px]">121</span>
+</button>
+</div>
+<div class="p-2.5 flex flex-col flex-1 justify-between">
+<div>
+<h3 class="font-headline-sm text-[15px] leading-snug text-on-surface line-clamp-1 italic font-serif">Nyanyian Sawah Ubud</h3>
+<p class="font-body-sm text-[11px] text-on-surface-variant truncate mt-0.5">Cat Minyak · 90 × 70 cm</p>
+</div>
+<div class="mt-2 pt-2 bg-surface-container-low/50 -mx-2.5 -mb-2.5 p-2.5">
+<span class="font-overline text-[9px] text-on-surface-variant uppercase block">Harga Koleksi</span>
+<p class="font-price-card text-[14px] font-bold text-on-surface">Rp 22.000.000</p>
+<div class="flex items-center justify-between mt-1 text-on-surface-variant font-overline text-[9px]">
+<span class="flex items-center text-secondary font-bold">★ 4.8 <span class="font-normal text-on-surface-variant ml-0.5">(9)</span></span>
+<span>540 dilihat</span>
+</div>
+</div>
+</div>
+</article>
+<!-- Card 6: Mixed Media Masterpiece -->
+<article class="flex flex-col bg-surface-container-lowest rounded-xl overflow-hidden shadow-sm hover:shadow-md transition-shadow">
+<div class="relative w-full aspect-[4/5] bg-surface-container overflow-hidden">
+<img class="w-full h-full object-cover" data-alt="Monumental modern mixed media painting with Indonesian batik motifs deconstructed through dramatic dark charcoal, gold leaf gilding, and textural relief layers." src="https://lh3.googleusercontent.com/aida-public/AB6AXuAaeV6FxwPMgj9-qjONl3mC42UdhtD_SylZmduNgmAEaVkh0O0_GCQG-yZhhBHF-D0TE0HGm3KdV10Tt2tT1FyF42L-XC84Xq_jY3w5vhVNb1_UBXrbDN4zSyR7tFGKHXfZ0wee5DxuBd1hbBv2CpKrh0_q6rR1MvO5sZYPwRMZ5wIqJzVNxwq8lxsg74cbC6Q2fubyU4b3imYNfE704na9QhAebs2vMk9zZvfCLotx0yGdeNRWkQ">
+<div class="absolute top-2 left-2 bg-primary/80 backdrop-blur-sm px-2 py-0.5 rounded flex items-center gap-1">
+<span class="material-symbols-outlined text-[11px] text-secondary-container">verified</span>
+<span class="font-overline text-[9px] uppercase tracking-wider text-on-primary">Asli</span>
+</div>
+<button class="absolute top-2 right-2 bg-surface-container-lowest/80 backdrop-blur-md px-2 py-0.5 rounded-full flex items-center gap-1 shadow-sm text-on-surface" type="button">
+<span class="material-symbols-outlined text-[12px] text-error">favorite</span>
+<span class="font-overline text-[10px]">410</span>
+</button>
+</div>
+<div class="p-2.5 flex flex-col flex-1 justify-between">
+<div>
+<h3 class="font-headline-sm text-[15px] leading-snug text-on-surface line-clamp-1 italic font-serif">Garis Waktu Nusantara</h3>
+<p class="font-body-sm text-[11px] text-on-surface-variant truncate mt-0.5">Mixed Media · 150 × 100 cm</p>
+</div>
+<div class="mt-2 pt-2 bg-surface-container-low/50 -mx-2.5 -mb-2.5 p-2.5">
+<span class="font-overline text-[9px] text-on-surface-variant uppercase block">Koleksi Utama</span>
+<p class="font-price-card text-[14px] font-bold text-on-surface">Rp 65.000.000</p>
+<div class="flex items-center justify-between mt-1 text-on-surface-variant font-overline text-[9px]">
+<span class="flex items-center text-secondary font-bold">★ 5.0 <span class="font-normal text-on-surface-variant ml-0.5">(31)</span></span>
+<span>2.1rb dilihat</span>
+</div>
+</div>
+</div>
+</article>
+</div>
+</section>
+<!-- Curatorial Spotlight Callout -->
+<section class="mt-space-lg px-margin-edge">
+<div class="bg-surface-container-high rounded-xl p-space-md flex items-start gap-space-sm">
+<div class="w-10 h-10 rounded-full bg-secondary-container text-on-secondary-container flex items-center justify-center flex-shrink-0">
+<span class="material-symbols-outlined text-[22px]">history_edu</span>
+</div>
+<div class="space-y-1">
+<h4 class="font-headline-sm text-headline-sm text-on-surface">Jaminan Keaslian Seumur Hidup</h4>
+<p class="font-body-sm text-body-sm text-on-surface-variant">
+          Setiap akuisisi melalui Sanggar Rupa Nusantara disertai Sertifikat Provenansi Fisik dengan cap basah Dewan Akreditasi Galeri Indonesia.
+        </p>
+</div>
+</div>
+</section>
+<!-- 8. Collector Reviews Section -->
+<section class="mt-space-2xl px-margin-edge pb-space-lg">
+<div class="flex items-center justify-between mb-space-sm">
+<div>
+<h3 class="font-headline-md text-headline-md text-on-surface">Ulasan Kolektor</h3>
+<p class="font-label-sm text-label-sm text-on-surface-variant">Reputasi transaksi dan pengiriman teruji</p>
+</div>
+<div class="flex items-center gap-1 bg-surface-container-lowest px-2.5 py-1.5 rounded-full shadow-sm">
+<span class="text-secondary text-[14px]">★</span>
+<span class="font-label-md text-label-md text-on-surface font-bold">4.9</span>
+<span class="font-label-sm text-label-sm text-on-surface-variant">/ 5.0</span>
+</div>
+</div>
+<!-- Review Card 1 -->
+<div class="bg-surface-container-lowest rounded-xl p-3.5 mb-3 shadow-sm space-y-2">
+<div class="flex items-center justify-between">
+<div class="flex items-center gap-2.5">
+<div class="w-9 h-9 rounded-full bg-primary-container text-on-primary-container flex items-center justify-center font-label-md font-bold text-label-md">
+            DA
+          </div>
+<div>
+<h5 class="font-label-md text-label-md text-on-surface font-semibold">Darmawan Aditya</h5>
+<div class="flex items-center gap-1 text-[11px] text-secondary">
+<span>★★★★★</span>
+<span class="font-overline text-[9px] text-on-surface-variant ml-1 font-normal">Kolektor Terdaftar</span>
+</div>
+</div>
+</div>
+<span class="font-overline text-[10px] text-on-surface-variant">14 Okt 2026</span>
+</div>
+<p class="font-body-md text-body-sm text-on-surface-variant italic leading-relaxed">
+        “Pengepakan peti kayu sangat kokoh, lukisan sampai dalam kondisi prima dengan sertifikat DAI terverifikasi.”
+      </p>
+<div class="flex items-center gap-2 pt-1 font-label-sm text-[11px] text-on-surface-variant">
+<span class="material-symbols-outlined text-[14px] text-tertiary-fixed-dim">check</span>
+<span>Membeli <em>Sang Putri Mahkota</em></span>
+</div>
+</div>
+<!-- Review Card 2 -->
+<div class="bg-surface-container-lowest rounded-xl p-3.5 mb-3 shadow-sm space-y-2">
+<div class="flex items-center justify-between">
+<div class="flex items-center gap-2.5">
+<div class="w-9 h-9 rounded-full bg-surface-container-highest text-on-surface flex items-center justify-center font-label-md font-bold text-label-md">
+            CH
+          </div>
+<div>
+<h5 class="font-label-md text-label-md text-on-surface font-semibold">Clarissa Halim</h5>
+<div class="flex items-center gap-1 text-[11px] text-secondary">
+<span>★★★★★</span>
+<span class="font-overline text-[9px] text-on-surface-variant ml-1 font-normal">Kolektor Seni Kontemporer</span>
+</div>
+</div>
+</div>
+<span class="font-overline text-[10px] text-on-surface-variant">28 Sep 2026</span>
+</div>
+<p class="font-body-md text-body-sm text-on-surface-variant italic leading-relaxed">
+        “Tekstur cat minyak dan detail goresan kuas jauh lebih memukau di dunia nyata. Komunikasi galeri luar biasa ramah.”
+      </p>
+<div class="flex items-center gap-2 pt-1 font-label-sm text-[11px] text-on-surface-variant">
+<span class="material-symbols-outlined text-[14px] text-tertiary-fixed-dim">check</span>
+<span>Membeli <em>Senja di Teluk Benoa</em></span>
+</div>
+</div>
+<!-- View All Link Action -->
+<div class="text-center pt-2">
+<button class="inline-flex items-center justify-center gap-1 text-secondary font-label-md text-label-md hover:underline active:opacity-80 transition-opacity" type="button">
+<span>Lihat Semua Ulasan (128)</span>
+<span class="material-symbols-outlined text-[16px]">arrow_forward</span>
+</button>
+</div>
+</section>
+</div>
+<script>
+  (function() {
+    const followBtn = document.getElementById('btn-follow');
+    if (followBtn) {
+      let following = false;
+      followBtn.addEventListener('click', () => {
+        following = !following;
+        if (following) {
+          followBtn.classList.remove('bg-primary', 'text-on-primary');
+          followBtn.classList.add('bg-surface-container', 'text-on-surface');
+          followBtn.innerHTML = '<span class="material-symbols-outlined text-[18px] text-secondary">check</span><span>Mengikuti</span>';
+        } else {
+          followBtn.classList.remove('bg-surface-container', 'text-on-surface');
+          followBtn.classList.add('bg-primary', 'text-on-primary');
+          followBtn.innerHTML = '<span class="material-symbols-outlined text-[18px]">add</span><span>Ikuti Galeri</span>';
+        }
+      });
+    }
+  })();
+</script></main>
+
+</body></html>

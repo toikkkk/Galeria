@@ -1,0 +1,292 @@
+<!DOCTYPE html><html lang="id" style="width: 390px; height: 1354px; overflow: hidden; position: relative;"><head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>GALERIA - Verifikasi Identitas</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin="">
+  <link href="https://fonts.googleapis.com/css2?family=EB+Garamond:ital,wght@0,400..700;1,400..700&amp;family=Plus+Jakarta+Sans:wght@400;500;600;700&amp;display=swap" rel="stylesheet">
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            surface: '#fbf9f6',
+            'surface-dim': '#f2eee9',
+            'surface-card': '#ffffff',
+            primary: '#1c1c1c',
+            gold: '#c9a227',
+            'gold-light': '#fbf6e8',
+            'gold-border': '#e6d396',
+            muted: '#7a7672',
+            'border-subtle': '#e8e4de'
+          },
+          fontFamily: {
+            serif: ['"EB Garamond"', 'serif'],
+            sans: ['"Plus Jakarta Sans"', 'sans-serif']
+          }
+        }
+      }
+    }
+  </script>
+  <style>
+    body {
+      background-color: #fbf9f6;
+      color: #1c1c1c;
+      font-family: 'Plus Jakarta Sans', sans-serif;
+      -webkit-font-smoothing: antialiased;
+    }
+    .font-garamond {
+      font-family: 'EB Garamond', serif;
+    }
+    /* Hide scrollbar for clean mobile preview */
+    ::-webkit-scrollbar {
+      display: none;
+    }
+    * {
+      -ms-overflow-style: none;
+      scrollbar-width: none;
+    }
+  </style>
+</head>
+<body class="bg-surface min-h-screen flex flex-col justify-between max-w-md mx-auto shadow-2xl relative">
+
+  <!-- Main Scrollable Area -->
+  <div class="flex-1 overflow-y-auto px-6 pt-6 pb-32">
+    
+    <!-- Top Bar Navigation -->
+    <div class="flex items-center justify-between mb-6">
+      <button type="button" aria-label="Kembali" class="w-10 h-10 -ml-2 rounded-full flex items-center justify-center text-primary hover:bg-black/5 active:scale-95 transition-transform">
+        <svg class="w-6 h-6 stroke-[1.75]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M10.5 19.5L3 12m0 0l7.5-7.5M3 12h18"></path>
+        </svg>
+      </button>
+
+      <div class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-gold-light border border-gold-border text-[11px] font-semibold tracking-wider text-gold uppercase">
+        <span class="w-1.5 h-1.5 rounded-full bg-gold animate-pulse"></span>
+        Kolektif Seniman
+      </div>
+    </div>
+
+    <!-- Stepper Progress (Step 2 of 3) -->
+    <div class="mb-7">
+      <div class="flex items-center justify-between text-xs font-semibold tracking-wide mb-2.5">
+        <div class="flex items-center gap-1.5 text-gold">
+          <span class="w-4 h-4 rounded-full bg-gold/15 text-gold flex items-center justify-center text-[10px]">✓</span>
+          <span class="text-muted line-through decoration-gold/60">1. Data Diri</span>
+        </div>
+        <div class="text-primary font-bold text-xs uppercase tracking-wider flex items-center gap-1">
+          <span class="text-gold">LANGKAH 2/3:</span> Verifikasi
+        </div>
+        <div class="text-muted/60 text-xs">
+          3. Galeri
+        </div>
+      </div>
+
+      <!-- Stepper Bar -->
+      <div class="grid grid-cols-3 gap-2">
+        <div class="h-1 rounded-full bg-gold"></div>
+        <div class="h-1 rounded-full bg-gold"></div>
+        <div class="h-1 rounded-full bg-border-subtle"></div>
+      </div>
+    </div>
+
+    <!-- Title & Supporting Context -->
+    <div class="mb-6">
+      <h1 class="font-garamond text-[32px] leading-[1.15] font-normal text-primary tracking-tight mb-2">
+        Verifikasi Identitas
+      </h1>
+      <p class="text-sm text-muted leading-relaxed">
+        Sesuai regulasi kurasi karya seni resmi, unggah identitas sah untuk mengamankan sertifikasi hak cipta dan royalti karya Anda.
+      </p>
+    </div>
+
+    <!-- Security Info Banner -->
+    <div class="mb-6 p-3.5 rounded-xl bg-gold-light/70 border border-gold-border/80 flex items-start gap-3">
+      <div class="w-5 h-5 rounded-full bg-gold/20 text-gold flex-shrink-0 flex items-center justify-center mt-0.5">
+        <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"></path>
+        </svg>
+      </div>
+      <p class="text-xs text-[#6e5812] leading-relaxed">
+        Dokumen dienkripsi standar perbankan 256-bit dan hanya ditinjau oleh Dewan Kurator GALERIA secara tertutup.
+      </p>
+    </div>
+
+    <!-- Upload Cards Section -->
+    <div class="space-y-4 mb-6">
+      
+      <!-- Card 1: Foto KTP (State: Filled / Thumbnail Preview with "Ganti") -->
+      <div class="bg-surface-card rounded-2xl p-4 border border-[#c9a227]/40 shadow-sm relative overflow-hidden group">
+        <div class="flex items-start justify-between mb-3">
+          <div class="flex items-center gap-2">
+            <div class="w-7 h-7 rounded-lg bg-gold-light text-gold flex items-center justify-center">
+              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <rect x="3" y="4" width="18" height="16" rx="2" stroke-width="1.75"></rect>
+                <circle cx="9" cy="10" r="2.5" stroke-width="1.75"></circle>
+                <line x1="15" y1="9" x2="18" y2="9" stroke-width="1.75"></line>
+                <line x1="15" y1="12" x2="18" y2="12" stroke-width="1.75"></line>
+                <line x1="7" y1="16" x2="17" y2="16" stroke-width="1.75"></line>
+              </svg>
+            </div>
+            <div>
+              <h2 class="text-sm font-semibold text-primary">Foto KTP</h2>
+              <span class="inline-flex items-center gap-1 text-[11px] text-emerald-700 font-medium">
+                <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 13l4 4L19 7"></path>
+                </svg>
+                Siap diverifikasi
+              </span>
+            </div>
+          </div>
+          
+          <button type="button" class="text-xs font-semibold text-gold hover:text-[#9e7d17] hover:underline flex items-center gap-1 px-2.5 py-1 rounded-md bg-gold-light/60 transition-colors">
+            <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path>
+            </svg>
+            Ganti
+          </button>
+        </div>
+
+        <!-- Thumbnail Preview -->
+        <div class="relative rounded-xl overflow-hidden bg-slate-900 border border-border-subtle aspect-[16/9] flex items-center justify-center">
+          <!-- Graphic representation of an Indonesian e-KTP mockup -->
+          <div class="w-full h-full p-4 bg-gradient-to-br from-[#1e3a5f] to-[#0f2038] text-white flex flex-col justify-between relative select-none">
+            <div class="flex items-center justify-between border-b border-white/10 pb-1.5">
+              <div class="flex items-center gap-1.5">
+                <div class="w-3 h-3 rounded-full bg-red-600 border border-white/50"></div>
+                <span class="text-[10px] tracking-wider uppercase font-semibold text-white/90">REPUBLIK INDONESIA</span>
+              </div>
+              <span class="text-[9px] text-white/60 font-mono tracking-widest">KARTU TANDA PENDUDUK</span>
+            </div>
+            
+            <div class="flex items-center gap-3.5 my-auto">
+              <!-- Placeholder avatar -->
+              <div class="w-12 h-14 rounded bg-white/10 border border-white/20 flex flex-col items-center justify-center text-white/40 overflow-hidden flex-shrink-0">
+                <svg class="w-7 h-7 mt-1 text-white/60" fill="currentColor" viewBox="0 0 24 24">
+                  <path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"></path>
+                </svg>
+              </div>
+              <!-- Simulated KTP data -->
+              <div class="space-y-1 text-left flex-1 min-w-0">
+                <p class="text-[11px] font-mono tracking-wider font-bold text-amber-200 truncate">317101••••••••02</p>
+                <p class="text-[10px] font-semibold text-white truncate">NIRMALA SARI KUSUMA</p>
+                <p class="text-[8px] text-white/70">JAKARTA, 14-08-1992</p>
+                <p class="text-[8px] text-white/60 truncate">SENIMAN LUKIS REALISME</p>
+              </div>
+            </div>
+
+            <div class="flex items-center justify-between text-[8px] text-white/40 pt-1 border-t border-white/10">
+              <span class="">BERLAKU SEUMUR HIDUP</span>
+              <span class="text-emerald-400 font-medium">✓ Terbaca Jelas</span>
+            </div>
+          </div>
+
+          <!-- Bottom bar helper -->
+          <div class="absolute bottom-2 right-2 px-2 py-0.5 rounded bg-black/75 backdrop-blur-sm text-[10px] text-white/90 font-medium flex items-center gap-1">
+            <span class="w-1.5 h-1.5 rounded-full bg-emerald-400"></span>
+            KTP_Nirmala.jpg (1.8 MB)
+          </div>
+        </div>
+
+        <p class="text-[11px] text-muted mt-2.5 flex items-center gap-1.5">
+          <svg class="w-3.5 h-3.5 text-muted/80 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+          </svg>
+          Pastikan seluruh bagian KTP terlihat jelas dan tidak buram.
+        </p>
+      </div>
+
+      <!-- Card 2: Swafoto dengan KTP (State: Empty / Dashed border with Upload button) -->
+      <div class="bg-surface-card rounded-2xl p-5 border-2 border-dashed border-[#dcd6cc] hover:border-gold/70 transition-all shadow-sm">
+        <div class="flex items-start justify-between mb-2">
+          <div class="flex items-center gap-2">
+            <div class="w-7 h-7 rounded-lg bg-surface-dim text-primary/70 flex items-center justify-center">
+              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.75" d="M14.828 14.828a4 4 0 01-5.656 0M9 10h.01M15 10h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+              </svg>
+            </div>
+            <div>
+              <h2 class="text-sm font-semibold text-primary">Swafoto dengan KTP</h2>
+              <span class="text-[11px] text-muted">Selfie memegang kartu identitas</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Center Interactive Area -->
+        <div class="py-5 flex flex-col items-center text-center">
+          <div class="w-14 h-14 rounded-full bg-surface-dim border border-border-subtle flex items-center justify-center mb-3 text-primary/60">
+            <!-- Face outline icon holding ID card -->
+            <svg class="w-7 h-7" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <circle cx="12" cy="9" r="4" stroke-width="1.5"></circle>
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M6 19a6 6 0 0112 0"></path>
+              <rect x="13" y="14" width="8" height="6" rx="1" stroke-width="1.5" fill="#fbf9f6"></rect>
+              <circle cx="16" cy="17" r="1" fill="currentColor"></circle>
+            </svg>
+          </div>
+
+          <p class="text-xs text-muted max-w-[240px] leading-relaxed mb-4">
+            Pegang KTP di samping wajah. Pastikan wajah dan data kartu tidak tertutup jari atau bayangan.
+          </p>
+
+          <!-- Small Unggah button -->
+          <button type="button" class="inline-flex items-center justify-center gap-2 px-4 py-2 rounded-xl bg-primary text-white text-xs font-semibold hover:bg-black active:scale-95 transition-all shadow-sm">
+            <svg class="w-3.5 h-3.5 text-gold" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"></path>
+            </svg>
+            Unggah Swafoto
+          </button>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- Requirements Checklist Section -->
+    <div class="rounded-xl p-4 bg-surface-dim/60 border border-border-subtle">
+      <h3 class="text-xs font-bold uppercase tracking-wider text-primary/80 mb-3 flex items-center gap-1.5">
+        <svg class="w-3.5 h-3.5 text-gold" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+        </svg>
+        Ketentuan Foto Dokumen
+      </h3>
+      <ul class="space-y-2 text-xs text-muted">
+        <li class="flex items-start gap-2">
+          <span class="text-gold font-bold">•</span>
+          <span class="">Foto asli berwarna langsung dari kamera fisik, bukan hasil tangkapan layar atau fotokopi.</span>
+        </li>
+        <li class="flex items-start gap-2">
+          <span class="text-gold font-bold">•</span>
+          <span class="">Seluruh teks, NIK, dan pasfoto di KTP harus terbaca tajam tanpa pantulan kilat lampu (glare).</span>
+        </li>
+        <li class="flex items-start gap-2">
+          <span class="text-gold font-bold">•</span>
+          <span class="">Format file didukung: JPG, PNG, atau HEIC dengan ukuran maksimal 10 MB per berkas.</span>
+        </li>
+      </ul>
+    </div>
+
+  </div>
+
+  <!-- Sticky Bottom Action Area -->
+  <div class="fixed bottom-0 left-0 right-0 max-w-md mx-auto bg-surface/95 backdrop-blur-md border-t border-border-subtle p-4 px-6 z-20 space-y-3">
+    <!-- Primary CTA Button -->
+    <button type="button" class="w-full h-12 rounded-full bg-primary hover:bg-black active:scale-[0.99] text-white font-medium text-sm flex items-center justify-center gap-2 shadow-lg transition-all">
+      <span class="">Lanjut</span>
+      <svg class="w-4 h-4 text-gold" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14 5l7 7m0 0l-7 7m7-7H3"></path>
+      </svg>
+    </button>
+
+    <!-- Secondary Action: "Lewati untuk sekarang" -->
+    <div class="text-center">
+      <button type="button" class="text-xs font-medium text-muted hover:text-primary transition-colors py-1">
+        Lewati untuk sekarang
+      </button>
+    </div>
+  </div>
+
+
+
+
+
+<div id="snapdom-sandbox" data-snapdom-sandbox="true" aria-hidden="true" style="position: absolute; left: -9999px; top: -9999px; width: 0px; height: 0px; overflow: hidden;"></div></body></html>
