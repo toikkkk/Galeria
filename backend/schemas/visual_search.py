@@ -17,18 +17,26 @@ class StylePrediction(BaseModel):
 
 
 class CatalogMatch(BaseModel):
-    karya_id: str          # = filename/ID di katalog (mis. "wikiart_00042.jpg")
+    karya_id: str           # UUID baris `karya` di database
     similarity: float = Field(ge=-1, le=1)
+    title: str
     artist_name: str
-    genre_name: str
     style_name: str
-    # TODO saat katalog nyata sudah ada (bukan WikiArt riset): tambah field
-    # harga, link_beli, nama_penjual, dll dari database karya.
+    gallery_name: str       # nama galeri/sanggar penjual
+    price_idr: int          # contoh/placeholder, lihat models/karya.py
+    # Nama file gambar -- dicocokkan ke aset lokal di
+    # mobile/assets/images/catalog/ (belum ada hosting gambar/R2, lihat
+    # CLAUDE.md "Di Luar Scope Fase Ini").
+    image_filename: str
 
 
 class VisualSearchResponse(BaseModel):
     """Respons ``POST /api/visual-search``."""
 
+    # Selalu [] untuk sekarang -- model.onnx cuma expose embedding, TIDAK
+    # expose logit klasifikasi style. Butuh re-export model dgn output
+    # tambahan kalau nanti field ini mau diisi. Field tetap dipertahankan
+    # di schema supaya tidak breaking change buat mobile begitu diisi nanti.
     style_predictions: list[StylePrediction]
     catalog_matches: list[CatalogMatch]
     verdict: str    # "confirmed" | "ambiguous" | "not_found" -- lihat

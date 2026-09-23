@@ -7,6 +7,7 @@
 /// selesai diimplementasi.
 class Karya {
   const Karya({
+    this.id = '',
     required this.assetPath,
     required this.title,
     required this.artistName,
@@ -16,6 +17,10 @@ class Karya {
     this.isPromoted = false,
   });
 
+  /// UUID dari database -- kosong ('') untuk [sampleKarya] lokal (belum
+  /// pernah dibaca dari backend). Diisi begitu data datang dari
+  /// `GET /api/katalog` atau `POST /api/visual-search`.
+  final String id;
   final String assetPath;
   final String title;
   final String artistName;
@@ -64,6 +69,25 @@ class Karya {
     return title.toLowerCase().contains(q) ||
         artistName.toLowerCase().contains(q) ||
         galleryName.toLowerCase().contains(q);
+  }
+
+  /// Parse dari response backend -- toleran ke 2 bentuk field yang dipakai:
+  /// `KaryaListItem` (GET /api/katalog, field `id` + `is_promoted`) dan
+  /// `CatalogMatch` (POST /api/visual-search, field `karya_id`, TANPA
+  /// `is_promoted`). `image_filename` direkonstruksi jadi asset path lokal
+  /// (BUKAN URL gambar -- belum ada hosting/R2, gambar tetap dari
+  /// mobile/assets/images/catalog/ yang sudah dibundling).
+  factory Karya.fromJson(Map<String, dynamic> json) {
+    return Karya(
+      id: (json['id'] ?? json['karya_id'] ?? '') as String,
+      assetPath: 'assets/images/catalog/${json['image_filename']}',
+      title: json['title'] as String,
+      artistName: json['artist_name'] as String,
+      styleName: json['style_name'] as String,
+      galleryName: json['gallery_name'] as String,
+      priceIdr: json['price_idr'] as int,
+      isPromoted: (json['is_promoted'] as bool?) ?? false,
+    );
   }
 }
 
