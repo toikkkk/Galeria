@@ -12,6 +12,30 @@ Konteks proyek untuk Claude Code. Baca file ini sebelum mengerjakan task apa pun
 
 **Konteks akademik:** Proyek kelompok (PBL/tugas kuliah, prodi Sains Data Terapan, PENS). Harus punya nilai jual B2B/B2C yang jelas dan komponen AI/computer vision yang genuinely defensible — bukan sekadar fitur tempelan.
 
+**Konteks komersial (PENTING — mempengaruhi banyak keputusan teknis):** Proyek ini TIDAK berhenti di tugas akademik. Rencana pasti: **rilis ke Google Play Store sebagai aplikasi mobile berbayar/komersial**. Karena itu, semua keputusan arsitektur (database, storage, auth, deploy) diambil dengan asumsi production traffic real user, bukan demo lokal. Contoh konkret: pilih Neon+R2 (bukan SQLite lokal), custom JWT+refresh token (bukan session cookie stateless demo), R2 zero-egress fee (kritis untuk app yang serving gambar berulang ke user Play Store).
+
+## Core Aplikasi — Arsitektur Global
+
+Aplikasi target = **mobile Android (Flutter)**, backend terpisah, model ML jalan di server (bukan on-device).
+
+```
+┌─────────────────────┐         ┌──────────────────────┐         ┌─────────────────┐
+│  mobile/ (Flutter)  │ ──HTTPS─▶│  backend/ (FastAPI) │ ──SQL──▶│  Neon Postgres  │
+│  - UI 5 role screens│  JWT     │  - REST API         │         │  (+ pgvector)   │
+│  - google_sign_in   │  Bearer  │  - ONNXRuntime      │         └─────────────────┘
+│  - secure_storage   │          │  - auth (bcrypt/JWT)│         ┌─────────────────┐
+│  - camera/AR SDK    │          │  - inference CV     │ ──S3───▶│  Cloudflare R2  │
+└─────────────────────┘          └──────────────────────┘  API   │  (image files)  │
+                                          │                      └─────────────────┘
+                                          ├── ml-visual-search/  (ONNX encoder + index katalog)
+                                          └── ml-digital-art-identity/  (pHash + AI-detect)
+```
+
+**Prinsip pemisahan:**
+- **Model ML TIDAK ke-bundle di APK** — ukuran & update model harus lewat backend, bukan Play Store release baru.
+- **Gambar TIDAK disimpan di database** — hanya URL/key R2 di kolom Postgres. R2 dipilih karena **zero egress fee** (kritis: 1 karya bisa di-load ribuan kali oleh viewer, egress traffic AWS S3 akan mahal cepat).
+- **Auth stateful (dengan JWT + refresh)** — walaupun JWT stateless, kita simpan refresh token & session di DB supaya bisa revoke (logout paksa, ban user, dll).
+
 ## Target Pengguna & Model Bisnis
 
 - **Target user:** seniman/pelukis (penjual) dan pengguna umum (pembeli/kolektor), plus role tambahan **komunitas** (menyelenggarakan event seperti pameran/lelang).
@@ -91,13 +115,85 @@ dilayani `backend/` (FastAPI + ONNXRuntime) → dipakai `mobile/`. Alur di
 `ml-visual-search/`: `preprocess → train → evaluate → embedding → export`
 (semua tahap sudah selesai & terverifikasi).
 
+## Backend & Database
+
+### Stack Terpilih
+- **Backend framework:** FastAPI (Python) — sudah scaffold di `backend/`.
+- **Database:** **Neon** (serverless PostgreSQL, managed). Alasan: tim sudah familiar, connection pooling built-in, database branching (bisa bikin branch dev/staging tanpa provision instance baru), free tier cukup untuk MVP, scaling ke paid tier lancar untuk production Play Store.
+- **Extension Postgres yang dipakai:** `pgvector` — untuk simpan embedding karya (output CNN dari `ml-visual-search/`) langsung di DB & lakukan nearest-neighbor search via `<->` operator. Ini menggantikan kebutuhan FAISS terpisah untuk skala awal (kalau nanti > 100k karya, migrate ke FAISS/dedicated vector DB baru dipertimbangkan).
+- **ORM & Migration:** SQLAlchemy 2.0 (async) + Alembic (migration versioning). Standard industri, well-documented, bagus untuk audit trail schema change.
+- **File storage:** **Cloudflare R2** (S3-compatible). Alasan: **zero egress fee** (kritis untuk aplikasi image-heavy di Play Store — user scroll katalog = download gambar berulang), harga storage kompetitif, kompatibel dengan library boto3/aioboto3 (S3 SDK biasa).
+
+### Alternatif yang Dipertimbangkan & Ditolak
+- **Supabase** (Postgres+Storage+Auth all-in-one): ditolak karena storage-nya bukan zero egress (jadi mahal untuk skala Play Store), dan tim lebih terbiasa Neon+R2.
+- **Firebase**: ditolak karena vendor lock-in (NoSQL Firestore susah utk relasi kompleks marketplace), plus egress juga tidak gratis.
+- **SQLite lokal / server VPS + Postgres self-hosted**: ditolak karena bukan production-grade untuk Play Store (backup, HA, scaling manual).
+
+### Skema Data Utama (draft, belum diimplementasi)
+Tabel utama yang akan ada di `backend/`:
+- `users` — akun (multi-role: seniman, kolektor, komunitas, admin)
+- `karya` — metadata karya seni (judul, deskripsi, harga, ukuran fisik cm untuk AR, seniman_id, status verifikasi, image_key ke R2)
+- `karya_embeddings` — vector `pgvector` (dim = output encoder ml-visual-search) untuk similarity search
+- `karya_fingerprints` — pHash + hash lain dari ml-digital-art-identity untuk deteksi duplikasi
+- `transaksi` — order/pembayaran (komisi platform)
+- `events` — event komunitas (pameran, lelang) — untuk role komunitas
+- `auth_sessions` — refresh token & device tracking (untuk logout paksa)
+
+**Aturan file layout:** File .env berisi `DATABASE_URL` (Neon connection string dengan `?sslmode=require`), `R2_ACCESS_KEY_ID`, `R2_SECRET_ACCESS_KEY`, `R2_BUCKET`, `R2_ENDPOINT`, `JWT_SECRET`, `GOOGLE_OAUTH_CLIENT_ID` — **wajib di-gitignore**, gunakan `backend/.env.example` sebagai template.
+
+## Autentikasi
+
+### Stack Terpilih
+- **Custom auth di FastAPI** (bukan Auth0/Clerk/Firebase Auth). Alasan: kontrol penuh atas UX (form register + verifikasi + role selection sudah didesain di Stitch), biaya nol per-MAU (Auth0 mahal di skala Play Store), tim familiar dengan JWT.
+- **Password hashing:** `bcrypt` (via `passlib[bcrypt]`) — cost factor 12.
+- **Token:** JWT (access token pendek 15 menit + refresh token panjang 30 hari, refresh disimpan di `auth_sessions` supaya bisa revoke).
+- **Library JWT backend:** `python-jose[cryptography]` atau `pyjwt` (belum diputuskan, pilih saat implementasi).
+- **Storage token di mobile:** `flutter_secure_storage` (Android Keystore, bukan SharedPreferences plain).
+
+### Provider Login yang Didukung
+1. **Email + Password** — jalur utama, custom implementation.
+2. **Google Sign-In** — provider OAuth kedua. **Wajib ada** karena user Play Store expect "Login dengan Google" sebagai one-tap experience.
+   - Flutter: package `google_sign_in` → dapat Google ID token → kirim ke backend.
+   - Backend: verify ID token pakai library `google-auth` (`google.oauth2.id_token.verify_oauth2_token`) → ambil `sub`, `email`, `email_verified`, `name`, `picture` → cari atau create user → issue JWT kita sendiri.
+3. **(Opsional masa depan)** Apple Sign-In — kalau ekspansi ke iOS App Store (App Store review mewajibkan Apple Sign-In kalau ada Google Sign-In).
+
+### Skema Coexistence Email + Google (Pola A — single users table)
+```
+users:
+  id                UUID PRIMARY KEY
+  email             CITEXT UNIQUE NOT NULL
+  password_hash     TEXT NULL       -- NULL kalau Google-only user
+  google_sub        TEXT UNIQUE NULL  -- Google 'sub' claim, stabil selamanya
+  display_name      TEXT
+  avatar_url        TEXT
+  role              ENUM('seniman', 'kolektor', 'komunitas', 'admin')
+  email_verified    BOOLEAN DEFAULT false
+  created_at, updated_at
+```
+- Register email/password → isi `password_hash`, `google_sub` NULL.
+- Login Google pertama kali dengan email yang sudah ada → link akun (isi `google_sub` di row yang sama, jangan bikin duplikat user).
+- Login Google user baru → auto-create user dengan `password_hash` NULL, `google_sub` diisi, `email_verified=true` (Google sudah verify email-nya).
+
+Pola B (tabel `auth_providers` terpisah) **sengaja tidak dipakai sekarang** — cuma worth it kalau nanti ada 3+ provider (Apple, Facebook, dll). Kalau kebutuhan itu muncul, migrasi ke Pola B via Alembic.
+
+### Yang Perlu Disiapkan Sebelum Implementasi Google Sign-In
+- **Google Cloud Console:** bikin OAuth 2.0 Client ID (tipe Android + Web) — Client ID Web dipakai sebagai `audience` di verifier backend, Client ID Android dipakai di Flutter.
+- **SHA-1 fingerprint** APK (debug keystore & release keystore) — daftarkan di Google Console. Salah SHA-1 = Google Sign-In di HP langsung gagal tanpa error jelas.
+- **Domain verification** kalau nanti ada web version (belum relevan, aplikasi mobile-first).
+
+### Aturan Kejujuran Auth
+- **Jangan pernah** klaim "enkripsi end-to-end" atau "zero-knowledge" — password kita bcrypt-hash di server (standar aman, tapi bukan E2E).
+- Token access **jangan** disimpan di SharedPreferences plain / localStorage-equivalent — wajib `flutter_secure_storage` (Android Keystore).
+- **Jangan** simpan Google ID token setelah verifikasi awal — dipakai sekali untuk verify identitas, lalu buang. Session selanjutnya pakai JWT kita sendiri.
+
 ## Status Progress Saat Ini
 
 - ✅ EDA WikiArt subset selesai (cleaning, distribusi kelas, ukuran, korelasi label, split, augmentasi) — `ml-visual-search/notebooks/eda_wikiart.ipynb`
 - ✅ Data Card selesai dibuat
 - ✅ **Modeling Visual Search selesai** (`ml-visual-search/`): dataset diperluas ke 5.659 gambar (shard 0-4, 11 kelas style setelah exclude minoritas), convnext_small fine-tuned + hyperparameter tuning (Optuna) → test macro-F1 0,78, accuracy 0,80. Embedding + index katalog dibuat & dievaluasi (Recall@1 style-similarity 0,81; instance-retrieval "scan lukisan" 90% top-1). Model diekspor ke TorchScript+ONNX (`ml-visual-search/export/`), terverifikasi cocok dengan PyTorch asli. Demo scan interaktif (upload file + live webcam) di `ml-visual-search/notebooks/03_demo_inference.ipynb`, termasuk `confidence_verdict` (confirmed/ambiguous/not_found) supaya tidak overclaim hasil kecocokan katalog.
-- 🔄 **Sedang dikerjakan:** skeleton `backend/` (FastAPI) & `mobile/` (Flutter) sudah di-scaffold, logic/UI belum diisi.
-- ⏳ Belum dikerjakan: implementasi AR (ARCore/ARKit), `ml-digital-art-identity/` (unique-key crypto + deteksi gambar AI-generated — scaffold folder sudah ada), integrasi backend↔mobile, chatbot n8n.
+- ✅ **UI Flutter (14/24 layar Stitch)** — konversi dari desain HTML/Tailwind Google Stitch ke Flutter widget: 9 layar ROLE SENIMAN 1 (onboarding, login, register, dashboard, komunitas, profil) + 5 layar ROLE SENIMAN 2 (unggah karya, verifikasi keaslian, karya terverifikasi/ditolak/perlu ditinjau). Semua ter-wire dengan `go_router`, `flutter analyze` bersih, `flutter test` pass. Berjalan real di HP Android (vivo 1919) — lihat `mobile/docs/SETUP_ANDROID.md`.
+- 🔄 **Sedang dikerjakan:** skeleton `backend/` (FastAPI) sudah di-scaffold, logic belum diisi. Database & auth: **arsitektur sudah diputuskan** (Neon Postgres + Cloudflare R2 + custom JWT + Google Sign-In — lihat section Backend/Database & Autentikasi di atas), implementasi belum dimulai.
+- ⏳ Belum dikerjakan: 10 layar Stitch sisa (Event mgmt ×5, Order mgmt ×3, Shop profile ×1, Promote artwork ×1), implementasi AR (ARCore/ARKit), `ml-digital-art-identity/` (unique-key crypto + deteksi gambar AI-generated — scaffold folder sudah ada), integrasi backend↔mobile, chatbot n8n.
 
 ## Rencana Teknis Model (untuk Visual Search & basis Digital Art Identity)
 
@@ -115,6 +211,10 @@ dilayani `backend/` (FastAPI + ONNXRuntime) → dipakai `mobile/`. Alur di
 3. Istilah **"Hak Paten"** untuk Digital Art Identity diganti jadi **"sertifikat digital keaslian"** di semua materi user-facing.
 4. WikiArt dipilih sebagai satu-satunya dataset visual (bukan gabungan banyak dataset) untuk menjaga fokus dan koherensi arsitektur model.
 5. Proses download WikiArt penuh (81rb gambar / ~37GB) terbukti tidak realistis untuk kecepatan internet tim → strategi diubah ke **download per-shard via `hf_hub_download`** (1 file ~450-500MB, bukan `load_dataset` yang mencoba download semua file sekaligus meski di-slice).
+6. Proyek diputuskan **untuk dirilis ke Google Play Store secara komersial**, bukan berhenti di demo akademik — mempengaruhi semua keputusan infrastruktur (production-grade stack, bukan lokal/demo).
+7. **Stack backend/DB/storage:** Neon (Postgres+pgvector) + Cloudflare R2 (S3-compatible, zero egress). Supabase & Firebase dipertimbangkan tapi ditolak (alasan detail di section Backend/Database).
+8. **Auth:** custom FastAPI (email+bcrypt+JWT+refresh) — bukan Auth0/Clerk/Firebase Auth. Alasan: kontrol UX (form Stitch sudah didesain), biaya nol per-MAU, tim familiar JWT.
+9. **Login Google (`google_sign_in` di Flutter + `google-auth` verifier di backend)** ditambahkan sebagai provider kedua wajib — user Play Store expect one-tap Google login. Skema coexistence pakai Pola A (single `users` table dengan `google_sub` nullable).
 
 ## Batasan & Hal yang Harus Selalu Dijaga Kejujurannya
 
