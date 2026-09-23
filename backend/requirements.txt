@@ -2,10 +2,16 @@ fastapi>=0.110
 uvicorn[standard]>=0.29
 python-multipart>=0.0.9    # upload file (UploadFile)
 pillow>=10.0
-numpy>=1.24,<2
+numpy>=1.24
 onnxruntime>=1.18           # jalankan ml-visual-search/export/model.onnx tanpa PyTorch penuh
 pydantic>=2.6
+python-dotenv>=1.0
+opencv-python-headless>=4.10   # auto-detect area lukisan (Otsu+contour) sebelum
+                                # preprocessing -- "headless" = tanpa dependency GUI,
+                                # aman utk server. Lihat catatan di visual_search_service.py.
 
-# Kalau nanti pakai database sungguhan utk katalog karya:
-# sqlalchemy>=2.0
-# psycopg2-binary>=2.9       # kalau Postgres (+ pgvector utk vector search skala besar)
+# Database (Neon Postgres + pgvector) -- lihat CLAUDE.md "Backend & Database"
+sqlalchemy[asyncio]>=2.0
+asyncpg>=0.29                # driver async utk SQLAlchemy + Postgres
+alembic>=1.13                # migration schema
+pgvector>=0.2.5              # tipe kolom Vector(768) + operator cosine distance

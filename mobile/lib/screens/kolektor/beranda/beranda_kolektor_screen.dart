@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../../../models/karya.dart';
 import '../../../models/notifikasi.dart';
+import '../../../services/katalog_service.dart';
 import '../../../theme/app_theme.dart';
 import '../../../widgets/kolektor/karya_grid_card.dart';
 import '../../../widgets/kolektor/kolektor_bottom_nav.dart';
@@ -9,10 +10,12 @@ import '../../../widgets/kolektor/kolektor_bottom_nav.dart';
 /// Konversi dari
 /// docs/KOLEKTOR FITUR UTAMA/.../galeria_beranda_kolektor/code.html
 ///
-/// Angka/karya di sini contoh (placeholder) -- belum ada data transaksi
-/// nyata dari backend.
-///
-/// TODO(backend): sambungkan ke `GET /api/katalog` begitu tersedia.
+/// Karya diambil dari `GET /api/katalog` (backend/routers/katalog.py).
+/// Mulai dengan [sampleKarya] (lokal) supaya UI langsung render tanpa
+/// nunggu network, lalu diganti diam-diam begitu fetch API berhasil. Kalau
+/// fetch gagal (backend mati/tidak ada koneksi), tetap pakai [sampleKarya]
+/// -- app tidak boleh crash/kosong cuma gara-gara backend tidak nyala
+/// (penting utk demo).
 class BerandaKolektorScreen extends StatefulWidget {
   const BerandaKolektorScreen({
     super.key,
@@ -46,7 +49,26 @@ class _BerandaKolektorScreenState extends State<BerandaKolektorScreen> {
   final _searchCtrl = TextEditingController();
   String _query = '';
 
+  /// Mulai dari [sampleKarya] (lokal), diganti begitu fetch API sukses.
+  List<Karya> _karya = sampleKarya;
+
   static const _filters = ['Semua', 'Impresionisme', 'Barok', 'Kubisme'];
+
+  @override
+  void initState() {
+    super.initState();
+    _loadKatalog();
+  }
+
+  Future<void> _loadKatalog() async {
+    try {
+      final karya = await KatalogService().fetchKatalog();
+      if (!mounted || karya.isEmpty) return;
+      setState(() => _karya = karya);
+    } catch (_) {
+      // Diam-diam tetap pakai sampleKarya -- lihat komentar kelas di atas.
+    }
+  }
 
   @override
   void dispose() {
@@ -58,7 +80,7 @@ class _BerandaKolektorScreenState extends State<BerandaKolektorScreen> {
   Widget build(BuildContext context) {
     final searchResults = _query.isEmpty
         ? const <Karya>[]
-        : sampleKarya.where((k) => k.matchesQuery(_query)).toList();
+        : _karya.where((k) => k.matchesQuery(_query)).toList();
     return Scaffold(
       backgroundColor: AppColors.surface,
       appBar: AppBar(
@@ -212,7 +234,7 @@ class _BerandaKolektorScreenState extends State<BerandaKolektorScreen> {
                         child: AspectRatio(
                           aspectRatio: 16 / 9,
                           child: Image.asset(
-                            sampleKarya[0].assetPath,
+                            _karya[0].assetPath,
                             fit: BoxFit.cover,
                           ),
                         ),
@@ -422,7 +444,7 @@ class _BerandaKolektorScreenState extends State<BerandaKolektorScreen> {
                 child: GridView.builder(
                   shrinkWrap: true,
                   physics: const NeverScrollableScrollPhysics(),
-                  itemCount: 4,
+                  itemCount: _karya.length < 4 ? _karya.length : 4,
                   gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
                     crossAxisCount: 2,
                     crossAxisSpacing: AppSpacing.sm,
@@ -443,10 +465,10 @@ class _BerandaKolektorScreenState extends State<BerandaKolektorScreen> {
                       'Tawaran Terkini',
                     ];
                     return KaryaGridCard(
-                      karya: sampleKarya[i],
+                      karya: _karya[i],
                       overline: overlines[i],
                       priceLabel: priceLabels[i],
-                      onTap: () => widget.onKaryaTap?.call(sampleKarya[i]),
+                      onTap: () => widget.onKaryaTap?.call(_karya[i]),
                     );
                   },
                 ),
