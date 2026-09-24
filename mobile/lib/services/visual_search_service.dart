@@ -43,12 +43,11 @@ class VisualSearchService {
 
   final ApiClient _client;
 
-  /// [hintRect] (opsional): kotak hijau live-detect terakhir yang tampil di
-  /// layar sebelum shutter ditekan (fraksi 0..1 dari
-  /// `CameraPreviewLayer.onLiveDetection`) -- dikirim ke backend sebagai
-  /// kandidat crop prioritas (lihat `backend/routers/visual_search.py`),
-  /// supaya framing yang sudah user konfirmasi visual benar-benar dipakai,
-  /// bukan diabaikan.
+  /// [hintRect] (opsional): area bingkai panduan di layar kamera yang
+  /// dipetakan ke fraksi 0..1 gambar (lihat
+  /// `CameraPreviewLayerState.screenRectToPreviewFraction`) -- kalau ada,
+  /// backend HANYA memproses isi area itu (lihat
+  /// `backend/routers/visual_search.py`). Null utk gambar dari galeri.
   Future<VisualSearchResult> scanImage(
     File imageFile, {
     int topK = 5,

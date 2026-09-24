@@ -142,24 +142,14 @@ def _center_crop_bracket(image: Image.Image) -> Image.Image:
 def _hint_crop(
     image: Image.Image, hint_rect: tuple[float, float, float, float]
 ) -> Image.Image | None:
-    """Crop sesuai kotak hijau live-detect yang USER SENDIRI lihat di layar
-    saat membidik sebelum menekan shutter (fraksi 0..1 relatif ukuran foto,
-    dikirim dari mobile -- lihat
-    ``camera_preview_layer.dart::_detectBrightRegion`` +
-    ``visual_search_camera_screen.dart::_scan``).
-
-    Ini kandidat PALING RELEVAN dari semuanya: bukan tebakan algoritma
-    server, tapi framing yang sudah dikonfirmasi visual oleh user. Dikasih
-    padding 12% tiap sisi supaya toleran kalau kotak live sedikit lebih
-    ketat dari objek sebenarnya (deteksi live jalan di frame preview
-    resolusi rendah, sedikit meleset dari batas asli objek itu wajar).
+    """Crop sesuai bingkai panduan di layar kamera mobile (4 bracket kuning)
+    -- user mengepaskan lukisan ke bingkai itu, lalu mobile memetakan posisi
+    bingkai ke fraksi 0..1 gambar (``hint_rect`` = left, top, width,
+    height) dan mengirimnya. Diambil PERSIS sesuai bingkai, tanpa padding.
     """
     left, top, width, height = hint_rect
-    pad_x, pad_y = width * 0.12, height * 0.12
-    left = max(0.0, left - pad_x)
-    top = max(0.0, top - pad_y)
-    right = min(1.0, left + width + 2 * pad_x)
-    bottom = min(1.0, top + height + 2 * pad_y)
+    left, top = max(0.0, left), max(0.0, top)
+    right, bottom = min(1.0, left + width), min(1.0, top + height)
     if right - left < 0.05 or bottom - top < 0.05:
         return None
 
@@ -185,9 +175,10 @@ def _candidate_crops(
     -- similarity untuk scan yang niatnya sama bisa 0.09 di satu percobaan,
     0.74 di percobaan lain, cuma beda pencahayaan/sudut kecil. Daripada
     andalkan satu heuristik yang goyah, coba beberapa & ambil yang terbaik:
-    0. Kotak hijau live-detect yang user lihat & konfirmasi sendiri sebelum
-       menekan shutter (kalau dikirim) -- prioritas tertinggi, lihat
-       :func:`_hint_crop`.
+    0. Bingkai panduan di layar kamera (kalau dikirim mobile) -- kalau ada,
+       ini SATU-SATUNYA kandidat (kandidat 1-3 di bawah dilewati), lihat
+       :func:`_hint_crop`. Kandidat 1-3 hanya dipakai kalau tidak ada
+       bingkai (mis. gambar dari galeri).
     1. Foto penuh (baseline paling aman, tanpa crop apa pun)
     2. Auto-detect Otsu+contour (kalau ketemu) -- bisa sangat bagus (pernah
        kasih 0.832) tapi tidak selalu
@@ -201,13 +192,15 @@ def _candidate_crops(
     "auto-detect" pernah salah tertempel ke center-crop saat auto-detect
     gagal, karena zip lama pakai indeks posisi, bukan nama).
     """
-    candidates: list[tuple[str, Image.Image]] = []
-
     if hint_rect is not None:
         hint = _hint_crop(image, hint_rect)
         if hint is not None:
-            candidates.append(("live-hint", hint))
+            # HANYA isi bingkai panduan -- user sudah mengepaskan lukisan ke
+            # bingkai itu, jangan dicampur kandidat lain (foto penuh berisi
+            # latar/UI lain bisa "menang" dgn cara yang salah).
+            return [("live-hint", hint)]
 
+    candidates: list[tuple[str, Image.Image]] = []
     candidates.append(("full-frame", image))
 
     bbox = _auto_detect_bbox(image)
@@ -309,9 +302,8 @@ class VisualSearchService:
         hasil akhir -- bukan cuma andalkan 1 crop (lihat catatan
         ``_candidate_crops`` soal auto-detect yang terbukti tidak stabil).
 
-        ``hint_rect`` (opsional): kotak hijau live-detect yang user lihat &
-        konfirmasi sendiri sebelum menekan shutter (fraksi 0..1: left, top,
-        width, height) -- lihat :func:`_hint_crop`.
+        ``hint_rect`` (opsional): posisi bingkai panduan di kamera mobile
+        (fraksi 0..1: left, top, width, height) -- lihat :func:`_hint_crop`.
 
         Return dict siap dipetakan ke ``schemas.visual_search.VisualSearchResponse``.
         """

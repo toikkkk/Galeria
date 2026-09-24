@@ -36,12 +36,11 @@ async def visual_search(
     ``verdict != "confirmed"`` -- tampilkan `verdict_message` apa adanya ke
     user, jangan ditimpa jadi kalimat yang lebih pasti dari itu.
 
-    ``hint_*`` (opsional, fraksi 0..1): kotak hijau live-detect yang tampil
-    di kamera mobile saat user membidik (lihat
-    ``camera_preview_layer.dart``) -- dikirim sebagai kandidat crop
-    prioritas tertinggi (lihat ``VisualSearchService.search``), supaya apa
-    yang user LIHAT sudah pas di layar juga yang BENAR-BENAR diproses
-    model, bukan diabaikan.
+    ``hint_*`` (opsional, fraksi 0..1): posisi bingkai panduan di kamera
+    mobile terhadap gambar (lihat ``visual_search_camera_screen.dart``).
+    Kalau ada, HANYA isi bingkai itu yang diproses model (lihat
+    ``VisualSearchService.search``); kalau tidak ada (mis. gambar dari
+    galeri), backend mencoba beberapa crop otomatis.
     """
     if not file.content_type or not file.content_type.startswith("image/"):
         raise HTTPException(400, "File harus berupa gambar")
