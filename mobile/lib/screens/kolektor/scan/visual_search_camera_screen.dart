@@ -48,27 +48,41 @@ class _VisualSearchCameraScreenState extends State<VisualSearchCameraScreen> {
   CameraController? _cameraController;
   final _cameraKey = GlobalKey<CameraPreviewLayerState>();
 
-  /// Kotak hijau live-detect TERAKHIR yang tampil di layar (fraksi 0..1) --
-  /// disimpan tiap kali [CameraPreviewLayer] mendeteksi ulang, dipakai
-  /// [_scan] sebagai hint crop supaya apa yang user LIHAT sudah pas di
-  /// layar juga yang BENAR-BENAR dikirim ke backend, bukan diabaikan
-  /// (sebelum ini backend selalu proses foto penuh + tebakan sendiri,
-  /// terlepas dari kotak hijau yang sudah user konfirmasi visual).
-  Rect? _lastLiveRect;
+  /// Kunci bingkai panduan (4 bracket kuning) -- posisinya di layar dipetakan
+  /// ke fraksi gambar kamera saat memindai, dan HANYA isi bingkai itu yang
+  /// dikirim ke backend utk diproses model (user cukup mengepaskan lukisan
+  /// ke bingkai).
+  final _frameKey = GlobalKey();
+
+  /// Zoom kamera: slider di bawah bingkai & cubit dua jari sama-sama
+  /// mengubah [_zoom]; [CameraPreviewLayer] yang menerapkannya ke kamera
+  /// dan mengisi [_zoomRange] (batas zoom device). Zoom berlaku juga di foto
+  /// hasil `takePicture()`, jadi pemetaan bingkai -> crop tetap benar.
+  final _zoom = ValueNotifier<double>(1.0);
+  final _zoomRange = ValueNotifier<RangeValues>(const RangeValues(1, 1));
+
+  @override
+  void dispose() {
+    _zoom.dispose();
+    _zoomRange.dispose();
+    super.dispose();
+  }
 
   Future<void> _scan() async {
     final controller = _cameraController;
     if (controller == null || !controller.value.isInitialized || _scanning) {
       return;
     }
-    // Simpan SEBELUM pause -- pauseLiveDetection menghentikan image stream,
-    // rect terakhir yang sempat terlihat user itu yang mau dipakai.
-    final hintRect = _lastLiveRect;
+    final frameBox = _frameKey.currentContext?.findRenderObject();
+    Rect? hintRect;
+    if (frameBox is RenderBox && frameBox.hasSize) {
+      hintRect = _cameraKey.currentState?.screenRectToPreviewFraction(
+        frameBox.localToGlobal(Offset.zero) & frameBox.size,
+      );
+    }
+    if (hintRect == null) return; // kamera belum siap
     setState(() => _scanning = true);
     try {
-      // WAJIB stop image stream (live detection) dulu -- paket `camera`
-      // tidak izinkan streaming gambar & takePicture() bersamaan.
-      await _cameraKey.currentState?.pauseLiveDetection();
       final photo = await controller.takePicture();
       await _submitPhoto(File(photo.path), hintRect: hintRect);
     } catch (e) {
@@ -145,8 +159,6 @@ class _VisualSearchCameraScreenState extends State<VisualSearchCameraScreen> {
 
   void _closeResult() {
     setState(() => _result = null);
-    // Balik ke mode live-detect kotak hijau begitu kartu hasil ditutup.
-    _cameraKey.currentState?.resumeLiveDetection();
   }
 
   @override
@@ -156,7 +168,8 @@ class _VisualSearchCameraScreenState extends State<VisualSearchCameraScreen> {
       body: CameraPreviewLayer(
         key: _cameraKey,
         onControllerReady: (c) => _cameraController = c,
-        onLiveDetection: (rect) => _lastLiveRect = rect,
+        zoom: _zoom,
+        zoomRange: _zoomRange,
         overlay: Stack(
           children: [
             SafeArea(
@@ -210,6 +223,7 @@ class _VisualSearchCameraScreenState extends State<VisualSearchCameraScreen> {
                               .toDouble();
                           final boxHeight = boxWidth * 5 / 4;
                           return SizedBox(
+                            key: _frameKey,
                             width: boxWidth,
                             height: boxHeight,
                             child: Stack(
@@ -252,6 +266,7 @@ class _VisualSearchCameraScreenState extends State<VisualSearchCameraScreen> {
                       ),
                     ),
                   ),
+                  _zoomBar(),
                   Padding(
                     padding: const EdgeInsets.symmetric(
                       vertical: AppSpacing.lg,
@@ -326,6 +341,69 @@ class _VisualSearchCameraScreenState extends State<VisualSearchCameraScreen> {
           ],
         ),
       ),
+    );
+  }
+
+  /// Slider zoom kecil di bawah bingkai. Disembunyikan kalau device tidak
+  /// mendukung zoom (rentang min == max) atau kamera belum siap.
+  Widget _zoomBar() {
+    return ValueListenableBuilder<RangeValues>(
+      valueListenable: _zoomRange,
+      builder: (context, range, _) {
+        if (range.end - range.start < 0.05) return const SizedBox.shrink();
+        return ValueListenableBuilder<double>(
+          valueListenable: _zoom,
+          builder: (context, zoom, _) {
+            final value = zoom.clamp(range.start, range.end).toDouble();
+            return Padding(
+              padding: const EdgeInsets.symmetric(
+                horizontal: AppSpacing.screenGutter,
+              ),
+              child: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 8),
+                decoration: BoxDecoration(
+                  color: Colors.black.withValues(alpha: 0.5),
+                  borderRadius: BorderRadius.circular(AppRadius.full),
+                ),
+                child: Row(
+                  children: [
+                    const Icon(Icons.zoom_out, color: Colors.white70, size: 20),
+                    Expanded(
+                      child: SliderTheme(
+                        data: SliderTheme.of(context).copyWith(
+                          trackHeight: 2,
+                          activeTrackColor: AppColors.accent,
+                          inactiveTrackColor: Colors.white24,
+                          thumbColor: AppColors.accent,
+                          overlayShape: SliderComponentShape.noOverlay,
+                        ),
+                        child: Slider(
+                          min: range.start,
+                          max: range.end,
+                          value: value,
+                          onChanged: (v) => _zoom.value = v,
+                        ),
+                      ),
+                    ),
+                    const Icon(Icons.zoom_in, color: Colors.white70, size: 20),
+                    SizedBox(
+                      width: 40,
+                      child: Text(
+                        '${value.toStringAsFixed(1)}x',
+                        textAlign: TextAlign.end,
+                        style: AppTextStyles.bodySm.copyWith(
+                          color: Colors.white,
+                          fontSize: 11,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            );
+          },
+        );
+      },
     );
   }
 
