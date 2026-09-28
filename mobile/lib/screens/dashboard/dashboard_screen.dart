@@ -17,11 +17,15 @@ class DashboardScreen extends StatefulWidget {
     this.onUploadKarya,
     this.onNavTap,
     this.onKomunitasTap,
+    this.onAdakanEvent,
+    this.onPromosikanKarya,
   });
 
   final VoidCallback? onUploadKarya;
   final ValueChanged<int>? onNavTap;
   final VoidCallback? onKomunitasTap;
+  final VoidCallback? onAdakanEvent;
+  final VoidCallback? onPromosikanKarya;
 
   @override
   State<DashboardScreen> createState() => _DashboardScreenState();
@@ -302,9 +306,16 @@ class _DashboardScreenState extends State<DashboardScreen> {
               children: [
                 _QuickAction(icon: Icons.brush_outlined, label: 'Unggah Karya', onTap: widget.onUploadKarya),
                 _QuickAction(icon: Icons.gavel_outlined, label: 'Buat Lelang'),
-                _QuickAction(icon: Icons.campaign_outlined, label: 'Promosikan'),
+                _QuickAction(
+                    icon: Icons.campaign_outlined,
+                    label: 'Promosikan',
+                    onTap: widget.onPromosikanKarya),
                 _QuickAction(icon: Icons.groups_outlined, label: 'Komunitas', pro: true, onTap: widget.onKomunitasTap),
-                _QuickAction(icon: Icons.event_note_outlined, label: 'Buat Event', pro: true),
+                _QuickAction(
+                    icon: Icons.event_note_outlined,
+                    label: 'Buat Event',
+                    pro: true,
+                    onTap: widget.onAdakanEvent),
                 _QuickAction(icon: Icons.insights_outlined, label: 'Statistik'),
               ],
             ),

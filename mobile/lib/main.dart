@@ -8,10 +8,16 @@ import 'screens/auth/login_screen.dart';
 import 'screens/auth/verifikasi_identitas_screen.dart';
 import 'screens/community/community_detail_screen.dart';
 import 'screens/dashboard/dashboard_screen.dart';
+import 'screens/event/adakan_event_sheet.dart';
+import 'screens/event/buat_event_step1_screen.dart';
+import 'screens/event/buat_event_step2_screen.dart';
+import 'screens/event/buat_event_step3_screen.dart';
+import 'screens/event/event_berhasil_screen.dart';
 import 'screens/karya/karya_ditolak_screen.dart';
 import 'screens/karya/karya_perlu_ditinjau_screen.dart';
 import 'screens/karya/karya_terverifikasi_screen.dart';
 import 'screens/karya/memverifikasi_keaslian_screen.dart';
+import 'screens/karya/promosikan_karya_screen.dart';
 import 'screens/karya/unggah_karya_screen.dart';
 import 'screens/kolektor/auth/daftar_kolektor_screen.dart';
 import 'screens/kolektor/auth/preferensi_genre_screen.dart';
@@ -36,6 +42,7 @@ import 'screens/kolektor/scan/visual_search_camera_screen.dart';
 import 'screens/onboarding/role_selection_screen.dart';
 import 'screens/onboarding/splash_screen.dart';
 import 'screens/onboarding/welcome_screen.dart';
+import 'screens/pesanan/pesanan_seniman_screen.dart';
 import 'screens/profile/profil_screen.dart';
 import 'theme/app_theme.dart';
 
@@ -127,9 +134,17 @@ final _router = GoRouter(
       builder: (context, state) => DashboardScreen(
         onUploadKarya: () => context.go('/unggah-karya'),
         onNavTap: (i) {
+          if (i == 3) context.push('/pesanan-seniman');
           if (i == 4) context.go('/profil');
         },
         onKomunitasTap: () => context.go('/komunitas'),
+        // Bottom sheet "Seniman PRO" -- upgrade demo langsung ke wizard
+        // buat event (belum ada alur pembayaran subscription nyata).
+        onAdakanEvent: () => showAdakanEventSheet(
+          context,
+          onUpgrade: () => context.push('/buat-event/1'),
+        ),
+        onPromosikanKarya: () => context.push('/promosikan-karya', extra: sampleKarya.first),
       ),
     ),
     GoRoute(
@@ -184,6 +199,50 @@ final _router = GoRouter(
         onClose: () => context.go('/dashboard'),
         onAjukanPeninjauan: () => context.go('/dashboard'),
         onKembali: () => context.go('/dashboard'),
+      ),
+    ),
+    GoRoute(
+      path: '/pesanan-seniman',
+      builder: (context, state) =>
+          PesananSenimanScreen(onBack: () => context.pop()),
+    ),
+    GoRoute(
+      path: '/promosikan-karya',
+      builder: (context, state) => PromosikanKaryaScreen(
+        karya: (state.extra as Karya?) ?? sampleKarya.first,
+        onBack: () => context.pop(),
+        onLanjut: () => ScaffoldMessenger.of(context).showSnackBar(
+          // TODO(payment): belum ada alur pembayaran promosi karya nyata.
+          const SnackBar(content: Text('Alur pembayaran promosi belum tersedia')),
+        ),
+      ),
+    ),
+    GoRoute(
+      path: '/buat-event/1',
+      builder: (context, state) => BuatEventStep1Screen(
+        onClose: () => context.pop(),
+        onLanjut: () => context.push('/buat-event/2'),
+      ),
+    ),
+    GoRoute(
+      path: '/buat-event/2',
+      builder: (context, state) => BuatEventStep2Screen(
+        onKembali: () => context.pop(),
+        onLanjut: () => context.push('/buat-event/3'),
+      ),
+    ),
+    GoRoute(
+      path: '/buat-event/3',
+      builder: (context, state) => BuatEventStep3Screen(
+        onKembali: () => context.pop(),
+        onTerbitkan: () => context.go('/event-berhasil'),
+      ),
+    ),
+    GoRoute(
+      path: '/event-berhasil',
+      builder: (context, state) => EventBerhasilScreen(
+        onKelolaEvent: () => context.go('/dashboard'),
+        onKembaliDasbor: () => context.go('/dashboard'),
       ),
     ),
 
