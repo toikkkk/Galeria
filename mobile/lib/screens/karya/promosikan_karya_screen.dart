@@ -145,6 +145,12 @@ class _PromosikanKaryaScreenState extends State<PromosikanKaryaScreen> {
               const Spacer(),
               ElevatedButton(
                 onPressed: widget.onLanjut,
+                // Tema global ElevatedButton pakai minimumSize lebar tak
+                // terhingga (utk tombol full-width) -- di sini tombolnya
+                // jadi anak Row (bukan Expanded), jadi lebarnya harus
+                // dibatasi ke ukuran isinya sendiri, kalau tidak Flutter
+                // gagal layout ("BoxConstraints forces an infinite width").
+                style: ElevatedButton.styleFrom(minimumSize: Size.zero),
                 child: Row(
                   mainAxisSize: MainAxisSize.min,
                   children: const [
