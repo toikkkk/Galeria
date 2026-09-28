@@ -9,6 +9,8 @@ python-dotenv>=1.0
 opencv-python-headless>=4.10   # auto-detect area lukisan (Otsu+contour) sebelum
                                 # preprocessing -- "headless" = tanpa dependency GUI,
                                 # aman utk server. Lihat catatan di visual_search_service.py.
+imagehash>=4.3                 # pHash -- verification engine (Art-to-Art), lihat
+                                # services/digital_art_identity_service.py
 
 # Database (Neon Postgres + pgvector) -- lihat CLAUDE.md "Backend & Database"
 sqlalchemy[asyncio]>=2.0

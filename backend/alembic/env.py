@@ -28,6 +28,7 @@ load_dotenv()
 
 from database import Base  # noqa: E402
 from models.karya import Karya, KaryaEmbedding  # noqa: E402,F401  -- registrasi model ke Base.metadata
+from models.verification import KaryaFingerprint, KaryaVerifikasiLog  # noqa: E402,F401
 
 config = context.config
 
