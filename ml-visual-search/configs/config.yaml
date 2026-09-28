@@ -173,7 +173,12 @@ export:
   torchscript_path: "export/model.torchscript"
   onnx_path: "export/model.onnx"
   onnx_opset: 17
-  output: "embedding"           # "embedding" (encoder utk Visual Search) | "logits"
+  # "embedding_and_style" (dipakai backend/ -- 2 output sekaligus dari 1
+  #   forward pass: embedding utk Visual Search + style_probs utk field
+  #   `style_predictions` di response)
+  # | "embedding" (cuma encoder, 1 output -- lama, masih didukung)
+  # | "logits" (cuma classifier mentah, tanpa wrapper -- debug/notebook)
+  output: "embedding_and_style"
 
 # ------------------------------------------------------------- baseline ------
 # Pembanding OPSIONAL (lihat CLAUDE.md): CLIP pretrained tanpa fine-tuning,

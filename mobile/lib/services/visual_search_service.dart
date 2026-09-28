@@ -23,6 +23,7 @@ class VisualSearchResult {
     required this.verdict,
     required this.verdictMessage,
     required this.matches,
+    required this.stylePredictions,
   });
 
   /// "confirmed" | "ambiguous" | "not_found" -- lihat
@@ -31,9 +32,25 @@ class VisualSearchResult {
   final String verdictMessage;
   final List<VisualSearchMatch> matches;
 
+  /// Prediksi aliran ASLI dari model (top-3, urut confidence tertinggi) --
+  /// BUKAN style dari karya katalog terdekat. `[]` kalau backend belum bisa
+  /// isi (mis. label map tidak ketemu saat startup). Confidence disimpan
+  /// tapi SENGAJA tidak ditampilkan mentah ke user (sama spt `similarity`
+  /// di [VisualSearchMatch]) -- cukup nama style-nya, jangan overclaim.
+  final List<StylePrediction> stylePredictions;
+
   bool get isConfirmed => verdict == 'confirmed';
   bool get isAmbiguous => verdict == 'ambiguous';
   bool get isNotFound => verdict == 'not_found';
+}
+
+/// Satu prediksi aliran dari model (lihat backend/schemas/visual_search.py
+/// -- StylePrediction).
+class StylePrediction {
+  const StylePrediction({required this.style, required this.confidence});
+
+  final String style;
+  final double confidence;
 }
 
 /// Wrapper tipis ke `POST /api/visual-search` (lihat
@@ -77,10 +94,20 @@ class VisualSearchService {
           ),
         )
         .toList();
+    final stylePredictions = (data['style_predictions'] as List)
+        .cast<Map<String, dynamic>>()
+        .map(
+          (s) => StylePrediction(
+            style: s['style'] as String,
+            confidence: (s['confidence'] as num).toDouble(),
+          ),
+        )
+        .toList();
     return VisualSearchResult(
       verdict: data['verdict'] as String,
       verdictMessage: data['verdict_message'] as String,
       matches: matches,
+      stylePredictions: stylePredictions,
     );
   }
 }

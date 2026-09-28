@@ -17,10 +17,10 @@ Tanggung jawab file ini:
   ``ml-visual-search/src/embedding.py``, supaya jawaban ke user konsisten
   dengan yang sudah divalidasi di notebook demo).
 
-Catatan penting: ``model.onnx`` HANYA expose embedding (L2-normalized),
-TIDAK expose logit klasifikasi style -- jadi ``style_predictions`` di
-response selalu kosong untuk sekarang (butuh re-export model dgn output
-tambahan kalau nanti mau diisi).
+Catatan: ``model.onnx`` expose DUA output dari satu forward pass -- embedding
+(L2-normalized, utk similarity) dan ``style_probs`` (softmax klasifikasi style,
+utk field ``style_predictions`` di response) -- lihat
+``ml-visual-search/src/export.py::EmbeddingAndStyleWrapper``.
 
 Artefak yang dikonsumsi (hasil dari ``ml-visual-search/``):
     ../ml-visual-search/export/model.onnx
@@ -273,12 +273,14 @@ class VisualSearchService:
         x = x.transpose(2, 0, 1)  # HWC -> CHW
         return x[None, ...].astype(np.float32)  # (1, 3, 224, 224)
 
-    def embed(self, image: Image.Image) -> list[float]:
-        """Preprocess + inferensi ONNX -> embedding L2-normalized (768,).
+    def _infer(self, image: Image.Image) -> tuple[list[float], list[float]]:
+        """Preprocess + SATU inferensi ONNX -> ``(embedding, style_probs)``.
 
-        Dipakai dua tempat: ``search()`` (query dari upload user) dan
-        ``scripts/seed_karya.py`` (hitung embedding katalog awal) -- supaya
-        keduanya lewat pipeline preprocessing yang PERSIS SAMA.
+        Titik panggil TUNGGAL ke model -- ``embed()`` dan ``search()`` sama-sama
+        lewat sini, supaya preprocessing & sesi ONNX konsisten di semua caller.
+        Minta output via NAMA eksplisit (bukan index posisi) supaya tidak
+        bergantung urutan graf internal -- lihat nama di
+        ``EmbeddingAndStyleWrapper``/``export_onnx`` (ml-visual-search/src/export.py).
         """
         if self._session is None:
             raise RuntimeError(
@@ -286,8 +288,18 @@ class VisualSearchService:
                 "(lihat main.py lifespan)."
             )
         x = self._preprocess(image)
-        result = self._session.run(None, {"image": x})[0]
-        return result[0].tolist()
+        embedding, style_probs = self._session.run(
+            ["embedding", "style_probs"], {"image": x}
+        )
+        return embedding[0].tolist(), style_probs[0].tolist()
+
+    def embed(self, image: Image.Image) -> list[float]:
+        """Embedding L2-normalized (768,) saja -- dipakai
+        ``scripts/seed_karya.py`` utk hitung embedding katalog (style_probs
+        tidak relevan di situ, karya katalog sudah punya style_name asli).
+        """
+        embedding, _ = self._infer(image)
+        return embedding
 
     async def search(
         self,
@@ -309,24 +321,50 @@ class VisualSearchService:
         """
         best_matches: list[dict] = []
         best_similarities: list[float] = []
+        best_style_probs: list[float] = []
         best_crop_label = "full-frame"
 
         for label, candidate in _candidate_crops(image, hint_rect):
-            embedding = self.embed(candidate)
+            embedding, style_probs = self._infer(candidate)
             matches, similarities = await self._query_catalog(embedding, db, top_k)
             if not best_similarities or (
                 similarities and similarities[0] > best_similarities[0]
             ):
                 best_matches, best_similarities = matches, similarities
+                best_style_probs = style_probs
                 best_crop_label = label
 
         verdict = confidence_verdict(best_similarities)
         return {
-            "style_predictions": [],  # TODO: butuh re-export ONNX dgn output logit
+            # Style dari crop yang SAMA dgn yang menentukan best_matches --
+            # bukan style dari kandidat crop lain, supaya konsisten dgn hasil.
+            "style_predictions": self._top_style_predictions(best_style_probs),
             "catalog_matches": best_matches,
             "verdict": verdict,
             "verdict_message": _VERDICT_MESSAGES[verdict],
         }
+
+    def _top_style_predictions(
+        self, style_probs: list[float], top_k: int = 3
+    ) -> list[dict]:
+        """Top-``top_k`` style dari ``style_probs`` (softmax, urut sesuai
+        ``label_to_idx``), dipetakan lewat ``self._idx_to_label``. `` []``
+        kalau label map tidak ketemu saat startup (lihat ``load()``) atau
+        belum ada inferensi yang jalan -- tidak crash, cuma field kosong.
+        """
+        if not style_probs or not self._idx_to_label:
+            return []
+        ranked = sorted(enumerate(style_probs), key=lambda kv: kv[1], reverse=True)
+        return [
+            # "_" -> " " -- label mentah ikut penamaan folder WikiArt
+            # (mis. "Art_Nouveau"), sedangkan katalog/karya.style_name pakai
+            # spasi (mis. "Art Nouveau"). Samakan di sini (satu tempat utk
+            # semua klien) supaya cocok dipakai filter "karya beraliran sama"
+            # di mobile.
+            {"style": self._idx_to_label[idx].replace("_", " "), "confidence": prob}
+            for idx, prob in ranked[:top_k]
+            if idx in self._idx_to_label
+        ]
 
     async def _query_catalog(
         self, query_embedding: list[float], db: AsyncSession, top_k: int

@@ -139,7 +139,94 @@ Tabel utama yang akan ada di `backend/`:
 - `events` — event komunitas (pameran, lelang) — untuk role komunitas
 - `auth_sessions` — refresh token & device tracking (untuk logout paksa)
 
-**Aturan file layout:** File .env berisi `DATABASE_URL` (Neon connection string dengan `?sslmode=require`), `R2_ACCESS_KEY_ID`, `R2_SECRET_ACCESS_KEY`, `R2_BUCKET`, `R2_ENDPOINT`, `JWT_SECRET`, `GOOGLE_OAUTH_CLIENT_ID` — **wajib di-gitignore**, gunakan `backend/.env.example` sebagai template.
+**Aturan file layout:** File .env berisi `DATABASE_URL` (Neon connection string dengan `?sslmode=require`), `R2_ENDPOINT`, `R2_ACCESS_KEY_ID`, `R2_SECRET_ACCESS_KEY`, `R2_BUCKET`, `R2_PUBLIC_URL_BASE`, `JWT_SECRET`, `GOOGLE_OAUTH_CLIENT_ID` — **wajib di-gitignore**, gunakan `backend/.env.example` sebagai template. (`R2_PUBLIC_URL_BASE` beda dari `R2_ENDPOINT` — lihat penjelasan di bawah.)
+
+### Cara Kerja Neon (teknis, SUDAH jalan)
+
+Ini bukan lagi rencana — sudah diimplementasikan & diverifikasi end-to-end
+(lihat "Status Progress" di bawah). Dicatat di sini supaya siapa pun yang
+baca CLAUDE.md paham alurnya tanpa perlu bongkar kode dulu.
+
+- **Koneksi** (`backend/database.py`): baca `DATABASE_URL` dari `.env` (lewat
+  `python-dotenv`), bikin **satu** async SQLAlchemy engine (`asyncpg` driver)
+  sekali saat modul di-import — bukan koneksi baru tiap request.
+- **Graceful degrade**: kalau `DATABASE_URL` kosong, engine sengaja dibiarkan
+  `None` — app tetap bisa `start` (mis. `/docs` tetap bisa dibuka), tapi
+  `get_db()` raise `RuntimeError` yang jelas ("DATABASE_URL belum di-set...")
+  begitu ADA request yang benar-benar butuh DB. Bukan gagal diam-diam.
+- **Connection string Neon perlu 3 penyesuaian manual** sebelum ditempel ke
+  `.env` (sudah didokumentasikan di `.env.example`, sering kelewatan):
+  1. `postgresql://` → `postgresql+asyncpg://` (driver async)
+  2. `?sslmode=require` → `?ssl=require` (nama param beda di asyncpg)
+  3. **Hapus** `&channel_binding=require` kalau ada di connection string Neon
+     — param khusus psycopg/libpq, asyncpg tidak kenal & akan error
+     `unexpected keyword argument 'channel_binding'`.
+- **Migrasi skema**: Alembic (`backend/alembic/`). `alembic.ini` sengaja
+  `sqlalchemy.url` KOSONG — diisi runtime dari `DATABASE_URL` di
+  `alembic/env.py`, supaya tidak ada connection string ke-commit ke git.
+  Alur: `alembic revision --autogenerate -m "..."` (generate migration dari
+  perubahan model di `backend/models/`) → review file hasil generate →
+  `alembic upgrade head` (apply ke Neon).
+- **pgvector**: kolom `karya_embeddings.embedding` bertipe `Vector(768)`
+  (`pgvector.sqlalchemy.Vector`, dim = output `convnext_small`, lihat catatan
+  koreksi di Status Progress). Nearest-neighbor search pakai operator
+  `.cosine_distance()` langsung di query SQLAlchemy — lihat
+  `backend/services/visual_search_service.py::_query_catalog`. Ini
+  menggantikan kebutuhan FAISS terpisah selama skala masih kecil.
+- **Data contoh**: `backend/scripts/seed_karya.py` — isi 8 karya + embedding-nya
+  ke Neon (sumber gambar tetap asset lokal, lihat section R2 di bawah).
+
+### Cara Kerja Cloudflare R2 (rencana, BELUM diimplementasi)
+
+Beda dari Neon — ini masih arsitektur di atas kertas. `karya.image_filename`
+sekarang cuma dicocokkan ke asset yang di-bundle langsung di
+`mobile/assets/images/catalog/` — belum ada file yang benar-benar tersimpan
+di object storage manapun.
+
+**Desain yang direncanakan** (supaya siapa pun yang implementasi nanti tinggal
+ikuti, tidak perlu desain ulang):
+- **Kolom baru** `karya.image_key` (nullable) berdampingan dengan
+  `image_filename` yang sudah ada — BUKAN menggantikannya. `image_key` = null
+  berarti "pakai asset lokal via `image_filename`" (8 karya seed/demo saat
+  ini, tetap begitu selamanya kalau mau), terisi berarti "object key di R2,
+  resolve ke URL publik". Ini supaya karya lama & karya baru (hasil upload
+  asli nanti) bisa hidup berdampingan tanpa migrasi yang breaking.
+- **Client**: modul storage terpisah (pola SAMA PERSIS dengan
+  `database.py` di atas — baca config dari env, `None`/tidak-configured tidak
+  bikin app crash saat start, raise error jelas HANYA saat method upload/
+  delete benar-benar dipanggil tanpa config). Pakai `aioboto3` (S3-compatible
+  client, cocok dgn stack async yang sudah dipakai SQLAlchemy).
+- **DUA endpoint berbeda, jangan tertukar**:
+  1. `R2_ENDPOINT` (`https://<account_id>.r2.cloudflarestorage.com`) — dipakai
+     library S3 utk **upload/delete** (butuh Access Key ID + Secret).
+  2. `R2_PUBLIC_URL_BASE` — base URL utk **serve/tampilkan** gambar ke user
+     (r2.dev subdomain ATAU custom domain). Bucket R2 **privat by default**;
+     endpoint di atas TIDAK otomatis bisa diakses browser/`Image.network` di
+     Flutter sampai akses publik diaktifkan terpisah di dashboard.
+- **Response API**: field `image_url` (nullable) di `KaryaListItem`/
+  `CatalogMatch` — isi hasil `f"{R2_PUBLIC_URL_BASE}/{image_key}"` kalau
+  `image_key` ada, `null` kalau tidak (mobile fallback ke asset lokal seperti
+  sekarang, tidak crash).
+
+**Checklist setup bucket sungguhan** (langkah di dashboard Cloudflare, bukan
+kode — dikerjakan oleh siapa pun yang pegang akun Cloudflare tim):
+1. R2 → **Create bucket** (nama bebas, catat).
+2. R2 → **Manage API Tokens** → buat token scope **Object Read & Write** ke
+   bucket itu → catat Access Key ID + Secret Access Key + Account ID.
+3. Aktifkan akses publik: **r2.dev subdomain** (instan, ada rate-limit/cocok
+   dev) ATAU **custom domain** (Settings bucket → Public Access → Connect
+   Domain — lebih pas untuk rencana rilis Play Store).
+4. Isi 5 env var di `.env` (`R2_ENDPOINT`, `R2_ACCESS_KEY_ID`,
+   `R2_SECRET_ACCESS_KEY`, `R2_BUCKET`, `R2_PUBLIC_URL_BASE`) sesuai hasil
+   langkah 1-3 — cocokkan formatnya dgn `.env.example` begitu ada.
+5. Restart backend — kalau kode storage sudah ada, otomatis mendeteksi
+   config terisi, tidak perlu ubah kode apa pun.
+
+**Belum dikerjakan setelah bucket siap**: modul storage client itu sendiri,
+kolom `image_key` + migrasi Alembic-nya, endpoint upload karya (nunggu Auth
+dulu — perlu tahu siapa yang upload), migrasi 8 karya seed ke R2 (opsional,
+boleh tetap asset lokal selamanya), dan sisi mobile ganti `Image.asset` →
+`Image.network` kalau `image_url` terisi.
 
 ## Autentikasi
 
@@ -194,8 +281,9 @@ Pola B (tabel `auth_providers` terpisah) **sengaja tidak dipakai sekarang** — 
 - ✅ **UI Flutter — Seniman (14/24 layar Stitch role seniman)** — konversi dari desain HTML/Tailwind Google Stitch ke Flutter widget: 9 layar ROLE SENIMAN 1 (onboarding, login, register, dashboard, komunitas, profil) + 5 layar ROLE SENIMAN 2 (unggah karya, verifikasi keaslian, karya terverifikasi/ditolak/perlu ditinjau). Berjalan real di HP Android (vivo 1919) — lihat `mobile/docs/SETUP_ANDROID.md`.
 - ✅ **UI Flutter — Kolektor (21 layar)** — auth (daftar, preferensi genre), beranda, katalog karya (semua karya, detail, profil toko), lelang (list, detail, pasang bid), event (list, checkout tiket, e-tiket), pesanan (daftar, konfirmasi, pembayaran, selesai), koleksi saya, notifikasi, profil, scan (AR ruangan + visual search camera). Semua layar (seniman + kolektor) ter-wire dengan `go_router`, `flutter analyze` bersih, `flutter test` pass.
 - ✅ **Backend Visual Search + database (Fase 1) selesai** (`backend/`): FastAPI + Neon Postgres (pgvector), endpoint `POST /api/visual-search` & `GET /api/katalog`/`GET /api/karya/{id}` sudah jalan (bukan skeleton lagi). Model ONNX di-load sekali saat startup, preprocessing (SquarePad+resize+normalize) pure numpy/PIL (server tidak perlu PyTorch). Katalog embedding disimpan di tabel `karya_embeddings` (pgvector, cosine distance), bukan lagi file `.npz` statis. 8 karya contoh (sama seperti `mobile/lib/models/karya.dart`) tersedia lewat `scripts/seed_karya.py`. **Catatan koreksi:** dimensi embedding yang benar **768** (convnext_small), bukan 2048 seperti tertulis di komentar lama `ml-visual-search/configs/config.yaml` (sisa baseline ResNet50) — sudah diverifikasi langsung dari graph ONNX.
-- 🔄 **Sedang dikerjakan:** integrasi `mobile/lib/models/karya.dart` untuk fetch dari `GET /api/katalog` asli (masih pakai `sampleKarya` hardcoded). Auth (JWT + Google Sign-In), Cloudflare R2, tabel `users`/`transaksi`/`events`/`auth_sessions`: **arsitektur sudah diputuskan** (lihat section Backend/Database & Autentikasi di atas), implementasi belum dimulai (fase berikutnya setelah Visual Search).
-- ⏳ Belum dikerjakan: 10 layar Stitch role Seniman sisa (Event mgmt ×5, Order mgmt ×3, Shop profile ×1, Promote artwork ×1 — domain terpisah dari 21 layar Kolektor di atas, belum tentu overlap, cek ulang `docs/design/` sebelum asumsi), implementasi AR (ARCore/ARKit nyata — layar `ar_ruangan_screen.dart` masih UI-only), `ml-digital-art-identity/` (unique-key crypto + deteksi gambar AI-generated — scaffold folder sudah ada), `style_predictions` di response Visual Search (butuh re-export ONNX dgn output logit tambahan), chatbot n8n.
+- ✅ **Integrasi mobile ↔ backend Visual Search selesai**: `beranda_kolektor_screen.dart` fetch katalog asli dari `GET /api/katalog` (fallback diam-diam ke `sampleKarya` kalau backend tidak terjangkau), `visual_search_camera_screen.dart` benar-benar panggil `POST /api/visual-search` (bukan simulasi lagi) — termasuk bingkai panduan (model HANYA proses isi bingkai, bukan foto penuh), zoom kamera, fallback pindai dari galeri, dan `style_predictions` terisi prediksi aliran asli dari model (re-export ONNX 2-output: embedding + style_probs sekaligus).
+- 🔄 **Belum dikerjakan, arsitektur sudah diputuskan:** Auth (JWT + Google Sign-In, lihat section Autentikasi di bawah), Cloudflare R2 (lihat "Cara Kerja Cloudflare R2" di atas — storage client, kolom `image_key`, endpoint upload belum ada satu pun), tabel `users`/`transaksi`/`events`/`auth_sessions`.
+- ⏳ Belum dikerjakan: 10 layar Stitch role Seniman sisa (Event mgmt ×5, Order mgmt ×3, Shop profile ×1, Promote artwork ×1 — domain terpisah dari 21 layar Kolektor di atas, belum tentu overlap, cek ulang `docs/design/` sebelum asumsi), implementasi AR (ARCore/ARKit nyata — layar `ar_ruangan_screen.dart` masih UI-only), `ml-digital-art-identity/` (unique-key crypto + deteksi gambar AI-generated — scaffold folder sudah ada), chatbot n8n.
 
 ## Rencana Teknis Model (untuk Visual Search & basis Digital Art Identity)
 
