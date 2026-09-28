@@ -35,7 +35,7 @@ ml-digital-art-identity/outputs/*
 !ml-digital-art-identity/outputs/.gitkeep
 
 # --- Model/data besar (di folder ml-* mana pun) -----------------------------
-*.pth
+# *.pth
 *.onnx
 *.torchscript
 *.pt
