@@ -61,7 +61,9 @@ Aplikasi target = **mobile Android (Flutter)**, backend terpisah, model ML jalan
 - **Teknis:** perceptual hashing (pHash) untuk deteksi cepat, dan/atau deep embedding (reuse model CNN yang sama dari fitur Visual Search) untuk deteksi yang lebih robust terhadap manipulasi ringan (crop, watermark).
 - **PENTING — istilah wajib:** JANGAN PERNAH menyebut fitur ini sebagai **"Hak Paten"** di UI, dokumen, atau materi apa pun yang dilihat pengguna/dosen. Istilah yang benar: **"sertifikat digital keaslian"** atau **"bukti registrasi kepemilikan digital"**. "Hak Paten" adalah klaim hukum yang salah (paten ≠ hak cipta karya seni, dan sistem ini tidak menerbitkan hak hukum formal apa pun).
 - **Batasan yang wajib disadari:** sistem ini mendeteksi duplikasi UPLOAD DIGITAL di platform, BUKAN mendeteksi pemalsuan fisik karya seni di dunia nyata (itu butuh forensik kimia/X-ray, di luar scope proyek ini). Jangan overclaim "AI kami deteksi lukisan palsu".
-- **Sub-fitur tambahan (baru dikonfirmasi, belum detail teknisnya):** deteksi apakah karya yang diupload **AI-generated** (Midjourney/DALL-E/Stable Diffusion/dll) atau karya asli buatan manusia. Dikerjakan di folder terpisah `ml-digital-art-identity/` (bukan oleh modeler Visual Search) — update bagian ini dengan detail teknis (arsitektur, dataset) begitu didesain.
+- **Dua sub-model terpisah di `ml-digital-art-identity/`** (bukan reuse langsung encoder Visual Search — dua network beda tujuan, lihat "Arsitektur AI — Prinsip Penting"):
+  1. **Art-to-Art (deteksi duplikat/kemiripan sesama karya di katalog)** — `SiameseConvNeXt`, `embedding_dim=512`, dilatih pakai contrastive loss (dua gambar → dua embedding → jarak = tingkat kemiripan **identitas/instance**, bukan gaya). Notebook: `notebooks/Similarity image Art to Art/model_devArt.ipynb`, checkpoint `best_siamese_convnext.pth`.
+  2. **Art-to-AI (deteksi AI-generated)** — classifier biner berbasis ConvNeXt (`Linear(in_features, 1)` + `sigmoid`, `BCEWithLogitsLoss`), output satu probabilitas (0-1) "kemungkinan AI-generated". Notebook: `notebooks/similarity image AI/model_devAI.ipynb`, checkpoint `convnext_ai_detector.pth`.
 - **Kode/modeling fitur ini ada di `ml-digital-art-identity/`** (folder terpisah dari `ml-visual-search/`, dikerjakan anggota lain) — lihat README di dalamnya.
 
 ### 4. Chatbot
@@ -73,7 +75,12 @@ Aplikasi target = **mobile Android (Flutter)**, backend terpisah, model ML jalan
 
 ## Arsitektur AI — Prinsip Penting
 
-**Satu CNN backbone (ResNet50, fine-tuned dari WikiArt untuk task klasifikasi style) dipakai ulang di 2 fitur sekaligus:** Visual Search (image embedding untuk similarity search) dan opsional Digital Art Identity (kalau memilih deep embedding, bukan cuma hashing). Ini arsitektur yang disengaja untuk efisiensi dan koherensi — bukan model terpisah-pisah per fitur.
+**Backbone ConvNeXt dipakai di semua fitur computer vision, tapi TIGA model terlatih terpisah** (bukan satu model yang di-reuse mentah-mentah — tiap model dilatih untuk task berbeda dengan makna "jarak"/similarity yang berbeda pula):
+1. **Visual Search** — convnext_small fine-tuned klasifikasi style → embedding 768-d → jarak = mirip **gaya/genre**.
+2. **Art-to-Art** (Digital Art Identity) — SiameseConvNeXt contrastive → embedding 512-d → jarak = kemungkinan **karya yang sama persis/duplikat**.
+3. **Art-to-AI** (Digital Art Identity) — ConvNeXt classifier biner → probabilitas AI-generated (bukan embedding sama sekali).
+
+**Kenapa TIDAK disatukan jadi satu embedding untuk ketiganya:** threshold "mirip gaya" (Visual Search) dan threshold "kemungkinan besar duplikat" (Art-to-Art) secara semantik berbeda jauh — dua karya bergaya sama (mis. sama-sama impresionisme) akan salah kena flag duplikat kalau dipaksa satu ruang vektor. Lihat section Backend & Database untuk bagaimana ini dipetakan ke kolom `pgvector` yang terpisah.
 
 **Ringkasan klasifikasi teknis tiap fitur (penting untuk laporan akademik, jangan campur adukkan):**
 
@@ -81,7 +88,8 @@ Aplikasi target = **mobile Android (Flutter)**, backend terpisah, model ML jalan
 |---|---|---|---|
 | AR Simulation | Tidak | Ya (spatial/SLAM) | Tidak — pakai SDK |
 | Visual Search | Ya | Ya | Tidak — transfer learning/fine-tuning dari pretrained |
-| Digital Art Identity | Opsional (tergantung metode) | Ya (kalau pakai embedding) | Tidak — reuse model / algoritmik (hashing) |
+| Digital Art Identity — Art-to-Art | Ya (Siamese network) | Ya | Tidak — transfer learning (ConvNeXt pretrained) + arsitektur Siamese |
+| Digital Art Identity — Art-to-AI | Ya (classifier) | Ya | Tidak — transfer learning (ConvNeXt pretrained) |
 | Chatbot | Tidak | Tidak | Tidak — wrapping API pihak ketiga |
 
 ## Dataset
@@ -129,15 +137,71 @@ dilayani `backend/` (FastAPI + ONNXRuntime) → dipakai `mobile/`. Alur di
 - **Firebase**: ditolak karena vendor lock-in (NoSQL Firestore susah utk relasi kompleks marketplace), plus egress juga tidak gratis.
 - **SQLite lokal / server VPS + Postgres self-hosted**: ditolak karena bukan production-grade untuk Play Store (backup, HA, scaling manual).
 
-### Skema Data Utama (draft, belum diimplementasi)
-Tabel utama yang akan ada di `backend/`:
-- `users` — akun (multi-role: seniman, kolektor, komunitas, admin)
-- `karya` — metadata karya seni (judul, deskripsi, harga, ukuran fisik cm untuk AR, seniman_id, status verifikasi, image_key ke R2)
-- `karya_embeddings` — vector `pgvector` (dim = output encoder ml-visual-search) untuk similarity search
-- `karya_fingerprints` — pHash + hash lain dari ml-digital-art-identity untuk deteksi duplikasi
-- `transaksi` — order/pembayaran (komisi platform)
-- `events` — event komunitas (pameran, lelang) — untuk role komunitas
-- `auth_sessions` — refresh token & device tracking (untuk logout paksa)
+### Skema Data Utama (arsitektur lengkap sudah diputuskan — implementasi bertahap per fase, lihat "Status Progress")
+
+**Prinsip desain yang berlaku ke SEMUA tabel** (bukan cuma satu-dua tabel):
+- **UUID sebagai PK** (bukan auto-increment int) — ID tidak predictable/enumerable di API publik marketplace.
+- **`created_at`/`updated_at` di semua tabel** — audit trail wajib untuk platform komersial (dispute, investigasi fraud).
+- **Postgres ENUM untuk kolom status**, bukan string bebas — constraint tervalidasi di level DB, bukan cuma app-level.
+- **Uang = integer (IDR)**, bukan desimal/float — konsisten dgn `karya.price_idr` yang sudah ada, hindari floating-point rounding error di uang.
+- **FK `ON DELETE` dipilih sadar per kasus**: `CASCADE` untuk data anak yang tak berarti tanpa induknya (mis. `karya_embeddings`), `RESTRICT` untuk data historis/finansial yang wajib tetap ada (mis. `transaksi`, `sertifikat_keaslian`) meski baris induknya coba dihapus.
+- **Soft-delete** (`deleted_at`/`is_active`) untuk `karya` dan `users`, BUKAN `DELETE` fisik — karya yang pernah terjual/disertifikasi tidak boleh hilang dari histori pembeli maupun rantai sertifikat.
+
+**Tabel dikelompokkan per domain:**
+
+**1. Identity & Auth** (prioritas implementasi berikutnya — lihat Status Progress)
+| Tabel | Isi | Alasan kunci |
+|---|---|---|
+| `users` | akun multi-role (`seniman`/`kolektor`/`komunitas`/`admin`), `password_hash` + `google_sub` nullable (Pola A — lihat section Autentikasi) | fondasi hampir semua tabel lain butuh `user_id` FK |
+| `auth_sessions` | refresh token (**disimpan ter-hash**, bukan mentah) + device/IP info per user | JWT stateless tapi tetap butuh revoke capability (logout paksa, ban) |
+
+**2. Karya & Verifikasi**
+| Tabel | Isi | Alasan kunci |
+|---|---|---|
+| `karya` | metadata karya + **kolom baru**: `seniman_id` FK, `status_verifikasi` enum, `lebar_cm`/`tinggi_cm` (wajib utk AR), `image_key` (R2, nullable), `file_hash` (SHA-256 exact-integrity), `sertifikat_aktif_id` FK, `deleted_at` | `artist_name`/`gallery_name` saat ini string bebas — HARUS jadi FK begitu `users` ada, kalau tidak bisa typo-mismatch & tidak bisa query "semua karya milik seniman X" |
+| `karya_embeddings` | vector **768-d** (convnext_small, `ml-visual-search`) | **sudah ada & jalan** — dipakai Visual Search (cari karya mirip gaya di katalog) |
+| `karya_fingerprints` | `phash` (fuzzy hash) + `embedding_arttoart` vector **512-d** (SiameseConvNeXt, `ml-digital-art-identity`) + `ai_generated_probability`/`ai_generated_flag` + `model_version_arttoart`/`model_version_arttoai` | **Ruang vektor SENGAJA terpisah dari `karya_embeddings`** — beda model, beda makna jarak (lihat "Arsitektur AI — Prinsip Penting"). `model_version_*` wajib dicatat supaya bisa dilacak karya lama ditolak/lolos pakai checkpoint versi berapa |
+| `karya_verifikasi_log` | **append-only**, satu baris per cek (`tipe_cek`: `art_to_art`/`art_to_ai`/`manual_review`), skor mentah, `referensi_karya_id` (kalau match duplikat), `reviewer_id` (kalau manual) | Jejak internal GRANULAR — jawab "kenapa karya ini ditolak?" ke seniman (3 layar sudah dibangun: terverifikasi/ditolak/perlu ditinjau), jadi dasar keputusan `karya.status_verifikasi` |
+
+**3. Kriptografi — Sertifikat Digital Keaslian** (asymmetric-key digital signature, SHA-256)
+| Tabel | Isi | Alasan kunci |
+|---|---|---|
+| `signing_keys` | `public_key`, `algorithm` (rekomendasi **Ed25519** — signature lebih kecil & cepat drpd RSA), `kms_key_ref` (pointer ke secret manager, BUKAN key mentah), `is_active`/`revoked_at` | **Private key TIDAK PERNAH jadi kolom di Neon** — kalau DB bocor, key ikut bocor & seluruh sistem sertifikasi runtuh; harus hidup di secret manager terpisah (KMS/Vault/env terenkripsi di luar Neon). Tabel key registry ini yang memungkinkan **key rotation** (tiap record ditandatangani mencatat `signing_key_id` yang dipakai) |
+| `sertifikat_keaslian` | snapshot hasil verifikasi final (`art_to_art_result`, `ai_detection_result`, `status_akhir`, `file_hash` snapshot, `verified_at`) + `payload_hash` (SHA-256 dari payload kanonik) + `digital_signature` + `signing_key_id` FK | **Append-only** — begitu ditandatangani TIDAK BOLEH di-`UPDATE` (ubah 1 karakter = signature invalid saat diverifikasi ulang). Re-verifikasi (mis. karya di-upload ulang) = baris baru, `karya.sertifikat_aktif_id` di-update menunjuk yang terbaru. Ini beda dari `karya_verifikasi_log`: log = jejak mentah/internal tiap cek, sertifikat = kesimpulan resmi yang **provable secara kriptografis** ke publik |
+
+**4. Kepemilikan & Transaksi**
+| Tabel | Isi | Alasan kunci |
+|---|---|---|
+| `kepemilikan_karya` | riwayat pemilik (`pemilik_id`, `sumber` enum, `transaksi_id` FK nullable, `diperoleh_at`, `dilepas_at`), + **partial unique index** `(karya_id) WHERE dilepas_at IS NULL` | **Beda dari `karya.seniman_id`** (kreator, permanen selamanya) — pemilik BISA berubah tiap kali karya terjual (secondary market/resale). Fondasi provenance yang dibuktikan sertifikat keaslian. Partial index menjamin di level DB tidak mungkin ada 2 "pemilik aktif" bersamaan |
+| `transaksi` | order (`karya_id`, `pembeli_id`, `penjual_id`, `harga_final_idr`, `komisi_platform_idr`, `status`) + `payload_hash`/`digital_signature`/`signing_key_id` FK | `komisi_platform_idr` dicatat eksplisit per transaksi (bukan dihitung ulang dari % saat laporan dibuat) — kalau tarif komisi berubah di masa depan, laporan keuangan lama tetap benar. Ditandatangani juga — bukti order genuinely diproses backend Galeria, bukan injeksi DB langsung |
+
+**5. Lelang**
+| Tabel | Isi |
+|---|---|
+| `lelang` | listing lelang per karya (`harga_awal_idr`, `kelipatan_bid_idr`, `mulai_at`/`selesai_at`, `pemenang_id`) |
+| `lelang_bids` | riwayat SEMUA bid (bukan cuma tertinggi) — transparansi & bahan dispute |
+
+**6. Event Komunitas**
+| Tabel | Isi |
+|---|---|
+| `events` | event milik `komunitas_id` (role `komunitas`) |
+| `event_tiket` | jenis tiket per event (nama, harga, kuota) |
+| `event_tiket_pembelian` | e-tiket per pembeli, `kode_tiket` unik untuk QR/check-in |
+
+**7. Engagement & Monetisasi**
+| Tabel | Isi |
+|---|---|
+| `koleksi_favorit` | wishlist, composite PK `(user_id, karya_id)` |
+| `notifikasi` | notifikasi in-app per user (`tipe` enum, `is_read`) |
+| `subscriptions` | satu tabel untuk 2 revenue model sekaligus (`plan_type`: `ar_akses` / `komunitas_pro`) — strukturnya identik, memisah jadi 2 tabel cuma duplikasi skema tanpa manfaat |
+
+**Urutan implementasi (jangan bangun sekaligus — dependency antar fase):**
+1. `users` + `auth_sessions` + migration update `karya` (FK seniman, dims AR, `file_hash`) — prasyarat Google Sign-In & upload karya sungguhan
+2. `signing_keys` + `karya_fingerprints` + `karya_verifikasi_log` + `sertifikat_keaslian` (paralel progres `ml-digital-art-identity/`) + `transaksi`
+3. `kepemilikan_karya` (menyusul begitu `transaksi` ada — kepemilikan berubah lewat transaksi)
+4. `lelang` + `lelang_bids`
+5. `events` + `event_tiket` + `event_tiket_pembelian`
+6. `koleksi_favorit` + `notifikasi` + `subscriptions`
 
 **Aturan file layout:** File .env berisi `DATABASE_URL` (Neon connection string dengan `?sslmode=require`), `R2_ENDPOINT`, `R2_ACCESS_KEY_ID`, `R2_SECRET_ACCESS_KEY`, `R2_BUCKET`, `R2_PUBLIC_URL_BASE`, `JWT_SECRET`, `GOOGLE_OAUTH_CLIENT_ID` — **wajib di-gitignore**, gunakan `backend/.env.example` sebagai template. (`R2_PUBLIC_URL_BASE` beda dari `R2_ENDPOINT` — lihat penjelasan di bawah.)
 
@@ -282,7 +346,7 @@ Pola B (tabel `auth_providers` terpisah) **sengaja tidak dipakai sekarang** — 
 - ✅ **UI Flutter — Kolektor (21 layar)** — auth (daftar, preferensi genre), beranda, katalog karya (semua karya, detail, profil toko), lelang (list, detail, pasang bid), event (list, checkout tiket, e-tiket), pesanan (daftar, konfirmasi, pembayaran, selesai), koleksi saya, notifikasi, profil, scan (AR ruangan + visual search camera). Semua layar (seniman + kolektor) ter-wire dengan `go_router`, `flutter analyze` bersih, `flutter test` pass.
 - ✅ **Backend Visual Search + database (Fase 1) selesai** (`backend/`): FastAPI + Neon Postgres (pgvector), endpoint `POST /api/visual-search` & `GET /api/katalog`/`GET /api/karya/{id}` sudah jalan (bukan skeleton lagi). Model ONNX di-load sekali saat startup, preprocessing (SquarePad+resize+normalize) pure numpy/PIL (server tidak perlu PyTorch). Katalog embedding disimpan di tabel `karya_embeddings` (pgvector, cosine distance), bukan lagi file `.npz` statis. 8 karya contoh (sama seperti `mobile/lib/models/karya.dart`) tersedia lewat `scripts/seed_karya.py`. **Catatan koreksi:** dimensi embedding yang benar **768** (convnext_small), bukan 2048 seperti tertulis di komentar lama `ml-visual-search/configs/config.yaml` (sisa baseline ResNet50) — sudah diverifikasi langsung dari graph ONNX.
 - ✅ **Integrasi mobile ↔ backend Visual Search selesai**: `beranda_kolektor_screen.dart` fetch katalog asli dari `GET /api/katalog` (fallback diam-diam ke `sampleKarya` kalau backend tidak terjangkau), `visual_search_camera_screen.dart` benar-benar panggil `POST /api/visual-search` (bukan simulasi lagi) — termasuk bingkai panduan (model HANYA proses isi bingkai, bukan foto penuh), zoom kamera, fallback pindai dari galeri, dan `style_predictions` terisi prediksi aliran asli dari model (re-export ONNX 2-output: embedding + style_probs sekaligus).
-- 🔄 **Belum dikerjakan, arsitektur sudah diputuskan:** Auth (JWT + Google Sign-In, lihat section Autentikasi di bawah), Cloudflare R2 (lihat "Cara Kerja Cloudflare R2" di atas — storage client, kolom `image_key`, endpoint upload belum ada satu pun), tabel `users`/`transaksi`/`events`/`auth_sessions`.
+- 🔄 **Belum dikerjakan, arsitektur sudah diputuskan:** Auth (JWT + Google Sign-In, lihat section Autentikasi di bawah), Cloudflare R2 (lihat "Cara Kerja Cloudflare R2" di atas — storage client, kolom `image_key`, endpoint upload belum ada satu pun), seluruh tabel di "Skema Data Utama" kecuali `karya`/`karya_embeddings` (termasuk `users`, `auth_sessions`, `karya_fingerprints`, `karya_verifikasi_log`, `signing_keys`+`sertifikat_keaslian` (kriptografi sertifikat), `kepemilikan_karya`, `transaksi`, `lelang`+`lelang_bids`, `events`+`event_tiket`+`event_tiket_pembelian`, `koleksi_favorit`, `notifikasi`, `subscriptions`).
 - ⏳ Belum dikerjakan: 10 layar Stitch role Seniman sisa (Event mgmt ×5, Order mgmt ×3, Shop profile ×1, Promote artwork ×1 — domain terpisah dari 21 layar Kolektor di atas, belum tentu overlap, cek ulang `docs/design/` sebelum asumsi), implementasi AR (ARCore/ARKit nyata — layar `ar_ruangan_screen.dart` masih UI-only), `ml-digital-art-identity/` (unique-key crypto + deteksi gambar AI-generated — scaffold folder sudah ada), chatbot n8n.
 
 ## Rencana Teknis Model (untuk Visual Search & basis Digital Art Identity)
@@ -305,6 +369,9 @@ Pola B (tabel `auth_providers` terpisah) **sengaja tidak dipakai sekarang** — 
 7. **Stack backend/DB/storage:** Neon (Postgres+pgvector) + Cloudflare R2 (S3-compatible, zero egress). Supabase & Firebase dipertimbangkan tapi ditolak (alasan detail di section Backend/Database).
 8. **Auth:** custom FastAPI (email+bcrypt+JWT+refresh) — bukan Auth0/Clerk/Firebase Auth. Alasan: kontrol UX (form Stitch sudah didesain), biaya nol per-MAU, tim familiar JWT.
 9. **Login Google (`google_sign_in` di Flutter + `google-auth` verifier di backend)** ditambahkan sebagai provider kedua wajib — user Play Store expect one-tap Google login. Skema coexistence pakai Pola A (single `users` table dengan `google_sub` nullable).
+10. **Digital Art Identity terbagi jadi 2 model terpisah** (bukan satu embedding yang di-reuse dari Visual Search): Art-to-Art (`SiameseConvNeXt`, 512-d, contrastive — deteksi duplikat/kemiripan sesama karya di katalog) dan Art-to-AI (classifier biner ConvNeXt — deteksi AI-generated). Konsekuensi skema: `karya_fingerprints.embedding_arttoart` (512-d) HARUS jadi kolom vector terpisah dari `karya_embeddings.embedding` (768-d, Visual Search) — beda model, beda makna similarity, threshold-nya tidak boleh disamakan.
+11. **Sertifikat digital keaslian pakai asymmetric-key digital signature** (SHA-256 hash dari verification record, ditandatangani private key Galeria, diverifikasi via public key — bukan cuma hashing biasa). Konsekuensi skema: tabel `signing_keys` (registry public key + referensi KMS, private key TIDAK PERNAH masuk kolom DB) wajib ada sebelum `sertifikat_keaslian`/`transaksi` bisa ditandatangani; `sertifikat_keaslian` didesain append-only (tidak pernah di-`UPDATE`) karena sifat signature yang invalid begitu payload berubah.
+12. **Tabel `kepemilikan_karya` ditambahkan** untuk memisahkan "kreator" (`karya.seniman_id`, permanen) dari "pemilik saat ini" (berubah tiap resale) — dibutuhkan untuk provenance yang jadi dasar klaim sertifikat keaslian, dan untuk mendukung secondary market (jual-lagi karya yang sudah dibeli).
 
 ## Batasan & Hal yang Harus Selalu Dijaga Kejujurannya
 
