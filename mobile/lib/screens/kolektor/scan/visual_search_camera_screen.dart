@@ -536,9 +536,13 @@ class _ResultCard extends StatelessWidget {
     // Logika: "confirmed" -> tampilkan harga & toko karya itu LANGSUNG
     // (yakin itu karyanya). Selain itu (ambiguous / not_found) -- JANGAN
     // tampilkan seolah itu satu match pasti; tampilkan sebagai rekomendasi
-    // katalog dengan GAYA yang sama (pakai style karya #1 hasil pencarian
-    // sebagai "gaya terdeteksi", lalu filter kandidat lain yang senada).
-    final detectedStyle = primary?.styleName;
+    // katalog dengan GAYA yang sama (pakai prediksi aliran ASLI dari model
+    // sbg "gaya terdeteksi" -- BUKAN style karya #1 hasil pencarian, karena
+    // karya terdekat belum tentu relevan kalau verdict-nya not_found -- lalu
+    // filter kandidat katalog lain yang senada).
+    final detectedStyle = result.stylePredictions.isNotEmpty
+        ? result.stylePredictions.first.style
+        : null;
     final styleMatches = detectedStyle == null
         ? const <VisualSearchMatch>[]
         : matches.where((m) => m.karya.styleName == detectedStyle).toList();
