@@ -1,15 +1,20 @@
-# ml-digital-art-identity — dependencies dasar (sesuaikan dgn kebutuhan)
-# Isi berikut sekadar starter; bebas diubah.
+# ml-digital-art-identity — dependencies
 
 numpy>=1.24,<2
 pandas>=2.0
 pillow>=10.0
 pyyaml>=6.0
+scikit-learn>=1.3          # roc_curve/Youden's J (kalibrasi threshold, lihat model_devArt.ipynb)
 
-# Perceptual hashing (unique-key / fingerprint)
+# Perceptual hashing (unique-key / fingerprint) -- lihat notebook Art-to-Art
 imagehash>=4.3
 
-# Kalau butuh training model deteksi AI-generated-image:
-# torch>=2.2
-# torchvision>=0.17
-# scikit-learn>=1.3
+# Training (sudah dipakai di notebook model_devArt.ipynb / model_devAI.ipynb)
+# + wajib untuk `python -m src.export` (checkpoint .pth -> ONNX, lihat src/export.py)
+torch>=2.2
+torchvision>=0.17
+albumentations>=1.4         # preprocessing Art-to-AI (A.Resize/A.Normalize/ToTensorV2)
+
+# Export & verifikasi ONNX (src/export.py)
+onnx>=1.16
+onnxruntime>=1.18
