@@ -33,10 +33,12 @@ HASIL_CEK = sa.Enum(
 
 
 def upgrade() -> None:
-    bind = op.get_bind()
-    TIPE_CEK.create(bind, checkfirst=True)
-    HASIL_CEK.create(bind, checkfirst=True)
-
+    # TIDAK create() eksplisit di sini -- op.create_table() di bawah SUDAH
+    # otomatis menerbitkan CREATE TYPE untuk kolom ber-tipe Enum (default
+    # SQLAlchemy `create_type=True`). Memanggil .create() eksplisit DI SINI
+    # JUGA menyebabkan "type already exists" krn enum dibuat dua kali --
+    # sekali di sini, sekali lagi otomatis saat create_table memproses kolom
+    # `tipe_cek`/`hasil` di bawah.
     op.create_table(
         "karya_fingerprints",
         sa.Column(
