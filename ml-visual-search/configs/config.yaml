@@ -134,22 +134,35 @@ train:
   use_weighted_sampler: true
 
 # ------------------------------------------------------------ checkpoint ------
+# PENTING -- dir ini SENGAJA bukan "checkpoints" (root) lagi. Root sekarang
+# adalah slot MODEL LIVE yang sudah dipromosikan manual (dipakai backend/
+# via VS_MODEL_PATH) -- lihat notebooks/README.md utk kronologi kenapa (model
+# 22-kelas epoch 21 pernah TIDAK SENGAJA menimpa model 11-kelas yang sudah
+# teruji, krn training lama ini nulis langsung ke root). Training BERIKUTNYA
+# (lanjutan epoch 21->40, atau eksperimen baru) nulis ke folder terpisah ini
+# -- TIDAK akan pernah menimpa root lagi. Begitu hasil baru lebih baik &
+# sudah dievaluasi, PROMOSIKAN MANUAL ke root (copy checkpoint -> checkpoints/
+# best.pth, re-export ONNX) -- jangan diotomatisasi, supaya tidak terulang.
 checkpoint:
-  dir: "checkpoints"
+  dir: "checkpoints/continued_training"
   save_best_only: true
   # Metrik acuan best model. "val_macro_f1" lebih adil dari "val_accuracy"
   # karena imbalance (Impressionism 215 vs Analytical_Cubism 4 di train).
   monitor: "val_macro_f1"       # "val_macro_f1" | "val_accuracy"
-  resume_from: null              # path .pth untuk lanjut training, atau null
+  # Path .pth utk lanjut training (dipakai HANYA oleh `python -m src.train`,
+  # notebook 01_train.ipynb punya training loop sendiri & tidak baca field
+  # ini -- kalau mau lanjut dari notebook, load manual checkpoint di bawah
+  # sebelum loop training mulai).
+  resume_from: "checkpoints/v2_22class/last.pth"  # epoch 21/40, val_f1=0.6735
 
 # --------------------------------------------------------------- output ------
 output:
-  dir: "outputs"
-  log_file: "outputs/train.log"
-  history_plot_path: "outputs/training_history.png"
-  history_json_path: "outputs/history.json"
-  confusion_matrix_path: "outputs/confusion_matrix.png"
-  metrics_report_path: "outputs/metrics_report.json"
+  dir: "outputs/continued_training"
+  log_file: "outputs/continued_training/train.log"
+  history_plot_path: "outputs/continued_training/training_history.png"
+  history_json_path: "outputs/continued_training/history.json"
+  confusion_matrix_path: "outputs/continued_training/confusion_matrix.png"
+  metrics_report_path: "outputs/continued_training/metrics_report.json"
 
 # ------------------------------------------------------------- evaluate ------
 eval:
@@ -160,18 +173,24 @@ eval:
 # Ekstraksi embedding katalog untuk Visual Search (basis Digital Art Identity).
 embedding:
   source_csv: "data/raw/metadata.csv"        # katalog yang diindeks
-  output_path: "data/cache/catalog_embeddings.npz"
-  faiss_index_path: "data/cache/catalog.faiss"
+  output_path: "data/cache/continued_training/catalog_embeddings.npz"
+  faiss_index_path: "data/cache/continued_training/catalog.faiss"
   layer: "penultimate"          # "penultimate" (sebelum fc) | "head"
   batch_size: 64
   l2_normalize: true            # normalisasi L2 -> cosine similarity = dot product
 
 # --------------------------------------------------------------- export ------
 # `python -m src.export` : checkpoint .pth -> format siap dipakai backend/.
+# SENGAJA arahkan ke checkpoints/export/continued_training/ (BUKAN root) --
+# supaya `python -m src.export` TIDAK bisa diam-diam menimpa model live di
+# root (lihat catatan panjang di section `checkpoint` di atas). Begitu hasil
+# training baru ini sudah dievaluasi & lebih baik dari yang live sekarang,
+# PROMOSIKAN MANUAL: copy checkpoint terbaik -> checkpoints/best.pth, lalu
+# jalankan ulang export dgn config yg checkpoint-nya diarahkan ke situ.
 export:
-  checkpoint: "checkpoints/best.pth"
-  torchscript_path: "export/model.torchscript"
-  onnx_path: "export/model.onnx"
+  checkpoint: "checkpoints/continued_training/best.pth"
+  torchscript_path: "export/continued_training/model.torchscript"
+  onnx_path: "export/continued_training/model.onnx"
   onnx_opset: 17
   # "embedding_and_style" (dipakai backend/ -- 2 output sekaligus dari 1
   #   forward pass: embedding utk Visual Search + style_probs utk field
@@ -181,10 +200,47 @@ export:
   output: "embedding_and_style"
 
 # ------------------------------------------------------------- baseline ------
-# Pembanding OPSIONAL (lihat CLAUDE.md): CLIP pretrained tanpa fine-tuning,
-# untuk membandingkan kualitas embedding vs ResNet50 fine-tuned. Belum
-# diimplementasikan -- disediakan agar param tidak di-hardcode saat dikerjakan.
+# Model v3 -- CLIP pretrained (frozen) + linear-probe classifier head, utk
+# dibandingkan dgn v1/v2 (convnext_small fine-tuned). TIDAK pakai build_model()/
+# train.py (arsitektur beda total) -- notebooks/v3_clip/ baca langsung section
+# ini + data.*_csv (SAMA dgn v2, 33.937 gambar/22 kelas, biar perbandingan adil
+# soal "arsitektur apa yang menang", bukan tercampur beda dataset).
 baseline_clip:
-  enabled: false
-  model_name: "ViT-B/32"
-  output_path: "outputs/embeddings_clip.npz"
+  enabled: true
+  # Nama model format open_clip (BUKAN format OpenAI "ViT-B/32" -- beda lib).
+  model_name: "ViT-B-32"
+  pretrained: "laion2b_s34b_b79k"   # pretrained tag open_clip (bukan ImageNet)
+  embedding_dim: 512                # output visual encoder ViT-B-32, informatif
+  batch_size: 64                    # ekstraksi embedding (no_grad, lebih ringan dari fine-tune)
+  classifier:
+    # Riwayat val macro-F1 (lihat notebooks/README.md):
+    #   run 1  Linear, 30 ep, tanpa class weight            : 0.517
+    #   run 2  Linear, 150 ep, class-weighted               : 0.614
+    #   run 3  MLP 256, dropout 0.2, wd 1e-4                : 0.629 (overfit parah)
+    #   run 4  setting di bawah (hasil sweep 25 konfigurasi): 0.667
+    # Sweep menunjukkan banyak konfigurasi mentok ~0.66 -> itu batas embedding
+    # ViT-B-32 sendiri, bukan lagi soal head. Lever berikutnya = backbone CLIP
+    # yang lebih besar (model_name/pretrained di atas), bukan tuning head lagi.
+    standardize: true               # fitur dinormalisasi (mean 0, std 1 per dim) pakai statistik TRAIN.
+                                    # Embedding L2-norm mentah std/dim cuma ~0.03 -> head belajar lambat.
+    hidden_dim: 1024                # 0 = Linear murni (linear probe klasik); >0 = 1-hidden MLP
+    input_dropout: 0.25             # dropout di embedding input (regularisasi kuat, cegah menghafal)
+    dropout: 0.5                    # dropout di hidden layer
+    epochs: 200
+    early_stopping_patience: 25     # val macro-F1 tdk membaik N epoch -> stop
+    learning_rate: 0.001
+    weight_decay: 0.05              # jauh lebih besar dari run 3 (1e-4) -- obat overfit
+    label_smoothing: 0.0            # sweep: 0.1 justru menurunkan macro-F1
+    scheduler: "cosine"             # "cosine" | "none"
+    batch_size: 256
+    # Imbalance training set 44x (Impressionism 5269 vs Pointillism 120, lihat
+    # notebooks/README.md) -- TANPA ini classifier cenderung "malas" & condong
+    # ke kelas mayoritas, akurasi oke tapi macro-F1 jatuh (symptom run pertama).
+    # ConvNeXt (v1/v2) pakai WeightedRandomSampler; di sini dipakai class-weighted
+    # CrossEntropyLoss (setara secara prinsip, lebih simpel utk TensorDataset
+    # embedding yang sudah di-cache) -- lihat 01_train.ipynb section 5.
+    use_class_weights: true
+  checkpoint_dir: "checkpoints/v3_clip"
+  output_dir: "outputs/v3_clip"
+  embedding_cache_dir: "data/cache/v3_clip/split_embeddings"
+  embedding_output_path: "data/cache/v3_clip/catalog_embeddings_clip.npz"
