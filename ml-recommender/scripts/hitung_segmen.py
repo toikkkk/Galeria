@@ -14,6 +14,7 @@ from __future__ import annotations
 
 import argparse
 import asyncio
+import json
 import sys
 import uuid
 from datetime import datetime, timezone
@@ -31,6 +32,7 @@ from src.features import bangun_clustering  # noqa: E402
 
 ARTEFAK = ROOT / "models" / "clustering_kolektor.joblib"
 CSV_HASIL = ROOT / "data" / "hasil" / "segmen_kolektor.csv"
+CSV_KAMUS = ROOT / "data" / "hasil" / "segmen_kamus.csv"
 CSV_FITUR = ROOT / "data" / "training" / "clustering_kolektor.csv"
 
 
@@ -42,13 +44,26 @@ async def _baca_fitur() -> pd.DataFrame:
     return bangun_clustering(t["seniman"], t["kolektor"], t["karya"], t["transaksi"])
 
 
-async def _tulis(hasil: pd.DataFrame, versi: str) -> int:
+def _kamus(bundle: dict) -> pd.DataFrame:
+    return pd.DataFrame([{"segmen_id": sid, "segmen_nama": s["nama"], "deskripsi": s["deskripsi"], "ukuran": s["ukuran"],
+                          "aliran_favorit": s["aliran_favorit"], "profil": json.dumps(s["profil"], ensure_ascii=False, sort_keys=True),
+                          "model_version": bundle["versi"]} for sid, s in sorted(bundle["segmen"].items())])
+
+
+async def _tulis(hasil: pd.DataFrame, kamus: pd.DataFrame, versi: str) -> int:
     waktu = datetime.now(timezone.utc)
     eng = db.buat_engine()
     async with eng.begin() as conn:                       # satu transaksi: gagal = tidak ada yang berubah
         await db.pastikan_schema(conn)
         public_sebelum = await db.hitung_public(conn)
         await conn.execute(text(f"DELETE FROM {db.SCHEMA}.kolektor_segmen"))
+        await conn.execute(text(f"DELETE FROM {db.SCHEMA}.segmen_kamus"))
+        await conn.execute(
+            text(f"INSERT INTO {db.SCHEMA}.segmen_kamus (segmen_id, segmen_nama, deskripsi, ukuran, aliran_favorit, profil, model_version, dihitung_pada) "
+                 "VALUES (:i, :n, :d, :u, :a, CAST(:p AS jsonb), :v, :t)"),
+            [{"i": int(r.segmen_id), "n": r.segmen_nama, "d": r.deskripsi, "u": int(r.ukuran), "a": r.aliran_favorit, "p": r.profil, "v": versi, "t": waktu}
+             for r in kamus.itertuples()],
+        )
         await conn.execute(
             text(f"INSERT INTO {db.SCHEMA}.kolektor_segmen (kolektor_id, segmen_id, segmen_nama, model_version, dihitung_pada) "
                  "VALUES (:k, :i, :n, :v, :t)"),
@@ -72,13 +87,16 @@ def main(dry_run: bool, dari_csv: bool) -> None:
     CSV_HASIL.parent.mkdir(parents=True, exist_ok=True)
     hasil.assign(model_version=bundle["versi"]).sort_values("kolektor_id").to_csv(CSV_HASIL, index=False, encoding="utf-8", lineterminator="\n")
     print(f"CSV -> {CSV_HASIL.relative_to(ROOT)}")
+    kamus = _kamus(bundle)
+    kamus.to_csv(CSV_KAMUS, index=False, encoding="utf-8", lineterminator="\n")
+    print(f"CSV -> {CSV_KAMUS.relative_to(ROOT)}")
     print(hasil.groupby(["segmen_id", "segmen_nama"]).size().rename("n_kolektor").to_string())
 
     if dry_run or dari_csv:
         print("(tidak menulis database)")
         return
-    n = asyncio.run(_tulis(hasil, bundle["versi"]))
-    print(f"Neon: {db.SCHEMA}.kolektor_segmen terisi {n} baris; tabel public tidak berubah.")
+    n = asyncio.run(_tulis(hasil, kamus, bundle["versi"]))
+    print(f"Neon: {db.SCHEMA}.kolektor_segmen terisi {n} baris + segmen_kamus {len(kamus)} baris; tabel public tidak berubah.")
 
 
 if __name__ == "__main__":

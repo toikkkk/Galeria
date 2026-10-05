@@ -68,7 +68,7 @@ FROM S.karya k LEFT JOIN S.transaksi tr ON tr.karya_id = k.id WHERE k.seniman_id
 **`GET /api/dashboard/seniman/{id}/aliran`** → per aliran: `style_name`, `n_terjual`, `omzet_idr`, `harga_rata2_idr`, `harga_pasar_rata2_idr` (rata-rata harga jual aliran itu dari **semua** seniman), `selisih_pct`. Urut `n_terjual` turun.
 
 **`GET /api/dashboard/seniman/{id}/segmen-pembeli`** → `{"tersedia": true, "items": [{"segmen_id": 2, "segmen_nama": "...", "n_pembeli": 7, "porsi_pct": 46.7}]}`.
-`JOIN kolektor_segmen` ke `transaksi.pembeli_id`. Tabel kosong → `{"tersedia": false, "items": []}` (bukan error).
+`JOIN kolektor_segmen` ke `transaksi.pembeli_id`. Tabel kosong → `{"tersedia": false, "items": []}` (bukan error). Teks penjelasan segmen ada di tabel `segmen_kamus` (kolom `deskripsi`); query lengkap & batasan: `SERAH_TERIMA_THORIQ.md`.
 
 **`GET /api/dashboard/pasar/tren`** → bagian "sedang ramai" (inilah informasi "pelukis apa yang lagi ramai dengan harga jual tinggi"):
 ```json
