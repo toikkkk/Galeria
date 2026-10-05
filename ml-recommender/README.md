@@ -19,8 +19,12 @@
 | `src/generate.py` | Generator data (deterministik, seed 42) + penjelasan model perilaku |
 | `src/features.py` | Pembuat fitur training (anti-kebocoran waktu) + kamus kolom |
 | `src/db.py` | DDL + baca/tulis schema `dummy_rekomendasi` di Neon |
+| `src/urutan.py` | Urutan baris **kanonik** (pipeline tidak boleh bergantung pada urutan fisik Postgres — lihat catatan di bawah) |
 | `jalankan_pipeline.py` | Generate → isi Neon → baca ulang → CSV |
-| `scripts/` | `siapkan_pool_gambar.py`, `upload_gambar_r2.py`, `cek_sinyal_data.py` |
+| `scripts/` | `siapkan_pool_gambar.py`, `upload_gambar_r2.py`, `cek_sinyal_data.py`, `latih_clustering.py`, `hitung_segmen.py` |
+| `src/clustering.py` · `notebooks/02_clustering.ipynb` | **Clustering kolektor (Thoriq, SELESAI)**: logika inti + notebook proses |
+| `models/clustering_kolektor.joblib` · `models/LAPORAN_CLUSTERING.md` | Artefak model & laporan (angka dihitung otomatis; membahas keterbatasan) |
+| `data/hasil/segmen_kolektor.csv` | Segmen tiap kolektor (salinan tabel `kolektor_segmen`) |
 | `genda.md` · `vika.md` · `aulya.md` | **Arahan kerja per orang** (utk Claude Code masing-masing): pemodelan · katalog+rekomendasi · dashboard seniman |
 | `models/` · `notebooks/` · `data/hasil/` | Tempat hasil pemodelan (artefak `.joblib`, notebook, CSV hasil) — diisi Genda |
 
@@ -49,11 +53,11 @@ Butuh `DATABASE_URL` (env var atau `backend/.env`). Pipeline deterministik: dija
 Parameter jumlah data: `--n-karya 2000 --n-transaksi 1400 --n-kolektor 200 --n-seniman 23` (1 karya = 1 penjualan,
 jadi `n-karya ≥ 1,1 × n-transaksi`; seniman maks 23).
 
-## Gambar → Cloudflare R2 (BELUM aktif)
+## Gambar → Cloudflare R2 (SUDAH aktif, 2.000/2.000 gambar)
 
 Gambar **tidak** disimpan di Neon (2.000 gambar = 1,6 GB > free tier Neon 0,5 GB). `karya.image_filename` = nama file
 dataset v1; `karya.image_key` = kunci objek di R2, **NULL sampai gambarnya diunggah**. R2 belum dikonfigurasi di repo
-(tak ada bucket/key). Setelah bucket + token dibuat (CLAUDE.md root, "Checklist setup bucket sungguhan") dan 4 variabel
+(tak ada bucket/key) — **kini sudah dikonfigurasi dan terunggah**. Cara awal: bucket + token dibuat (CLAUDE.md root, "Checklist setup bucket sungguhan") dan 4 variabel
 `R2_*` diisi di `backend/.env`:
 
 ```powershell
@@ -101,7 +105,7 @@ dialihkan ke tabel produksi tanpa mengubah kode). Env backend yang dipakai bersa
 |---|---|---|
 | `seniman`, `kolektor`, `karya`, `transaksi`, view `v_seniman_metrik_bulanan` | Thoriq (sudah terisi) | data dasar, lihat `data/training/KAMUS_DATA.md` |
 | `kolektor_label_asli` | Thoriq | segmen buatan generator — **hanya utk validasi clustering, dilarang dipakai di aplikasi/fitur** |
-| `kolektor_segmen` | **Thoriq mengisi** (clustering) | `kolektor_id, segmen_id, segmen_nama, model_version, dihitung_pada` (1 baris per kolektor) |
+| `kolektor_segmen` | **Thoriq mengisi — SUDAH TERISI** (200 baris, `clustering-v1`, 5 segmen: Kolektor Premium · Kolektor Menengah Aktif · Spesialis Aliran · Pemburu Karya Terjangkau · Pemula Hemat) | `kolektor_id, segmen_id, segmen_nama, model_version, dihitung_pada` (1 baris per kolektor) |
 | `rekomendasi_kolektor` | **Genda mengisi** (klasifikasi) | `kolektor_id, karya_id, peringkat (1..20), skor (0-1), alasan (JSONB list kode), strategi, model_version, dihitung_pada` |
 
 `strategi`: `model` (kolektor punya riwayat beli) atau `cold_start` (belum pernah beli → peringkat berdasarkan keramaian/tren, bukan model personal).
@@ -162,6 +166,12 @@ statistik/peringkat, **jangan** membuat prediksi/saran harga; (3) data ini SINTE
 (5) kontrak di atas berubah → ubah README ini dalam PR yang sama dan kabari yang lain.
 
 ## Belum dikerjakan
-Unggah ke R2 (berjalan/selesai — lihat bagian R2) · model klasifikasi (`genda.md`, Genda) · model clustering (Thoriq) · katalog + rekomendasi di backend & Flutter (`vika.md`) ·
+Unggah ke R2 (berjalan/selesai — lihat bagian R2) · model klasifikasi (`genda.md`, Genda) · katalog + rekomendasi di backend & Flutter (`vika.md`) ·
 dashboard seniman (`aulya.md`) · embedding Visual Search per karya (bisa di-join lewat `image_filename`
 ke `ml-visual-search/data/cache/v1_11class_backup/catalog_embeddings.npz`).
+
+## Catatan reprodusibilitas (pelajaran 2026-10-05)
+`SELECT *` tanpa `ORDER BY` tidak menjamin urutan baris, dan urutan fisik Postgres **berubah setelah `UPDATE`** (mis. mengisi `image_key`). Pemilihan karya negatif di
+`features.bangun_klasifikasi` memakai posisi baris, sehingga setelah unggahan R2 **seluruh negatif berubah** padahal datanya sama. Perbaikan: `src/urutan.py` memulihkan urutan
+pembuatan generator dari id (`uuid5`) dan dipakai oleh `db.baca` serta `features._Konteks`. Terbukti: `klasifikasi_pembelian.csv` hasil pipeline **identik byte-per-byte** dengan versi
+yang sudah dibagikan ke tim, dan tetap identik walau urutan baris masukan diacak. Jangan menghapus pengurutan itu.

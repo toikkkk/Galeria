@@ -9,3 +9,5 @@ python-dotenv>=1.0       # baca DATABASE_URL dari backend/.env
 scikit-learn>=1.4        # hanya utk scripts/cek_sinyal_data.py (sanity check)
 pillow>=10.0              # hanya utk scripts/siapkan_pool_gambar.py (baca ukuran gambar)
 boto3>=1.34              # hanya utk scripts/upload_gambar_r2.py (Cloudflare R2 = S3-compatible)
+matplotlib>=3.8          # grafik di notebooks/02_clustering.ipynb
+ipykernel>=6.29          # agar venv ini bisa dipilih sebagai kernel notebook

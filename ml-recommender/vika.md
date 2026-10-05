@@ -51,7 +51,7 @@ Respons = bentuk `KatalogPage` yang sudah ada, ditambah `image_url` dan `seniman
 
 **`GET /api/rekomendasi/{kolektor_id}?top_k=10`** — baca `rekomendasi_kolektor` JOIN `karya` JOIN `seniman` JOIN `kolektor_segmen`, urut `peringkat`, `LIMIT top_k` (maks 20).
 Bentuk JSON **persis** seperti di README (kontrak). `alasan`: ubah kode → teks Indonesia dengan satu dict di backend (7 kode di README; `gaya_favorit` memuat nama aliran).
-`segmen` boleh `null` bila `kolektor_segmen` belum diisi (clustering Thoriq) — jangan error, cukup sembunyikan label segmen di UI.
+`segmen` berasal dari `kolektor_segmen` (**sudah terisi**, `clustering-v1`, 5 segmen: Kolektor Premium · Kolektor Menengah Aktif · Spesialis Aliran · Pemburu Karya Terjangkau · Pemula Hemat); tetap boleh `null` bila tabel kosong — jangan error, cukup sembunyikan label segmen di UI.
 Perilaku: `kolektor_id` bukan UUID / tidak ada → 404; tabel hasil belum terisi untuk kolektor itu → **503** dengan pesan "Rekomendasi belum dihitung" (Flutter akan diam-diam jatuh ke katalog biasa); jangan 500.
 
 Daftarkan router baru di `main.py`. Tambahkan skema di `backend/schemas/rekomendasi.py`.
