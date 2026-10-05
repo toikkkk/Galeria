@@ -20,7 +20,7 @@ from pathlib import Path
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from routers import dashboard_seniman, katalog, verification, visual_search
+from routers import dashboard_seniman, katalog, katalog_dummy, verification, visual_search
 from services.digital_art_identity_service import DigitalArtIdentityService
 from services.visual_search_service import VisualSearchService
 
@@ -75,6 +75,7 @@ app.include_router(visual_search.router)
 app.include_router(katalog.router)
 app.include_router(verification.router)
 app.include_router(dashboard_seniman.router)
+app.include_router(katalog_dummy.router)
 
 
 @app.get("/")
