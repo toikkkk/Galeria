@@ -80,6 +80,26 @@ DDL = [
         status               TEXT NOT NULL DEFAULT 'selesai' CHECK (status IN ('selesai')),
         created_at           TIMESTAMPTZ NOT NULL
     )""",
+    # ---- Tabel OUTPUT model (diisi scripts/hitung_rekomendasi.py; dibaca backend) -- kontrak: README.md ----
+    f"""CREATE TABLE IF NOT EXISTS {SCHEMA}.kolektor_segmen (
+        kolektor_id    UUID PRIMARY KEY REFERENCES {SCHEMA}.kolektor(id) ON DELETE CASCADE,
+        segmen_id      INT  NOT NULL,
+        segmen_nama    TEXT NOT NULL,
+        model_version  TEXT NOT NULL,
+        dihitung_pada  TIMESTAMPTZ NOT NULL
+    )""",
+    f"""CREATE TABLE IF NOT EXISTS {SCHEMA}.rekomendasi_kolektor (
+        kolektor_id    UUID NOT NULL REFERENCES {SCHEMA}.kolektor(id) ON DELETE CASCADE,
+        karya_id       UUID NOT NULL REFERENCES {SCHEMA}.karya(id) ON DELETE CASCADE,
+        peringkat      INT  NOT NULL CHECK (peringkat >= 1),
+        skor           DOUBLE PRECISION NOT NULL,
+        alasan         JSONB NOT NULL DEFAULT '[]'::jsonb,
+        strategi       TEXT NOT NULL CHECK (strategi IN ('model', 'cold_start')),
+        model_version  TEXT NOT NULL,
+        dihitung_pada  TIMESTAMPTZ NOT NULL,
+        PRIMARY KEY (kolektor_id, karya_id),
+        UNIQUE (kolektor_id, peringkat)
+    )""",
     f"CREATE INDEX IF NOT EXISTS karya_seniman_id_idx ON {SCHEMA}.karya (seniman_id)",
     f"CREATE INDEX IF NOT EXISTS karya_style_name_idx ON {SCHEMA}.karya (style_name)",
     f"CREATE INDEX IF NOT EXISTS transaksi_pembeli_idx ON {SCHEMA}.transaksi (pembeli_id, created_at)",
