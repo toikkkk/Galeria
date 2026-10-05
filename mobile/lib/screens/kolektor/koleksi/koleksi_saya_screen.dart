@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../../../models/karya.dart';
 import '../../../theme/app_theme.dart';
 import '../../../widgets/kolektor/kolektor_bottom_nav.dart';
+import '../../../widgets/karya_image.dart';
 
 /// Konversi dari
 /// docs/KOLEKTOR FITUR UTAMA/.../galeria_koleksi_saya/code.html
@@ -224,11 +225,10 @@ class _CertificateCard extends StatelessWidget {
               children: [
                 ClipRRect(
                   borderRadius: BorderRadius.circular(AppRadius.sm),
-                  child: Image.asset(
-                    karya.assetPath,
+                  child: SizedBox(
                     width: 72,
                     height: 92,
-                    fit: BoxFit.cover,
+                    child: KaryaImage(karya: karya),
                   ),
                 ),
                 const SizedBox(width: AppSpacing.sm),

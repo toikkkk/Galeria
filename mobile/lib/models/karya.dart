@@ -15,6 +15,8 @@ class Karya {
     required this.priceIdr,
     required this.galleryName,
     this.isPromoted = false,
+    this.imageUrl,
+    this.senimanId,
   });
 
   /// UUID dari database -- kosong ('') untuk [sampleKarya] lokal (belum
@@ -38,6 +40,13 @@ class Karya {
   /// dulu di katalog) -- placeholder, belum ada mekanisme promosi nyata
   /// di backend.
   final bool isPromoted;
+
+  /// URL gambar publik (Cloudflare R2) -- diisi backend utk karya katalog
+  /// dummy (`GET /api/katalog-dummy`). `null` = pakai asset lokal [assetPath].
+  final String? imageUrl;
+
+  /// UUID seniman pembuat (hanya dari katalog dummy; `null` utk data lokal).
+  final String? senimanId;
 
   String get priceFormatted {
     final s = priceIdr.toString();
@@ -87,6 +96,8 @@ class Karya {
       galleryName: json['gallery_name'] as String,
       priceIdr: json['price_idr'] as int,
       isPromoted: (json['is_promoted'] as bool?) ?? false,
+      imageUrl: json['image_url'] as String?,
+      senimanId: json['seniman_id'] as String?,
     );
   }
 }

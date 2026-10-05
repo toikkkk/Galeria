@@ -6,6 +6,7 @@ import '../../../services/katalog_service.dart';
 import '../../../theme/app_theme.dart';
 import '../../../widgets/kolektor/karya_grid_card.dart';
 import '../../../widgets/kolektor/kolektor_bottom_nav.dart';
+import '../../../widgets/karya_image.dart';
 
 /// Konversi dari
 /// docs/KOLEKTOR FITUR UTAMA/.../galeria_beranda_kolektor/code.html
@@ -233,10 +234,7 @@ class _BerandaKolektorScreenState extends State<BerandaKolektorScreen> {
                         borderRadius: BorderRadius.circular(AppRadius.lg),
                         child: AspectRatio(
                           aspectRatio: 16 / 9,
-                          child: Image.asset(
-                            _karya[0].assetPath,
-                            fit: BoxFit.cover,
-                          ),
+                          child: KaryaImage(karya: _karya[0]),
                         ),
                       ),
                       Positioned.fill(
@@ -631,11 +629,10 @@ class _SearchResultTile extends StatelessWidget {
           children: [
             ClipRRect(
               borderRadius: BorderRadius.circular(AppRadius.sm),
-              child: Image.asset(
-                karya.assetPath,
+              child: SizedBox(
                 width: 56,
                 height: 70,
-                fit: BoxFit.cover,
+                child: KaryaImage(karya: karya),
               ),
             ),
             const SizedBox(width: AppSpacing.sm),
