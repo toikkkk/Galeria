@@ -24,6 +24,8 @@
 | `scripts/` | `siapkan_pool_gambar.py`, `upload_gambar_r2.py`, `cek_sinyal_data.py`, `latih_clustering.py`, `hitung_segmen.py` |
 | `src/clustering.py` · `notebooks/02_clustering.ipynb` | **Clustering kolektor (Thoriq, SELESAI)**: logika inti + notebook proses |
 | `models/clustering_kolektor.joblib` · `models/LAPORAN_CLUSTERING.md` | Artefak model & laporan (angka dihitung otomatis; membahas keterbatasan) |
+| `SERAH_TERIMA_THORIQ.md` | Serah-terima hasil clustering untuk Aulya/Vika/Genda (apa yang siap, cara pakai, batasan) |
+| `data/hasil/segmen_kamus.csv` | Deskripsi tiap segmen (salinan tabel `segmen_kamus`) |
 | `data/hasil/segmen_kolektor.csv` | Segmen tiap kolektor (salinan tabel `kolektor_segmen`) |
 | `genda.md` · `vika.md` · `aulya.md` | **Arahan kerja per orang** (utk Claude Code masing-masing): pemodelan · katalog+rekomendasi · dashboard seniman |
 | `models/` · `notebooks/` · `data/hasil/` | Tempat hasil pemodelan (artefak `.joblib`, notebook, CSV hasil) — diisi Genda |
@@ -105,6 +107,7 @@ dialihkan ke tabel produksi tanpa mengubah kode). Env backend yang dipakai bersa
 |---|---|---|
 | `seniman`, `kolektor`, `karya`, `transaksi`, view `v_seniman_metrik_bulanan` | Thoriq (sudah terisi) | data dasar, lihat `data/training/KAMUS_DATA.md` |
 | `kolektor_label_asli` | Thoriq | segmen buatan generator — **hanya utk validasi clustering, dilarang dipakai di aplikasi/fitur** |
+| `segmen_kamus` | Thoriq (5 baris, dari `hitung_segmen.py`) | `segmen_id, segmen_nama, deskripsi, ukuran, aliran_favorit, profil JSONB, model_version, dihitung_pada` — teks penjelasan segmen untuk UI |
 | `kolektor_segmen` | **Thoriq mengisi — SUDAH TERISI** (200 baris, `clustering-v1`, 5 segmen: Kolektor Premium · Kolektor Menengah Aktif · Spesialis Aliran · Pemburu Karya Terjangkau · Pemula Hemat) | `kolektor_id, segmen_id, segmen_nama, model_version, dihitung_pada` (1 baris per kolektor) |
 | `rekomendasi_kolektor` | **Genda mengisi** (klasifikasi) | `kolektor_id, karya_id, peringkat (1..20), skor (0-1), alasan (JSONB list kode), strategi, model_version, dihitung_pada` |
 

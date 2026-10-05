@@ -90,6 +90,16 @@ DDL = [
         model_version  TEXT NOT NULL,
         dihitung_pada  TIMESTAMPTZ NOT NULL
     )""",
+    f"""CREATE TABLE IF NOT EXISTS {SCHEMA}.segmen_kamus (
+        segmen_id       INT  PRIMARY KEY,
+        segmen_nama     TEXT NOT NULL,
+        deskripsi       TEXT NOT NULL,
+        ukuran          INT  NOT NULL,
+        aliran_favorit  TEXT NOT NULL,
+        profil          JSONB NOT NULL,
+        model_version   TEXT NOT NULL,
+        dihitung_pada   TIMESTAMPTZ NOT NULL
+    )""",
     f"""CREATE TABLE IF NOT EXISTS {SCHEMA}.rekomendasi_kolektor (
         kolektor_id    UUID NOT NULL REFERENCES {SCHEMA}.kolektor(id) ON DELETE CASCADE,
         karya_id       UUID NOT NULL REFERENCES {SCHEMA}.karya(id) ON DELETE CASCADE,
