@@ -27,6 +27,7 @@ import numpy as np
 import pandas as pd
 
 from .generate import GAYA, HARI_TOTAL, WINDOW_START
+from .urutan import urutkan
 
 G = {n: i for i, n in enumerate(GAYA)}
 N_GAYA = len(GAYA)
@@ -56,6 +57,9 @@ class _Konteks:
 
     def __init__(self, seniman, kolektor, karya, transaksi):
         s, k, kr, tx = _norm(seniman, kolektor, karya, transaksi)
+        # hasil tidak boleh bergantung pada urutan baris masukan (pemilihan negatif memakai posisi baris)
+        s, k, kr, tx = (urutkan(s, "id", "seniman"), urutkan(k, "id", "kolektor"),
+                        urutkan(kr, "id", "karya"), urutkan(tx, "id", "transaksi"))
         kr["t_list"] = _hari(kr["created_at"])
         tx["t"] = _hari(tx["created_at"])
         tx = tx.merge(

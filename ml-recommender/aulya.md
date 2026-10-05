@@ -10,8 +10,7 @@ informasi yang seharusnya didapat setiap seniman — penjualan, harga, aliran te
 Pembagian: **Genda** = model klasifikasi; **Thoriq** = clustering (mengisi `kolektor_segmen`); **Vika** = katalog + rekomendasi kolektor; **kamu** = dashboard seniman. Jangan mengerjakan katalog/rekomendasi.
 
 ### Kamu bisa mulai SEKARANG
-Hampir semua dashboard hanya butuh **data dasar Thoriq** yang sudah ada di Neon (`transaksi`, `karya`, `seniman`, view `v_seniman_metrik_bulanan`). Satu-satunya yang menunggu model:
-bagian **"Segmen pembeli"** (tabel `kolektor_segmen`, hasil clustering **Thoriq**). Sebelum terisi, endpoint-nya mengembalikan `tersedia: false` dan UI menyembunyikan bagian itu.
+Hampir semua dashboard hanya butuh **data dasar Thoriq** yang sudah ada di Neon (`transaksi`, `karya`, `seniman`, view `v_seniman_metrik_bulanan`). Bagian **"Segmen pembeli"** memakai tabel `kolektor_segmen` yang **sudah terisi** (200 kolektor; `clustering-v1`, 5 segmen: Kolektor Premium · Kolektor Menengah Aktif · Spesialis Aliran · Pemburu Karya Terjangkau · Pemula Hemat). Tetap tangani `tersedia: false` (tabel kosong, mis. setelah `--reset`) dengan menyembunyikan bagiannya.
 
 ### Kejujuran & batas scope
 * Data **sintetis**. Beri label kecil "Data contoh" di dashboard. Pelukis = tokoh sungguhan, tetapi penjualan/harganya fiktif.

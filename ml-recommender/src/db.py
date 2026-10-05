@@ -32,6 +32,8 @@ from dotenv import dotenv_values
 from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncConnection, create_async_engine
 
+from .urutan import KUNCI_TABEL, urutkan
+
 SCHEMA = "dummy_rekomendasi"
 ROOT = Path(__file__).resolve().parent.parent
 URUTAN = ["seniman", "kolektor", "kolektor_label_asli", "karya", "transaksi"]  # urutan FK
@@ -188,7 +190,11 @@ async def isi(conn: AsyncConnection, data: dict[str, pd.DataFrame], ukuran_batch
 
 async def baca(conn: AsyncConnection, nama: str) -> pd.DataFrame:
     hasil = await conn.execute(text(f"SELECT * FROM {SCHEMA}.{nama}"))
-    return pd.DataFrame(hasil.mappings().all())
+    df = pd.DataFrame(hasil.mappings().all())
+    # urutan baris dari Postgres TIDAK terjamin (berubah setelah UPDATE) -> pakai urutan kanonik (lihat src/urutan.py)
+    if nama in KUNCI_TABEL and len(df):
+        df = urutkan(df, *KUNCI_TABEL[nama])
+    return df
 
 
 async def baca_semua(conn: AsyncConnection) -> dict[str, pd.DataFrame]:
