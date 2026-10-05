@@ -89,6 +89,25 @@ class _Konteks:
         sold = dict(zip(tx["karya_id"], tx["t"]))
         self.kr["t_jual"] = self.kr["id"].map(sold).fillna(np.inf)
 
+        # --- array per-karya terindeks (dipindah dari dalam bangun_klasifikasi()
+        # supaya bisa dipakai bersama training DAN inferensi, lihat fitur_pasangan()
+        # & src/inference.py -- genda.md Tugas 2, anti train/serve skew) ---
+        self.kr_ids = kr["id"].to_numpy()
+        self.kr_t_list = kr["t_list"].to_numpy()
+        self.kr_t_jual = kr["t_jual"].to_numpy()
+        self.kr_price = kr["price_idr"].to_numpy(float)
+        self.kr_gaya = kr["style_name"].map(G).to_numpy(int)
+        self.kr_sen = kr["seniman_id"].to_numpy()
+        self.kr_luas = (kr["lebar_cm"].astype(float) * kr["tinggi_cm"].astype(float)).to_numpy()
+        self.idx_karya = {kid: i for i, kid in enumerate(self.kr_ids)}
+
+    def karya_tersedia(self, t: float) -> np.ndarray:
+        """Indeks (ke dalam kr_ids/kr_sen/dst) karya yang SUDAH terpasang (``t_list <= t``)
+        dan BELUM terjual (``t_jual > t``) pada waktu ``t``. Dipakai training (kandidat
+        negatif) dan inferensi (kandidat rekomendasi, lihat genda.md Tugas 3).
+        """
+        return np.flatnonzero((self.kr_t_list <= t) & (self.kr_t_jual > t))
+
     # -- tren seniman sebelum t ------------------------------------------------
     def n_jual(self, sid: str, t: float, jendela: float) -> int:
         ts = self.by_sen[sid][0]
@@ -137,70 +156,105 @@ class _Konteks:
 # ------------------------------------------------------------- klasifikasi
 KOLOM_IDENTITAS = ["grup_id", "split", "waktu", "transaksi_id", "kolektor_id", "karya_id", "seniman_id", "dibeli"]
 
+# Urutan kolom fitur PERSIS seperti yang dipakai model terlatih (lihat
+# notebooks/01_klasifikasi.ipynb bagian 10, FITUR = FITUR_NUMERIK + FITUR_KATEGORIKAL).
+# fitur_pasangan() mengembalikan dict dgn key-key ini -- urutan di sini dipakai
+# src/inference.py utk membangun DataFrame fitur yg kolomnya PERSIS sama dgn training.
+FITUR_KATEGORIKAL = ["karya_gaya", "seniman_level_reputasi"]
+FITUR_NUMERIK = [
+    "kolektor_n_beli_sebelumnya", "kolektor_hari_sejak_bergabung", "kolektor_hari_sejak_beli_terakhir",
+    "kolektor_n_beli_90hari", "kolektor_harga_rata2_idr", "kolektor_harga_median_idr",
+    "kolektor_harga_min_idr", "kolektor_harga_maks_idr", "kolektor_harga_std_log",
+    "kolektor_n_gaya_unik", "kolektor_porsi_gaya_teratas",
+    "karya_harga_listing_idr", "karya_log_harga", "karya_luas_cm2", "karya_umur_listing_hari",
+    "match_porsi_gaya_ini", "match_pernah_beli_gaya_ini", "match_n_beli_seniman_ini",
+    "match_rasio_harga_vs_rata2", "match_selisih_log_harga_vs_median", "match_harga_dalam_rentang",
+    "seniman_n_terjual_total", "seniman_n_terjual_30hari", "seniman_n_terjual_90hari",
+    "seniman_harga_rata2_90hari_idr", "seniman_pertumbuhan_harga", "seniman_momentum_30hari",
+    "seniman_lonjakan_30hari", "seniman_persentil_tren_30hari", "seniman_n_karya_tersedia",
+    "gaya_n_terjual_30hari", "gaya_porsi_penjualan_30hari",
+]
+FITUR = FITUR_NUMERIK + FITUR_KATEGORIKAL
+
+
+def fitur_pasangan(cx: "_Konteks", kolektor_id: str, idx_karya: int, t: float, n30_semua: np.ndarray) -> dict:
+    """SATU baris fitur utk pasangan (kolektor_id, karya di indeks idx_karya) pada
+    waktu t -- dipakai ``bangun_klasifikasi()`` (training) DAN ``src/inference.py``
+    (skor_kandidat, saat live) supaya rumus fiturnya PERSIS SAMA di kedua jalur
+    (anti *train/serve skew*, lihat genda.md Tugas 2). JANGAN tulis ulang rumus di
+    tempat lain -- kalau fiturnya perlu berubah, ubah di sini saja.
+
+    Catatan desain: riwayat kolektor (``cx.riwayat_kolektor``) dihitung ULANG di
+    setiap panggilan -- sedikit lebih boros drpd versi lama (yang menghitungnya
+    sekali per grup, dipakai bersama 5 kandidat), tapi O(log n) via searchsorted
+    jadi biayanya kecil, dan ini yang membuat 1 fungsi ini bisa dipakai utk 1
+    pasangan independen (wajib utk inferensi, yg tidak punya konsep "grup").
+    """
+    ts, hg, st, sl = cx.riwayat_kolektor(kolektor_id, t)
+    n = len(ts)
+    porsi = np.bincount(st, minlength=N_GAYA) / n if n else np.zeros(N_GAYA)
+    kol = {
+        "kolektor_n_beli_sebelumnya": n,
+        "kolektor_hari_sejak_bergabung": t - cx.kol_join[kolektor_id],
+        "kolektor_hari_sejak_beli_terakhir": (t - ts[-1]) if n else np.nan,
+        "kolektor_n_beli_90hari": int((ts >= t - 90).sum()) if n else 0,
+        "kolektor_harga_rata2_idr": hg.mean() if n else np.nan,
+        "kolektor_harga_median_idr": np.median(hg) if n else np.nan,
+        "kolektor_harga_min_idr": hg.min() if n else np.nan,
+        "kolektor_harga_maks_idr": hg.max() if n else np.nan,
+        "kolektor_harga_std_log": float(np.log(hg).std()) if n else np.nan,
+        "kolektor_n_gaya_unik": int((porsi > 0).sum()),
+        "kolektor_porsi_gaya_teratas": float(porsi.max()) if n else np.nan,
+    }
+
+    sid = cx.kr_sen[idx_karya]
+    gi = int(cx.kr_gaya[idx_karya])
+    price = float(cx.kr_price[idx_karya])
+
+    return {
+        **kol,
+        "karya_gaya": GAYA[gi],
+        "karya_harga_listing_idr": price,
+        "karya_log_harga": float(np.log(price)),
+        "karya_luas_cm2": float(cx.kr_luas[idx_karya]),
+        "karya_umur_listing_hari": t - float(cx.kr_t_list[idx_karya]),
+        "match_porsi_gaya_ini": float(porsi[gi]) if n else np.nan,
+        "match_pernah_beli_gaya_ini": int(porsi[gi] > 0),
+        "match_n_beli_seniman_ini": int((sl == sid).sum()) if n else 0,
+        "match_rasio_harga_vs_rata2": (price / hg.mean()) if n else np.nan,
+        "match_selisih_log_harga_vs_median": float(np.log(price) - np.log(np.median(hg))) if n else np.nan,
+        "match_harga_dalam_rentang": float(hg.min() <= price <= hg.max()) if n else np.nan,
+        **cx.fitur_seniman(sid, t, n30_semua),
+        **cx.fitur_gaya(gi, t),
+    }
+
 
 def bangun_klasifikasi(seniman, kolektor, karya, transaksi, neg_per_pos: int = 4, seed: int = 42) -> pd.DataFrame:
     rng = np.random.default_rng(seed)
     cx = _Konteks(seniman, kolektor, karya, transaksi)
-    kr, tx = cx.kr, cx.tx
-    kr_ids = kr["id"].to_numpy()
-    kr_t_list, kr_t_jual = kr["t_list"].to_numpy(), kr["t_jual"].to_numpy()
-    kr_price = kr["price_idr"].to_numpy(float)
-    kr_gaya = kr["style_name"].map(G).to_numpy(int)
-    kr_sen = kr["seniman_id"].to_numpy()
-    kr_luas = (kr["lebar_cm"].astype(float) * kr["tinggi_cm"].astype(float)).to_numpy()
-    idx_karya = {kid: i for i, kid in enumerate(kr_ids)}
+    tx = cx.tx
 
     b1, b2 = np.quantile(tx["t"].to_numpy(), [0.70, 0.85])
     baris = []
     for grup, ev in enumerate(tx.itertuples(index=False), start=1):
         t = float(ev.t)
         kid = ev.pembeli_id
-        pos = idx_karya[ev.karya_id]
-        kandidat = np.flatnonzero((kr_t_list <= t) & (kr_t_jual > t))      # masih tersedia pada t
+        pos = cx.idx_karya[ev.karya_id]
+        kandidat = cx.karya_tersedia(t)
         kandidat = kandidat[kandidat != pos]
         m = min(neg_per_pos, kandidat.size)
         negatif = rng.choice(kandidat, size=m, replace=False) if m else np.array([], dtype=int)
 
-        ts, hg, st, sl = cx.riwayat_kolektor(kid, t)
-        n = len(ts)
-        porsi = np.bincount(st, minlength=N_GAYA) / n if n else np.zeros(N_GAYA)
-        kol = {
-            "kolektor_n_beli_sebelumnya": n,
-            "kolektor_hari_sejak_bergabung": t - cx.kol_join[kid],
-            "kolektor_hari_sejak_beli_terakhir": (t - ts[-1]) if n else np.nan,
-            "kolektor_n_beli_90hari": int((ts >= t - 90).sum()) if n else 0,
-            "kolektor_harga_rata2_idr": hg.mean() if n else np.nan,
-            "kolektor_harga_median_idr": np.median(hg) if n else np.nan,
-            "kolektor_harga_min_idr": hg.min() if n else np.nan,
-            "kolektor_harga_maks_idr": hg.max() if n else np.nan,
-            "kolektor_harga_std_log": float(np.log(hg).std()) if n else np.nan,
-            "kolektor_n_gaya_unik": int((porsi > 0).sum()),
-            "kolektor_porsi_gaya_teratas": float(porsi.max()) if n else np.nan,
-        }
         n30_semua = cx.n30_semua(t)
         for k_idx, label in [(pos, 1)] + [(int(x), 0) for x in negatif]:
-            sid, gi, price = kr_sen[k_idx], int(kr_gaya[k_idx]), float(kr_price[k_idx])
             baris.append({
                 "grup_id": grup,
                 "split": "train" if t <= b1 else "val" if t <= b2 else "test",
                 "waktu": _iso(t),
                 "transaksi_id": ev.id if label else "",
-                "kolektor_id": kid, "karya_id": kr_ids[k_idx], "seniman_id": sid,
+                "kolektor_id": kid, "karya_id": cx.kr_ids[k_idx], "seniman_id": cx.kr_sen[k_idx],
                 "dibeli": label,
-                **kol,
-                "karya_gaya": GAYA[gi],
-                "karya_harga_listing_idr": price,
-                "karya_log_harga": float(np.log(price)),
-                "karya_luas_cm2": float(kr_luas[k_idx]),
-                "karya_umur_listing_hari": t - float(kr_t_list[k_idx]),
-                "match_porsi_gaya_ini": float(porsi[gi]) if n else np.nan,
-                "match_pernah_beli_gaya_ini": int(porsi[gi] > 0),
-                "match_n_beli_seniman_ini": int((sl == sid).sum()) if n else 0,
-                "match_rasio_harga_vs_rata2": (price / hg.mean()) if n else np.nan,
-                "match_selisih_log_harga_vs_median": float(np.log(price) - np.log(np.median(hg))) if n else np.nan,
-                "match_harga_dalam_rentang": float(hg.min() <= price <= hg.max()) if n else np.nan,
-                **cx.fitur_seniman(sid, t, n30_semua),
-                **cx.fitur_gaya(gi, t),
+                **fitur_pasangan(cx, kid, int(k_idx), t, n30_semua),
             })
     df = pd.DataFrame(baris)
     for c in [c for c in df.columns if c.endswith("_idr")]:
