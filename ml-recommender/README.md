@@ -84,10 +84,11 @@ dibatasi lajunya & bukan utk produksi, jadi **utk rilis Play Store wajib custom 
 ## Kontrak antar-bagian (sumber kebenaran — jangan diubah sepihak, kabari Thoriq)
 
 ```
-Thoriq: data dummy + CSV (SELESAI)
-   └─> Genda: pemodelan (klasifikasi + clustering) ──> tulis 2 tabel hasil di Neon
-                                                          ├─> Vika: katalog + rekomendasi (backend + Flutter)
-                                                          └─> Aul : dashboard seniman    (backend + Flutter)
+Thoriq: data dummy + CSV (SELESAI) ──> Thoriq: CLUSTERING kolektor ──> tabel `kolektor_segmen`
+   │                                                                          ├─> Aulya: dashboard seniman (bagian "Siapa Pembelimu")
+   │                                                                          └─> Vika : label segmen (opsional) di rekomendasi
+   └─> Genda: KLASIFIKASI pembelian ──> tabel `rekomendasi_kolektor` ──> Vika: katalog + rekomendasi (backend + Flutter)
+                                        Aulya: dashboard seniman (backend + Flutter) — sebagian besar tidak menunggu model
 ```
 
 **Waktu acuan.** "Sekarang" di dunia dummy = akhir data: `2026-09-30T23:59:59Z` (`src/generate.py: WINDOW_END`).
@@ -100,8 +101,8 @@ dialihkan ke tabel produksi tanpa mengubah kode). Env backend yang dipakai bersa
 |---|---|---|
 | `seniman`, `kolektor`, `karya`, `transaksi`, view `v_seniman_metrik_bulanan` | Thoriq (sudah terisi) | data dasar, lihat `data/training/KAMUS_DATA.md` |
 | `kolektor_label_asli` | Thoriq | segmen buatan generator — **hanya utk validasi clustering, dilarang dipakai di aplikasi/fitur** |
-| `kolektor_segmen` | **Genda mengisi** | `kolektor_id, segmen_id, segmen_nama, model_version, dihitung_pada` (1 baris per kolektor) |
-| `rekomendasi_kolektor` | **Genda mengisi** | `kolektor_id, karya_id, peringkat (1..20), skor (0-1), alasan (JSONB list kode), strategi, model_version, dihitung_pada` |
+| `kolektor_segmen` | **Thoriq mengisi** (clustering) | `kolektor_id, segmen_id, segmen_nama, model_version, dihitung_pada` (1 baris per kolektor) |
+| `rekomendasi_kolektor` | **Genda mengisi** (klasifikasi) | `kolektor_id, karya_id, peringkat (1..20), skor (0-1), alasan (JSONB list kode), strategi, model_version, dihitung_pada` |
 
 `strategi`: `model` (kolektor punya riwayat beli) atau `cold_start` (belum pernah beli → peringkat berdasarkan keramaian/tren, bukan model personal).
 `model_version`: mis. `klasifikasi-v1`, `clustering-v1` (naik versi tiap training ulang; baris lama diganti, bukan ditumpuk).
@@ -161,6 +162,6 @@ statistik/peringkat, **jangan** membuat prediksi/saran harga; (3) data ini SINTE
 (5) kontrak di atas berubah → ubah README ini dalam PR yang sama dan kabari yang lain.
 
 ## Belum dikerjakan
-Unggah ke R2 (berjalan/selesai — lihat bagian R2) · model klasifikasi & clustering (`genda.md`) · katalog + rekomendasi di backend & Flutter (`vika.md`) ·
+Unggah ke R2 (berjalan/selesai — lihat bagian R2) · model klasifikasi (`genda.md`, Genda) · model clustering (Thoriq) · katalog + rekomendasi di backend & Flutter (`vika.md`) ·
 dashboard seniman (`aulya.md`) · embedding Visual Search per karya (bisa di-join lewat `image_filename`
 ke `ml-visual-search/data/cache/v1_11class_backup/catalog_embeddings.npz`).

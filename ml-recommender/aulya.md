@@ -7,11 +7,11 @@
 Mengaktifkan **dashboard seniman** (`mobile/lib/screens/dashboard/dashboard_screen.dart`, 763 baris, **semuanya hardcode sekarang**) dengan data nyata dari backend:
 informasi yang seharusnya didapat setiap seniman — penjualan, harga, aliran terlaris, siapa pembelinya, dan **pelukis/aliran yang sedang ramai di pasar**.
 
-Pembagian: **Genda** = model (klasifikasi + clustering, mengisi tabel hasil); **Vika** = katalog + rekomendasi kolektor; **kamu** = dashboard seniman. Jangan mengerjakan katalog/rekomendasi.
+Pembagian: **Genda** = model klasifikasi; **Thoriq** = clustering (mengisi `kolektor_segmen`); **Vika** = katalog + rekomendasi kolektor; **kamu** = dashboard seniman. Jangan mengerjakan katalog/rekomendasi.
 
 ### Kamu bisa mulai SEKARANG
-Hampir semua dashboard hanya butuh **data dasar Thoriq** yang sudah ada di Neon (`transaksi`, `karya`, `seniman`, view `v_seniman_metrik_bulanan`). Satu-satunya yang menunggu Genda:
-bagian **"Segmen pembeli"** (tabel `kolektor_segmen`). Sebelum terisi, endpoint-nya mengembalikan `tersedia: false` dan UI menyembunyikan bagian itu.
+Hampir semua dashboard hanya butuh **data dasar Thoriq** yang sudah ada di Neon (`transaksi`, `karya`, `seniman`, view `v_seniman_metrik_bulanan`). Satu-satunya yang menunggu model:
+bagian **"Segmen pembeli"** (tabel `kolektor_segmen`, hasil clustering **Thoriq**). Sebelum terisi, endpoint-nya mengembalikan `tersedia: false` dan UI menyembunyikan bagian itu.
 
 ### Kejujuran & batas scope
 * Data **sintetis**. Beri label kecil "Data contoh" di dashboard. Pelukis = tokoh sungguhan, tetapi penjualan/harganya fiktif.
@@ -127,7 +127,7 @@ State: ubah ke `FutureBuilder`/state dengan **loading** (kerangka/skeleton), **e
 cd mobile ; flutter analyze ; flutter test            # harus bersih
 ```
 Manual di HP: (1) dashboard menampilkan nama & angka seniman demo dari backend; (2) ganti periode 30/90/365 → angka berubah; (3) grafik 12 bulan benar (bulan kosong = 0);
-(4) matikan backend → muncul pesan error + "Coba lagi", bukan angka palsu; (5) bagian "Siapa Pembelimu" tersembunyi saat `tersedia:false` dan muncul setelah Genda mengisi tabel; (6) tombol Unggah Karya, Bottom Nav, Komunitas, Seniman PRO tetap bekerja.
+(4) matikan backend → muncul pesan error + "Coba lagi", bukan angka palsu; (5) bagian "Siapa Pembelimu" tersembunyi saat `tersedia:false` dan muncul setelah Thoriq mengisi tabel `kolektor_segmen`; (6) tombol Unggah Karya, Bottom Nav, Komunitas, Seniman PRO tetap bekerja.
 
 ## 7. Definition of Done
 - [ ] 6 endpoint sesuai bentuk di atas; angka cocok dengan query langsung ke `transaksi`
