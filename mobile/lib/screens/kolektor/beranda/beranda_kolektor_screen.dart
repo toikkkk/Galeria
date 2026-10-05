@@ -1,8 +1,14 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 
+import '../../../config/demo_kolektor.dart';
 import '../../../models/karya.dart';
+import '../../../models/karya_rekomendasi.dart';
 import '../../../models/notifikasi.dart';
+import '../../../services/api_client.dart';
 import '../../../services/katalog_service.dart';
+import '../../../services/rekomendasi_service.dart';
 import '../../../theme/app_theme.dart';
 import '../../../widgets/kolektor/karya_grid_card.dart';
 import '../../../widgets/kolektor/kolektor_bottom_nav.dart';
@@ -53,17 +59,29 @@ class _BerandaKolektorScreenState extends State<BerandaKolektorScreen> {
   /// Mulai dari [sampleKarya] (lokal), diganti begitu fetch API sukses.
   List<Karya> _karya = sampleKarya;
 
+  /// Hasil model rekomendasi; `null` = belum/gagal dimuat (tampil [_karya]).
+  RekomendasiResult? _rekomendasi;
+
+  /// Hasil pencarian dari server (katalog dummy); `null` = pakai filter lokal.
+  List<Karya>? _hasilServer;
+  int _totalServer = 0;
+  Timer? _debounce;
+
   static const _filters = ['Semua', 'Impresionisme', 'Barok', 'Kubisme'];
 
   @override
   void initState() {
     super.initState();
     _loadKatalog();
+    if (kPakaiDataDummy) _loadRekomendasi();
   }
 
   Future<void> _loadKatalog() async {
     try {
-      final karya = await KatalogService().fetchKatalog();
+      final service = KatalogService();
+      final karya = kPakaiDataDummy
+          ? (await service.fetchKatalogDummy()).items
+          : await service.fetchKatalog();
       if (!mounted || karya.isEmpty) return;
       setState(() => _karya = karya);
     } catch (_) {
@@ -71,8 +89,45 @@ class _BerandaKolektorScreenState extends State<BerandaKolektorScreen> {
     }
   }
 
+  /// Rekomendasi dari model; gagal (backend mati / belum dihitung) -> diam-diam
+  /// tetap tampil [_karya].
+  Future<void> _loadRekomendasi() async {
+    try {
+      final service = RekomendasiService();
+      final id = await resolveDemoKolektorId(service);
+      final hasil = await service.fetchRekomendasi(id, topK: 6);
+      if (!mounted || hasil.items.isEmpty) return;
+      setState(() => _rekomendasi = hasil);
+    } catch (_) {
+      // Lihat komentar di atas.
+    }
+  }
+
+  /// Cari ke server (debounce 300 ms) -- 2.000 karya terlalu banyak utk difilter lokal.
+  void _onQueryChanged(String v) {
+    setState(() => _query = v);
+    _debounce?.cancel();
+    if (!kPakaiDataDummy || v.trim().isEmpty) {
+      setState(() => _hasilServer = null);
+      return;
+    }
+    _debounce = Timer(const Duration(milliseconds: 300), () async {
+      try {
+        final page = await KatalogService().fetchKatalogDummy(q: v);
+        if (!mounted || _query != v) return;
+        setState(() {
+          _hasilServer = page.items;
+          _totalServer = page.total;
+        });
+      } catch (_) {
+        if (mounted) setState(() => _hasilServer = null); // jatuh ke filter lokal
+      }
+    });
+  }
+
   @override
   void dispose() {
+    _debounce?.cancel();
     _searchCtrl.dispose();
     super.dispose();
   }
@@ -81,7 +136,7 @@ class _BerandaKolektorScreenState extends State<BerandaKolektorScreen> {
   Widget build(BuildContext context) {
     final searchResults = _query.isEmpty
         ? const <Karya>[]
-        : _karya.where((k) => k.matchesQuery(_query)).toList();
+        : _hasilServer ?? _karya.where((k) => k.matchesQuery(_query)).toList();
     return Scaffold(
       backgroundColor: AppColors.surface,
       appBar: AppBar(
@@ -173,7 +228,7 @@ class _BerandaKolektorScreenState extends State<BerandaKolektorScreen> {
                         Expanded(
                           child: TextField(
                             controller: _searchCtrl,
-                            onChanged: (v) => setState(() => _query = v),
+                            onChanged: _onQueryChanged,
                             style: AppTextStyles.bodySm,
                             decoration: InputDecoration(
                               hintText: 'Cari lukisan, seniman, galeri',
@@ -193,6 +248,7 @@ class _BerandaKolektorScreenState extends State<BerandaKolektorScreen> {
                             onTap: () => setState(() {
                               _searchCtrl.clear();
                               _query = '';
+                              _hasilServer = null;
                             }),
                             customBorder: const CircleBorder(),
                             child: const Padding(
@@ -405,11 +461,19 @@ class _BerandaKolektorScreenState extends State<BerandaKolektorScreen> {
                           style: AppTextStyles.headlineMd,
                         ),
                         Text(
-                          'Berdasarkan preferensimu',
+                          _subjudulRekomendasi,
                           style: AppTextStyles.bodySm.copyWith(
                             color: AppColors.muted,
                           ),
                         ),
+                        if (_rekomendasi != null)
+                          Text(
+                            'Data contoh',
+                            style: AppTextStyles.overline.copyWith(
+                              fontSize: 8.5,
+                              color: AppColors.outline,
+                            ),
+                          ),
                       ],
                     ),
                     InkWell(
@@ -442,7 +506,7 @@ class _BerandaKolektorScreenState extends State<BerandaKolektorScreen> {
                 child: GridView.builder(
                   shrinkWrap: true,
                   physics: const NeverScrollableScrollPhysics(),
-                  itemCount: _karya.length < 4 ? _karya.length : 4,
+                  itemCount: _jumlahGridRekomendasi,
                   gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
                     crossAxisCount: 2,
                     crossAxisSpacing: AppSpacing.sm,
@@ -450,6 +514,16 @@ class _BerandaKolektorScreenState extends State<BerandaKolektorScreen> {
                     childAspectRatio: 0.66,
                   ),
                   itemBuilder: (context, i) {
+                    final rek = _rekomendasi;
+                    if (rek != null) {
+                      final item = rek.items[i];
+                      return KaryaGridCard(
+                        karya: item.karya,
+                        priceLabel: 'Harga',
+                        alasan: item.alasan.isEmpty ? null : item.alasan.first.teks,
+                        onTap: () => widget.onKaryaTap?.call(item.karya),
+                      );
+                    }
                     const overlines = [
                       'Lelang Langsung',
                       'Tawaran Terakhir',
@@ -553,6 +627,18 @@ class _BerandaKolektorScreenState extends State<BerandaKolektorScreen> {
     );
   }
 
+  String get _subjudulRekomendasi => switch (_rekomendasi?.strategi) {
+        'model' => 'Berdasarkan kebiasaan belanjamu',
+        'cold_start' => 'Sedang ramai di GALERIA',
+        _ => 'Berdasarkan preferensimu',
+      };
+
+  int get _jumlahGridRekomendasi {
+    final rek = _rekomendasi;
+    if (rek != null) return rek.items.length < 6 ? rek.items.length : 6;
+    return _karya.length < 4 ? _karya.length : 4;
+  }
+
   List<Widget> _buildSearchResults(List<Karya> results) {
     return [
       Padding(
@@ -562,7 +648,9 @@ class _BerandaKolektorScreenState extends State<BerandaKolektorScreen> {
         child: Text(
           results.isEmpty
               ? 'Tidak ada hasil untuk "$_query"'
-              : '${results.length} hasil untuk "$_query"',
+              : _hasilServer != null && _totalServer > results.length
+                  ? 'Menampilkan ${results.length} dari $_totalServer hasil untuk "$_query"'
+                  : '${results.length} hasil untuk "$_query"',
           style: AppTextStyles.bodySm.copyWith(color: AppColors.muted),
         ),
       ),
