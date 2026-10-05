@@ -32,6 +32,8 @@ onnxscript>=0.1          # dibutuhkan torch>=2.x utk torch.onnx.export
 # PENTING: opencv-python (BUKAN opencv-python-headless, itu tanpa imshow/GUI)
 opencv-python<4.11       # dipin -- versi lebih baru butuh numpy>=2 (lihat catatan numpy di atas)
 
+# Model v3 (notebooks/v3_clip/) -- CLIP pretrained frozen + linear-probe head
+open-clip-torch>=2.24
+
 # Opsional (belum dipakai):
 # torchmetrics>=1.3    # metrik alternatif (sklearn sudah cukup)
-# open-clip-torch>=2.24  # baseline CLIP zero-shot (baseline_clip di config)
