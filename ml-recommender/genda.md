@@ -53,6 +53,53 @@ Patokan sanity (`scripts/cek_sinyal_data.py`, GBM default): AUC ≈ 0,79–0,80,
 **Baseline wajib dibandingkan:** (a) acak, (b) "populer" = urut `gaya_n_terjual_30hari`/`seniman_n_terjual_30hari`, (c) aturan sederhana (mis. `match_porsi_gaya_ini` + `match_harga_dalam_rentang`),
 (d) Logistic Regression (di-scale), (e) `HistGradientBoostingClassifier`. Boleh LightGBM/XGBoost **hanya jika** ditambahkan ke `requirements.txt` ml-recommender dan tidak perlu dipasang di backend.
 
+### Catatan pemilihan metode (hasil EDA `notebooks/01_klasifikasi.ipynb`, 2026-10)
+
+EDA sudah dijalankan penuh atas `klasifikasi_pembelian.csv` (struktur grup valid 0 masalah, split
+kronologis tidak tumpang-tindih, NaN 14,3% terbukti terstruktur -- 100% di baris "pembelian pertama"
+vs 0% di baris lain, korelasi tinggi antar fitur harga r=0,97/0,94/0,88). Temuan ini **mengonfirmasi**
+(bukan mengubah) 5 baseline wajib di atas sudah tepat secara teknis -- dicatat di sini alasan/tujuan/
+cara kerja tiap metode supaya tidak perlu dijelaskan ulang nanti saat menulis `LAPORAN_MODEL.md`.
+
+1. **Acak** -- *tujuan:* patokan paling dasar, kalau model tidak mengalahkan ini berarti gagal total.
+   *Cara kerja:* skor acak ke tiap kandidat dalam grup. HitRate@1 teoritis = 1/5 = 0,20 (1 positif dari
+   5 kandidat/grup).
+2. **"Populer"** (urut `gaya_n_terjual_30hari`/`seniman_n_terjual_30hari`) -- *tujuan:* uji apakah
+   rekomendasi tanpa personalisasi (ikut tren umum) sudah cukup. *Cara kerja:* ranking murni dari
+   angka tren, tidak melihat riwayat kolektor sama sekali. *Temuan EDA:* `gaya_porsi_penjualan_30hari`
+   HAMPIR TIDAK beda antara `dibeli=1` vs `0` (selisih rata-rata -0,009) -- indikasi awal baseline ini
+   lemah, tapi harus dibuktikan formal lewat metrik ranking, bukan cuma EDA univariat.
+3. **Aturan sederhana** (`match_porsi_gaya_ini` + `match_harga_dalam_rentang`) -- *tujuan:* uji apakah
+   rumus manual tanpa training sudah cukup bagus (kalau iya, model kompleks tidak perlu). *Cara kerja:*
+   skor = kombinasi tetap dari 2 fitur match itu, tanpa `.fit()` apa pun. *Temuan EDA:*
+   `match_harga_dalam_rentang` selisih rata-rata +0,25 antara dibeli/tidak -- baseline ini berpotensi
+   kompetitif, bagus dijadikan pembanding serius.
+4. **Logistic Regression** (di-scale) -- *tujuan:* baseline model linear yang "belajar" (beda dari #1-3
+   yang tanpa training) -- kalau LogReg saja sudah cukup, model non-linear tidak perlu (prinsip model
+   paling sederhana yang memadai). *Cara kerja:* bobot linear per fitur -> skor = kombinasi linear fitur
+   (setelah preprocessing) -> sigmoid -> diurutkan per grup. *Konsekuensi dari temuan EDA (wajib
+   dikerjakan sebelum `.fit()`):* (a) imputasi + kolom indikator `*_is_na` utk kolom ber-NaN -- LogReg
+   tidak tahan NaN sama sekali, beda dari HGB; (b) one-hot utk `karya_gaya`/`seniman_level_reputasi`;
+   (c) `StandardScaler` semua fitur numerik -- LogReg sensitif skala, pohon tidak; (d) korelasi tinggi
+   antar fitur harga kolektor (r=0,97) berisiko bikin koefisien tidak stabil -- regularisasi L2 default
+   scikit-learn sudah menangani ini, tidak perlu konfigurasi tambahan.
+5. **`HistGradientBoostingClassifier`** -- *tujuan:* kandidat model UTAMA, diharapkan menangkap pola
+   non-linear & interaksi antar fitur yang tidak bisa ditangkap LogReg. *Cara kerja:* ensemble banyak
+   decision tree dangkal dibangun bertahap (boosting) -- tiap tree baru belajar memperbaiki residual
+   tree sebelumnya; versi scikit-learn ini pakai histogram binning (makanya "Hist") supaya cepat di data
+   besar. *Kecocokan dgn temuan EDA:* satu-satunya dari 5 metode yang HAMPIR TIDAK butuh preprocessing --
+   NaN ditangani native, `categorical_features="from_dtype"` menangani 2 kolom kategorikal langsung,
+   dan tidak terganggu multicollinearity/skew fitur harga (beda dari LogReg di #4).
+
+**Catatan evaluasi:** karena dievaluasi sebagai *ranking per grup* (HitRate@K/MRR/NDCG@3), bukan
+klasifikasi biner biasa, model **tidak perlu dikalibrasi** (`predict_proba` tidak harus akurat sbg
+probabilitas sungguhan) -- yang penting cuma urutan relatif skor di dalam 1 grup benar. Jangan buang
+waktu di `CalibratedClassifierCV`, di luar scope yang dibutuhkan.
+
+**Soal LightGBM/XGBoost (opsional, diizinkan di atas):** TIDAK disarankan untuk dataset ini (cuma 7.000
+baris) -- di skala ini performanya biasanya setara `HistGradientBoostingClassifier` bawaan sklearn,
+tapi nambah dependency baru tanpa manfaat jelas. Baru pertimbangkan kalau dataset membesar signifikan.
+
 **Analisis yang diharapkan:** feature importance (permutation), ablation kelompok fitur (riwayat kolektor / karya / kecocokan / tren seniman — apakah fitur tren `seniman_lonjakan_30hari` berguna?),
 analisis kesalahan per `seniman_level_reputasi`, per `karya_gaya`, dan per segmen (pakai `kolektor_label_asli.csv` **hanya untuk analisis**).
 
