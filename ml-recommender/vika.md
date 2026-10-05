@@ -8,13 +8,13 @@ Menyambungkan hasil pemodelan ke **bagian katalog kolektor**:
 1. **Katalog 2.000 karya dummy** tampil di app (daftar, filter, pencarian) lengkap dengan **gambar dari Cloudflare R2**.
 2. Bagian **"Rekomendasi untukmu"** di beranda kolektor menampilkan karya yang direkomendasikan model, lengkap dengan **alasan** ("Sesuai aliran favoritmu: Impressionism").
 
-Pembagian: **Genda** = model + mengisi tabel hasil; **Aulya** = dashboard seniman; **kamu** = katalog + rekomendasi. Jangan mengerjakan dashboard.
+Pembagian: **Genda** = model klasifikasi (mengisi `rekomendasi_kolektor`); **Thoriq** = clustering (mengisi `kolektor_segmen`); **Aulya** = dashboard seniman; **kamu** = katalog + rekomendasi. Jangan mengerjakan dashboard.
 
 ### Yang bisa dikerjakan kapan
 | Bagian | Mulai | Bergantung pada |
 |---|---|---|
 | Gambar dari R2 di Flutter, `GET /api/katalog-dummy`, layar katalog | **Sekarang** | data dasar Thoriq (sudah ada) |
-| `GET /api/rekomendasi/...` + UI "Rekomendasi untukmu" | Kerangka sekarang (pakai mock, bagian 5), data asli **setelah Genda mengisi** `rekomendasi_kolektor` | tabel hasil Genda |
+| `GET /api/rekomendasi/...` + UI "Rekomendasi untukmu" | Kerangka sekarang (pakai mock, bagian 5), data asli **setelah Genda mengisi** `rekomendasi_kolektor` | tabel hasil Genda (klasifikasi) |
 
 ### Kejujuran & batas scope
 * Data **sintetis** (kolektor, transaksi, harga). Beri label kecil "Data contoh" di UI yang menampilkannya. Pelukis di katalog tokoh sungguhan; harga/riwayatnya fiktif.
@@ -51,6 +51,7 @@ Respons = bentuk `KatalogPage` yang sudah ada, ditambah `image_url` dan `seniman
 
 **`GET /api/rekomendasi/{kolektor_id}?top_k=10`** — baca `rekomendasi_kolektor` JOIN `karya` JOIN `seniman` JOIN `kolektor_segmen`, urut `peringkat`, `LIMIT top_k` (maks 20).
 Bentuk JSON **persis** seperti di README (kontrak). `alasan`: ubah kode → teks Indonesia dengan satu dict di backend (7 kode di README; `gaya_favorit` memuat nama aliran).
+`segmen` boleh `null` bila `kolektor_segmen` belum diisi (clustering Thoriq) — jangan error, cukup sembunyikan label segmen di UI.
 Perilaku: `kolektor_id` bukan UUID / tidak ada → 404; tabel hasil belum terisi untuk kolektor itu → **503** dengan pesan "Rekomendasi belum dihitung" (Flutter akan diam-diam jatuh ke katalog biasa); jangan 500.
 
 Daftarkan router baru di `main.py`. Tambahkan skema di `backend/schemas/rekomendasi.py`.
