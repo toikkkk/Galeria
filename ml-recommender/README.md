@@ -168,6 +168,30 @@ statistik/peringkat, **jangan** membuat prediksi/saran harga; (3) data ini SINTE
 (4) kerja di branch masing-masing, commit tanpa baris `Co-Authored-By` (agar Claude tidak tercatat sebagai kontributor GitHub), jangan commit `.env`/`.venv`;
 (5) kontrak di atas berubah → ubah README ini dalam PR yang sama dan kabari yang lain.
 
+## Bentuk respons dashboard seniman (Aulya — `backend/routers/dashboard_seniman.py`)
+Statistik deskriptif atas data dummy; jendela waktu dihitung dari `REKOMENDASI_WAKTU_ACUAN`, bukan `now()`. Uang = integer Rupiah, persen = angka biasa (`12.5`), `null` bila pembagi 0.
+`seniman_id` bukan UUID / tidak ada → 404.
+
+| Endpoint | Isi |
+|---|---|
+| `GET /api/dashboard/demo-seniman` | `[{"id","display_name","level_reputasi","n_terjual"}]`, urut terbanyak terjual |
+| `GET /api/dashboard/seniman/{id}/ringkasan?periode=30\|90\|365` | lihat contoh di bawah; `periode` lain → 422 |
+| `GET /api/dashboard/seniman/{id}/penjualan-bulanan?bulan=12` | deret LENGKAP N bulan (bulan kosong = 0): `[{"bulan":"2026-09-01","n_terjual","omzet_idr","harga_rata2_idr","n_pembeli_unik","gaya_terlaris"\|null}]` |
+| `GET /api/dashboard/seniman/{id}/aliran` | `[{"style_name","n_terjual","omzet_idr","harga_rata2_idr","harga_pasar_rata2_idr","selisih_pct"}]`, urut `n_terjual` turun |
+| `GET /api/dashboard/seniman/{id}/segmen-pembeli` | `{"tersedia":true,"items":[{"segmen_id","segmen_nama","n_pembeli","porsi_pct","deskripsi"}]}`; tabel `kolektor_segmen` kosong → `{"tersedia":false,"items":[]}` |
+| `GET /api/dashboard/pasar/tren` | `{"seniman_ramai":[{"seniman_id","display_name","n_terjual_30hari","lonjakan","harga_rata2_30hari_idr"}],"aliran_ramai":[{"style_name","n_terjual_30hari","porsi_penjualan_pct","harga_rata2_30hari_idr"}]}` |
+
+```json
+// ringkasan
+{ "seniman": {"id": "uuid", "display_name": "Vincent Van Gogh", "level_reputasi": "mapan"},
+  "periode_hari": 30, "n_terjual": 9, "omzet_idr": 1201300000, "komisi_platform_idr": 120130000,
+  "pendapatan_bersih_idr": 1081170000, "harga_rata2_idr": 133477778, "n_pembeli_unik": 9,
+  "karya_tersedia": 17, "karya_terjual_total": 204,
+  "perubahan_pct": {"n_terjual": -40.0, "omzet_idr": -40.1} }
+```
+`perubahan_pct` = periode ini vs periode sama persis sebelumnya (`null` bila periode sebelumnya kosong; data dummy mulai 2024-11, jadi periode 365 hari bisa bernilai ratusan persen). `lonjakan = (n30+1) / ((n90-n30)/2 + 1)` — rumus yang sama dengan fitur model.
+`seniman_ramai` = 10 teratas (urut `n_terjual_30hari`, lalu `lonjakan`). Mobile: `mobile/lib/services/dashboard_service.dart`; seniman demo = seniman pertama dari `demo-seniman` (override `--dart-define=DEMO_SENIMAN_ID=<uuid>`).
+
 ## Belum dikerjakan
 Unggah ke R2 (berjalan/selesai — lihat bagian R2) · model klasifikasi (`genda.md`, Genda) · katalog + rekomendasi di backend & Flutter (`vika.md`) ·
 dashboard seniman (`aulya.md`) · embedding Visual Search per karya (bisa di-join lewat `image_filename`
