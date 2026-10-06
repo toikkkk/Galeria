@@ -9,6 +9,7 @@ __pycache__/
 venv/
 env/
 .ipynb_checkpoints/
+*.egg-info/
 
 # --- ml-visual-search/ -- dataset & artefak besar (JANGAN di-commit) -------
 # WikiArt = lisensi riset non-komersial + ~500 MB x2 (raw+processed). Bagikan
@@ -48,6 +49,9 @@ optuna_study.db
 # --- Backend (FastAPI) ------------------------------------------------------
 backend/.env
 backend/**/__pycache__/
+
+# --- ml-recommender/ -- export HTML sisa troubleshooting notebook (bukan artefak resmi) --
+ml-recommender/notebooks/*_preview.html
 
 # --- Mobile (Flutter) -------------------------------------------------------
 # Flutter's own `mobile/.gitignore` (dari `flutter create`) sudah cover
