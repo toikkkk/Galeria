@@ -100,6 +100,53 @@ waktu di `CalibratedClassifierCV`, di luar scope yang dibutuhkan.
 baris) -- di skala ini performanya biasanya setara `HistGradientBoostingClassifier` bawaan sklearn,
 tapi nambah dependency baru tanpa manfaat jelas. Baru pertimbangkan kalau dataset membesar signifikan.
 
+### Catatan hasil akhir & model terpilih (notebook dieksekusi penuh, 2026-10)
+
+**Hasil `HitRate@1` di data `test` (dilaporkan sekali, sesuai aturan #5 di atas):**
+
+| Metode | HitRate@1 |
+|---|---|
+| Acak | 0,186 |
+| Populer | 0,224 |
+| Aturan sederhana | **0,624** |
+| Logistic Regression | 0,495 |
+| HistGradientBoostingClassifier | 0,481 |
+
+**Pembuktian statistik (bootstrap 2.000 resampling):** selisih Aturan sederhana vs HGB = +0,143,
+CI 95% = [0,071 ; 0,214], p = 0,000 -- signifikan, bukan kebetulan sampling.
+
+**⚠️ Temuan penting (jujur, bertentangan dgn ekspektasi awal di bagian 6):** baseline "Aturan
+sederhana" (2 fitur, tanpa training) **mengungguli** HGB & LogReg pada metrik ini. Diselidiki akar
+penyebabnya: rumus utilitas pembangkit data (`src/generate.py`) = *kecocokan aliran + kecocokan harga
+vs anggaran + sensitivitas tren + popularitas* -- 2 fitur yang dipakai Aturan sederhana
+(`match_porsi_gaya_ini`, `match_harga_dalam_rentang`) adalah proxy LANGSUNG dari 2 komponen utama
+rumus itu. Jadi baseline ini menang karena **meniru balik formula generator sintetis**, bukan karena
+pola yang terbukti general -- keunggulannya **tidak boleh diasumsikan bertahan** di data pembelian
+nyata (yang tidak punya formula buatan semacam ini).
+
+**Keputusan model utk produksi (`src/inference.py` / Tugas 2-3): tetap `HistGradientBoostingClassifier`**,
+BUKAN Aturan sederhana, dengan alasan:
+1. Aturan sederhana cuma 2 angka dijumlah -> rawan banyak dasi/tie saat kandidat banyak, tidak
+   menghasilkan skor probabilistik halus yang dibutuhkan ranking top-K per kolektor.
+2. Sifat tekniknya cocok dgn temuan EDA (NaN bermakna 14,3%, 2 kolom kategorikal, korelasi fitur
+   harga r=0,97) -- lihat poin 5 di tabel metode atas.
+3. Permutation importance membuktikan HGB tetap "menemukan sendiri" 3 fitur `match_*` sebagai yang
+   paling penting (lihat di bawah) -- jadi tidak kehilangan sinyal yang membuat Aturan sederhana
+   menang, hanya tidak overfit HANYA ke situ.
+
+**Fitur terpenting (permutation importance, HGB):**
+1. `match_rasio_harga_vs_rata2` (0,086)
+2. `match_selisih_log_harga_vs_median` (0,038)
+3. `match_porsi_gaya_ini` (0,026)
+
+Kelompok "tren seniman & aliran" (12 fitur) terbukti via *ablation* justru **menurunkan** performa --
+catatan ini relevan utk `LAPORAN_MODEL.md` bagian keterbatasan.
+
+**Dampak ke Definition of Done (bagian 6):** item "mengalahkan baseline aturan sederhana" **tidak
+tercapai** pada metrik HitRate@1 test -- dicatat apa adanya, bukan disembunyikan. Keputusan tetap
+memakai HGB di produksi didasarkan pada analisis akar penyebab di atas (generalisasi), bukan pada
+metrik tunggal ini. Jelaskan ini secara eksplisit di `LAPORAN_MODEL.md` dan saat presentasi.
+
 **Analisis yang diharapkan:** feature importance (permutation), ablation kelompok fitur (riwayat kolektor / karya / kecocokan / tren seniman — apakah fitur tren `seniman_lonjakan_30hari` berguna?),
 analisis kesalahan per `seniman_level_reputasi`, per `karya_gaya`, dan per segmen (pakai `kolektor_label_asli.csv` **hanya untuk analisis**).
 
@@ -151,7 +198,9 @@ Periksa manual 3 kolektor (beda tingkat belanja): apakah alasan yang tercetak ma
 
 ## 6. Definition of Done
 - [ ] `notebooks/01_klasifikasi.ipynb` rapi dan bisa dijalankan ulang dari awal
-- [ ] Model klasifikasi **mengalahkan baseline "populer" dan aturan sederhana** pada val dan test (tabel di `LAPORAN_MODEL.md`)
+- [x] Model klasifikasi **mengalahkan baseline "populer"** pada val dan test (tabel di `LAPORAN_MODEL.md`)
+- [ ] ~~Mengalahkan baseline "aturan sederhana"~~ -- **tidak tercapai** pada HitRate@1 test (0,481 vs 0,624).
+      Akar penyebab & keputusan tetap pakai HGB di produksi: lihat "Catatan hasil akhir & model terpilih" di bagian 2.
 - [ ] `models/*.joblib` + `LAPORAN_MODEL.md` (termasuk keterbatasan sintetis) ter-commit, ukuran kecil
 - [ ] Uji md5 refactor lolos; uji paritas fitur inferensi vs CSV lolos
 - [ ] `scripts/hitung_rekomendasi.py` dijalankan; query kriteria bagian 4 lolos; tabel Neon terisi
