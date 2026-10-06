@@ -13,6 +13,11 @@ import 'package:http_parser/http_parser.dart';
 /// mobile/docs/SETUP_ANDROID.md).
 const kApiBaseUrl = 'http://127.0.0.1:8000';
 
+/// `true` = katalog & rekomendasi dari data dummy (`GET /api/katalog-dummy`,
+/// 2.000 karya, gambar R2). `false` = katalog lama (`GET /api/katalog`, 8
+/// karya Visual Search). Ganti: `--dart-define=DATA_DUMMY=false`.
+const kPakaiDataDummy = bool.fromEnvironment('DATA_DUMMY', defaultValue: true);
+
 /// Dilempar kalau request ke backend gagal (network error ATAU response
 /// bukan 2xx) -- caller (services/screens) tangkap ini utk fallback data
 /// lokal / tampilkan pesan error, JANGAN biarkan app crash.
