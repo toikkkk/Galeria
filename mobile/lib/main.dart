@@ -1,5 +1,9 @@
+import 'dart:io';
+
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
+
+import 'services/digital_art_identity_service.dart';
 
 import 'models/karya.dart';
 import 'models/lelang.dart';
@@ -48,6 +52,21 @@ import 'theme/app_theme.dart';
 
 void main() {
   runApp(const GaleriaApp());
+}
+
+/// Routing hasil verifikasi Digital Art Identity (Art-to-Art + Art-to-AI)
+/// berdasarkan `rekomendasi_status` ASLI dari backend -- lihat
+/// DigitalArtIdentityService._decide_status (backend/services/
+/// digital_art_identity_service.py) untuk aturan lengkapnya.
+void _goToHasilVerifikasi(BuildContext context, VerificationResult result) {
+  switch (result.rekomendasiStatus) {
+    case 'ditolak':
+      context.go('/karya-ditolak', extra: result);
+    case 'perlu_ditinjau':
+      context.go('/karya-perlu-ditinjau', extra: result);
+    default: // 'terverifikasi'
+      context.go('/karya-terverifikasi', extra: result);
+  }
 }
 
 /// Handler bersama untuk bottom-nav Kolektor (0=Beranda, 1=Lelang,
@@ -165,22 +184,27 @@ final _router = GoRouter(
       path: '/unggah-karya',
       builder: (context, state) => UnggahKaryaScreen(
         onBack: () => context.pop(),
-        onSubmitted: () => context.go('/memverifikasi-keaslian'),
+        onSubmitted: (data) => context.go('/memverifikasi-keaslian', extra: data),
       ),
     ),
     GoRoute(
       path: '/memverifikasi-keaslian',
-      builder: (context, state) => MemverifikasiKeaslianScreen(
-        // TODO(ml-digital-art-identity): harusnya branch ke
-        // /karya-terverifikasi, /karya-ditolak, atau /karya-perlu-ditinjau
-        // sesuai hasil verifikasi asli -- sementara selalu ke jalur sukses
-        // (demo/UI-only, backend verifikasi belum ada).
-        onDone: () => context.go('/karya-terverifikasi'),
-      ),
+      builder: (context, state) {
+        final data = state.extra as ({File image, String karyaId});
+        return MemverifikasiKeaslianScreen(
+          image: data.image,
+          karyaId: data.karyaId,
+          // Branch ke layar hasil sesuai `rekomendasi_status` ASLI dari
+          // backend (lihat DigitalArtIdentityService._decide_status) --
+          // bukan selalu ke jalur sukses lagi.
+          onDone: (result) => _goToHasilVerifikasi(context, result),
+        );
+      },
     ),
     GoRoute(
       path: '/karya-terverifikasi',
       builder: (context, state) => KaryaTerverifikasiScreen(
+        result: state.extra as VerificationResult?,
         onClose: () => context.go('/dashboard'),
         onLihatGaleri: () => context.go('/dashboard'),
         onUnggahLagi: () => context.go('/unggah-karya'),
@@ -189,6 +213,7 @@ final _router = GoRouter(
     GoRoute(
       path: '/karya-ditolak',
       builder: (context, state) => KaryaDitolakScreen(
+        result: state.extra as VerificationResult?,
         onBack: () => context.go('/dashboard'),
         onAjukanBanding: () => context.go('/dashboard'),
       ),
@@ -196,6 +221,7 @@ final _router = GoRouter(
     GoRoute(
       path: '/karya-perlu-ditinjau',
       builder: (context, state) => KaryaPerluDitinjauScreen(
+        result: state.extra as VerificationResult?,
         onClose: () => context.go('/dashboard'),
         onAjukanPeninjauan: () => context.go('/dashboard'),
         onKembali: () => context.go('/dashboard'),

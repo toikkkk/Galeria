@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../../../models/karya.dart';
 import '../../../theme/app_theme.dart';
+import '../../../widgets/karya_image.dart';
 import '../../../widgets/kolektor/karya_grid_card.dart';
 
 /// Konversi dari
@@ -54,7 +55,7 @@ class DetailKaryaScreen extends StatelessWidget {
         children: [
           AspectRatio(
             aspectRatio: 4 / 5,
-            child: Image.asset(karya.assetPath, fit: BoxFit.cover),
+            child: KaryaImage(karya),
           ),
           Padding(
             padding: const EdgeInsets.symmetric(
