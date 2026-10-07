@@ -1,6 +1,10 @@
+import 'dart:io';
+
 import 'package:flutter/material.dart';
+import 'package:image_picker/image_picker.dart';
 
 import '../../models/karya.dart';
+import '../../services/katalog_service.dart';
 import '../../theme/app_theme.dart';
 
 /// Konversi dari
@@ -10,13 +14,25 @@ import '../../theme/app_theme.dart';
 /// ukuran fisik yang dipakai fitur AR Simulation nanti (lihat CLAUDE.md,
 /// bukan hasil model, input manual seniman saat upload).
 ///
-/// TODO(backend): wire ke endpoint upload karya + image picker asli, dan ke
-/// alur Digital Art Identity (verifikasi keaslian) setelah submit.
+/// Submit sekarang BENAR-BENAR membuat baris `karya` di database
+/// (`POST /api/karya`, lihat [KatalogService.createKarya]), baru lanjut ke
+/// [MemverifikasiKeaslianScreen] utk verifikasi RESMI
+/// (`POST /api/karya/{id}/verify`) -- bukan lagi mode pratinjau.
+///
+/// CATATAN JUJUR (lihat backend/routers/karya_upload.py): "Seniman Demo"/
+/// "Studio Pribadi Anda" di bawah adalah PLACEHOLDER pengganti identitas
+/// user login -- Auth belum dibangun (lihat CLAUDE.md). Field lain (media,
+/// tahun, cerita, harga lelang) masih UI-only, belum dikirim ke backend
+/// (skema `karya` saat ini belum punya kolom-kolom itu).
 class UnggahKaryaScreen extends StatefulWidget {
   const UnggahKaryaScreen({super.key, required this.onBack, required this.onSubmitted});
 
   final VoidCallback onBack;
-  final VoidCallback onSubmitted;
+
+  /// Dipanggil setelah karya berhasil dibuat di database -- membawa file
+  /// foto asli + `karya_id` baru, supaya layar verifikasi berikutnya
+  /// memanggil endpoint verifikasi RESMI (bukan pratinjau).
+  final ValueChanged<({File image, String karyaId})> onSubmitted;
 
   @override
   State<UnggahKaryaScreen> createState() => _UnggahKaryaScreenState();
@@ -28,6 +44,84 @@ class _UnggahKaryaScreenState extends State<UnggahKaryaScreen> {
   bool _originalChecked = true;
   bool _termsChecked = true;
   bool _submitting = false;
+  File? _mainPhoto;
+
+  final _titleCtrl = TextEditingController(text: 'Sang Putri Mahkota Renaisans');
+  // UI pakai label "Panjang"/"Lebar" (desain Stitch asli), skema backend
+  // `karya.tinggi_cm`/`karya.lebar_cm` (lihat CLAUDE.md) -- dipetakan
+  // "Panjang" -> tinggi_cm, "Lebar" -> lebar_cm, lihat pemanggilan
+  // createKarya() di _submit().
+  final _panjangCtrl = TextEditingController(text: '120');
+  final _lebarCtrl = TextEditingController(text: '90');
+  final _hargaCtrl = TextEditingController(text: '120.000.000');
+
+  @override
+  void dispose() {
+    _titleCtrl.dispose();
+    _panjangCtrl.dispose();
+    _lebarCtrl.dispose();
+    _hargaCtrl.dispose();
+    super.dispose();
+  }
+
+  Future<void> _submit() async {
+    if (_mainPhoto == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Pilih foto utama karya terlebih dahulu.')),
+      );
+      return;
+    }
+    final panjang = double.tryParse(_panjangCtrl.text.trim());
+    final lebar = double.tryParse(_lebarCtrl.text.trim());
+    // Harga ditampilkan dgn pemisah ribuan ("120.000.000") -- buang titiknya
+    // sebelum di-parse ke integer murni (format yg dikirim backend).
+    final harga = int.tryParse(_hargaCtrl.text.replaceAll('.', '').trim());
+    if (_titleCtrl.text.trim().isEmpty || panjang == null || lebar == null || harga == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Judul, ukuran, dan harga harus diisi dengan angka yang valid.')),
+      );
+      return;
+    }
+
+    setState(() => _submitting = true);
+    try {
+      final karyaId = await KatalogService().createKarya(
+        image: _mainPhoto!,
+        title: _titleCtrl.text.trim(),
+        // PLACEHOLDER -- lihat catatan jujur di docstring kelas ini (Auth
+        // belum ada, belum tahu siapa seniman yang sedang login).
+        artistName: 'Seniman GALERIA (Demo)',
+        galleryName: 'Studio Pribadi Seniman',
+        styleName: _genre,
+        priceIdr: harga,
+        // "Panjang" (UI) -> tinggi_cm, "Lebar" (UI) -> lebar_cm (lihat
+        // komentar di deklarasi controller).
+        tinggiCm: panjang,
+        lebarCm: lebar,
+      );
+      if (!mounted) return;
+      widget.onSubmitted((image: _mainPhoto!, karyaId: karyaId));
+    } catch (e) {
+      if (!mounted) return;
+      setState(() => _submitting = false);
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Gagal membuat karya: $e')),
+      );
+    }
+  }
+
+  Future<void> _pickMainPhoto() async {
+    try {
+      final XFile? picked = await ImagePicker().pickImage(source: ImageSource.gallery);
+      if (picked == null || !mounted) return;
+      setState(() => _mainPhoto = File(picked.path));
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Gagal membuka galeri: $e')),
+      );
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -77,9 +171,14 @@ class _UnggahKaryaScreenState extends State<UnggahKaryaScreen> {
               children: [
                 Text('DOKUMENTASI KARYA',
                     style: AppTextStyles.overline.copyWith(fontSize: 10.5)),
-                Text('3 dari 5 Foto',
+                Text(_mainPhoto == null ? 'Belum ada foto' : '1 foto dipilih',
                     style: AppTextStyles.bodySm.copyWith(color: AppColors.muted)),
               ],
+            ),
+            const SizedBox(height: 2),
+            Text(
+              'Foto UTAMA ini yang akan benar-benar diperiksa sistem Art-to-Art & Art-to-AI.',
+              style: AppTextStyles.bodySm.copyWith(fontSize: 11, color: AppColors.muted),
             ),
             const SizedBox(height: AppSpacing.xs),
             SizedBox(
@@ -87,9 +186,12 @@ class _UnggahKaryaScreenState extends State<UnggahKaryaScreen> {
               child: ListView(
                 scrollDirection: Axis.horizontal,
                 children: [
-                  _photoThumb(sampleKarya[3].assetPath, label: 'UTAMA'),
-                  const SizedBox(width: AppSpacing.sm),
-                  _photoThumb(sampleKarya[3].assetPath, deletable: true),
+                  GestureDetector(
+                    onTap: _pickMainPhoto,
+                    child: _mainPhoto == null
+                        ? _addPhotoBtn(label: '+ Pilih Foto Utama')
+                        : _photoThumbFile(_mainPhoto!, label: 'UTAMA'),
+                  ),
                   const SizedBox(width: AppSpacing.sm),
                   _photoThumb(sampleKarya[3].assetPath, deletable: true),
                   const SizedBox(width: AppSpacing.sm),
@@ -99,7 +201,7 @@ class _UnggahKaryaScreenState extends State<UnggahKaryaScreen> {
             ),
             const SizedBox(height: AppSpacing.lg),
             _label('Judul Karya', required: true, hint: 'Sesuai dokumen keaslian'),
-            _textField(initial: 'Sang Putri Mahkota Renaisans'),
+            _textField(controller: _titleCtrl),
             const SizedBox(height: AppSpacing.md),
             Row(
               children: [
@@ -108,7 +210,7 @@ class _UnggahKaryaScreenState extends State<UnggahKaryaScreen> {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       _label('Panjang (cm)', required: true),
-                      _textField(initial: '120', suffix: 'cm'),
+                      _textField(controller: _panjangCtrl, suffix: 'cm'),
                     ],
                   ),
                 ),
@@ -118,7 +220,7 @@ class _UnggahKaryaScreenState extends State<UnggahKaryaScreen> {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       _label('Lebar (cm)', required: true),
-                      _textField(initial: '90', suffix: 'cm'),
+                      _textField(controller: _lebarCtrl, suffix: 'cm'),
                     ],
                   ),
                 ),
@@ -208,7 +310,7 @@ class _UnggahKaryaScreenState extends State<UnggahKaryaScreen> {
                     child: Padding(
                       padding: const EdgeInsets.symmetric(horizontal: AppSpacing.sm),
                       child: TextField(
-                        controller: TextEditingController(text: '120.000.000'),
+                        controller: _hargaCtrl,
                         style: AppTextStyles.labelMd.copyWith(fontSize: 15),
                         decoration: const InputDecoration(border: InputBorder.none, isDense: true),
                       ),
@@ -286,13 +388,7 @@ class _UnggahKaryaScreenState extends State<UnggahKaryaScreen> {
             ),
             const SizedBox(height: AppSpacing.lg),
             ElevatedButton(
-              onPressed: (_originalChecked && _termsChecked && !_submitting)
-                  ? () async {
-                      setState(() => _submitting = true);
-                      await Future.delayed(const Duration(milliseconds: 900));
-                      if (context.mounted) widget.onSubmitted();
-                    }
-                  : null,
+              onPressed: (_originalChecked && _termsChecked && !_submitting) ? _submit : null,
               child: _submitting
                   ? const SizedBox(
                       height: 18,
@@ -322,6 +418,39 @@ class _UnggahKaryaScreenState extends State<UnggahKaryaScreen> {
       ),
     );
   }
+
+  Widget _photoThumbFile(File file, {String? label}) => Stack(
+        children: [
+          ClipRRect(
+            borderRadius: BorderRadius.circular(AppRadius.md),
+            child: Image.file(file, width: 110, height: 130, fit: BoxFit.cover),
+          ),
+          if (label != null)
+            Positioned(
+              top: 8,
+              left: 8,
+              child: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                decoration: BoxDecoration(
+                  color: AppColors.accent,
+                  borderRadius: BorderRadius.circular(AppRadius.xs),
+                ),
+                child: Text(label,
+                    style: const TextStyle(
+                        color: Colors.white, fontSize: 9, fontWeight: FontWeight.bold)),
+              ),
+            ),
+          Positioned(
+            bottom: 8,
+            right: 8,
+            child: CircleAvatar(
+              radius: 13,
+              backgroundColor: Colors.white.withValues(alpha: 0.9),
+              child: const Icon(Icons.edit_outlined, size: 14),
+            ),
+          ),
+        ],
+      );
 
   Widget _photoThumb(String asset, {String? label, bool deletable = false}) => Stack(
         children: [
@@ -356,7 +485,7 @@ class _UnggahKaryaScreenState extends State<UnggahKaryaScreen> {
         ],
       );
 
-  Widget _addPhotoBtn() => Container(
+  Widget _addPhotoBtn({String label = '+ Tambah Foto'}) => Container(
         width: 110,
         height: 130,
         decoration: BoxDecoration(
@@ -373,7 +502,7 @@ class _UnggahKaryaScreenState extends State<UnggahKaryaScreen> {
               child: const Icon(Icons.add_photo_alternate_outlined, size: 18),
             ),
             const SizedBox(height: 6),
-            Text('+ Tambah Foto',
+            Text(label,
                 style: AppTextStyles.labelSm.copyWith(fontSize: 11), textAlign: TextAlign.center),
             Text('(Maks. 5 Foto)',
                 style: AppTextStyles.bodySm.copyWith(fontSize: 9, color: AppColors.muted)),
@@ -398,7 +527,7 @@ class _UnggahKaryaScreenState extends State<UnggahKaryaScreen> {
         ),
       );
 
-  Widget _textField({String? initial, String? suffix}) => Container(
+  Widget _textField({String? initial, String? suffix, TextEditingController? controller}) => Container(
         decoration: BoxDecoration(
           color: Colors.white,
           borderRadius: BorderRadius.circular(AppRadius.md),
@@ -406,7 +535,7 @@ class _UnggahKaryaScreenState extends State<UnggahKaryaScreen> {
         ),
         padding: const EdgeInsets.symmetric(horizontal: AppSpacing.sm),
         child: TextField(
-          controller: initial != null ? TextEditingController(text: initial) : null,
+          controller: controller ?? (initial != null ? TextEditingController(text: initial) : null),
           style: AppTextStyles.bodyMd,
           decoration: InputDecoration(
             border: InputBorder.none,

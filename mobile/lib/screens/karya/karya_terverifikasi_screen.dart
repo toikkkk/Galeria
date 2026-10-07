@@ -1,13 +1,20 @@
 import 'package:flutter/material.dart';
 
 import '../../models/karya.dart';
+import '../../services/digital_art_identity_service.dart';
 import '../../theme/app_theme.dart';
 
 /// Konversi dari
 /// docs/design/role_seniman_2/.../galeria_karya_terverifikasi_asli/code.html
 ///
-/// "Digital Art Identity Key" & skor kemiripan di sini CONTOH -- nilai
-/// asli akan datang dari `ml-digital-art-identity/` (lihat CLAUDE.md).
+/// [result] (opsional) = hasil ASLI `POST /api/verification/check` (lihat
+/// MemverifikasiKeaslianScreen). Kalau null (mis. layar dibuka langsung
+/// tanpa lewat alur upload), tampilkan versi pratinjau/placeholder yang
+/// jelas BUKAN data sungguhan -- JANGAN mengarang angka.
+///
+/// "Digital Art Identity Key" kriptografis BELUM DIBANGUN (lihat
+/// ml-digital-art-identity/kriptografi.md) -- ditampilkan apa adanya sbg
+/// pHash (fingerprint digital yang REAL), bukan ID sertifikat palsu.
 /// Istilah sengaja "sertifikat digital keaslian" / "Provenance", BUKAN
 /// "Hak Paten" (aturan wajib proyek).
 class KaryaTerverifikasiScreen extends StatelessWidget {
@@ -16,11 +23,13 @@ class KaryaTerverifikasiScreen extends StatelessWidget {
     required this.onClose,
     required this.onLihatGaleri,
     required this.onUnggahLagi,
+    this.result,
   });
 
   final VoidCallback onClose;
   final VoidCallback onLihatGaleri;
   final VoidCallback onUnggahLagi;
+  final VerificationResult? result;
 
   @override
   Widget build(BuildContext context) {
@@ -71,8 +80,11 @@ class KaryaTerverifikasiScreen extends StatelessWidget {
                           color: AppColors.accent,
                           borderRadius: BorderRadius.circular(AppRadius.full),
                         ),
-                        child: const Text('100%',
-                            style: TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.bold)),
+                        // "LOLOS" (bukan "100%") -- jujur mencerminkan nilai literal
+                        // art_to_art_result/ai_detection_result backend, tidak
+                        // menyiratkan skor kuantitatif yang tidak benar-benar ada.
+                        child: const Text('LOLOS',
+                            style: TextStyle(color: Colors.white, fontSize: 9, fontWeight: FontWeight.bold)),
                       ),
                     ),
                   ],
@@ -166,12 +178,16 @@ class KaryaTerverifikasiScreen extends StatelessWidget {
                           Row(
                             mainAxisAlignment: MainAxisAlignment.spaceBetween,
                             children: [
-                              Text('Digital Art Identity Key', style: AppTextStyles.labelSm),
+                              Text('Fingerprint Digital (pHash)', style: AppTextStyles.labelSm),
                               Container(
                                 padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
                                 decoration: BoxDecoration(
                                     color: Colors.white, borderRadius: BorderRadius.circular(AppRadius.xs)),
-                                child: Text('Tersimpan di Ledger',
+                                // Jujur: sertifikat kriptografis (digital signature) belum
+                                // dibangun -- lihat ml-digital-art-identity/kriptografi.md.
+                                // JANGAN klaim "Tersimpan di Ledger" sebelum itu ada.
+                                child: Text(
+                                    result?.persisted == true ? 'Tersimpan di Database' : 'Mode Pratinjau',
                                     style: AppTextStyles.overline.copyWith(fontSize: 8)),
                               ),
                             ],
@@ -185,8 +201,9 @@ class KaryaTerverifikasiScreen extends StatelessWidget {
                             child: Row(
                               mainAxisAlignment: MainAxisAlignment.spaceBetween,
                               children: [
-                                const Text('GAL-2026-8F3A-21C7',
-                                    style: TextStyle(fontFamily: 'monospace', fontWeight: FontWeight.w600, fontSize: 12)),
+                                Text(result?.phash ?? '-- (pratinjau, belum ada data)',
+                                    style: const TextStyle(
+                                        fontFamily: 'monospace', fontWeight: FontWeight.w600, fontSize: 12)),
                                 Row(
                                   children: [
                                     const Icon(Icons.copy, size: 14, color: AppColors.accent),
@@ -202,17 +219,40 @@ class KaryaTerverifikasiScreen extends StatelessWidget {
                       ),
                     ),
                     const SizedBox(height: AppSpacing.sm),
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    // Column (bukan Row) -- versi model (mis.
+                    // "siamese_convnext_v1 / convnext_ai_detector_v1") terlalu
+                    // panjang utk sejajar dgn label di layar sempit, dulu
+                    // overflow (lihat laporan user, screenshot "RIGHT
+                    // OVERFLOWED BY 23 PIXELS").
+                    Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Text('Waktu Penerbitan', style: AppTextStyles.bodySm.copyWith(color: AppColors.muted)),
-                        Text('14 Feb 2025, 14:32 WIB', style: AppTextStyles.labelMd.copyWith(fontSize: 12)),
+                        Text('Model Art-to-Art / Art-to-AI',
+                            style: AppTextStyles.bodySm.copyWith(color: AppColors.muted)),
+                        const SizedBox(height: 2),
+                        Text(
+                          result == null
+                              ? '-'
+                              : '${result!.modelVersionArtToArt} / ${result!.modelVersionArtToAi}',
+                          style: AppTextStyles.labelMd.copyWith(fontSize: 11),
+                          overflow: TextOverflow.ellipsis,
+                          maxLines: 1,
+                        ),
                       ],
                     ),
                     const SizedBox(height: AppSpacing.sm),
-                    _scoreBar('Kemiripan dengan Karya Lain', 0.12, '12% (Sangat Rendah)'),
+                    // Jarak embedding Art-to-Art (Euclidean, BUKAN persentase --
+                    // lihat catatan DuplicateMatch) -- ditampilkan apa adanya,
+                    // bukan dikonversi jadi "XX% mirip" tanpa formula resmi.
+                    _buildKemiripanRow(),
                     const SizedBox(height: AppSpacing.xs),
-                    _scoreBar('Indikasi Dibuat oleh AI', 0.03, '3% (Sangat Rendah)'),
+                    _scoreBar(
+                      'Indikasi Dibuat oleh AI',
+                      result?.aiGeneratedProbability ?? 0,
+                      result == null
+                          ? '-- (pratinjau)'
+                          : '${(result!.aiGeneratedProbability * 100).toStringAsFixed(1)}%',
+                    ),
                   ],
                 ),
               ),
@@ -236,7 +276,7 @@ class KaryaTerverifikasiScreen extends StatelessWidget {
                 children: [
                   const Icon(Icons.lock_outline, size: 13, color: AppColors.muted),
                   const SizedBox(width: 6),
-                  Text('Enkripsi Kriptografis SHA-256 · Hak Cipta Dilindungi Undang-Undang',
+                  Text('Terverifikasi Sistem Art-to-Art & Art-to-AI GALERIA',
                       style: AppTextStyles.overline.copyWith(fontSize: 8.5, color: AppColors.muted)),
                 ],
               ),
@@ -244,6 +284,33 @@ class KaryaTerverifikasiScreen extends StatelessWidget {
           ),
         ),
       ),
+    );
+  }
+
+  /// Beda dari [_scoreBar] (0..1 langsung = persentase) -- jarak Art-to-Art
+  /// adalah Euclidean distance, SEMAKIN KECIL semakin mirip, tanpa formula
+  /// resmi utk dikonversi jadi persentase (lihat catatan DuplicateMatch di
+  /// digital_art_identity_service.dart). Ditampilkan sbg angka jarak +
+  /// ambang batasnya, bukan "XX% mirip" yang mengarang makna.
+  Widget _buildKemiripanRow() {
+    final matches = result?.duplicateMatches ?? const [];
+    final label = result == null
+        ? '-- (pratinjau)'
+        : matches.isEmpty
+            ? 'Tidak ada kecocokan di katalog'
+            : 'Jarak terdekat ${matches.first.distance.toStringAsFixed(3)} (ambang 0,10)';
+    // Column (bukan Row) -- sama spt perbaikan "Model Art-to-Art / Art-to-AI"
+    // di atas, teks label bisa cukup panjang utk overflow di layar sempit.
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text('Kemiripan dengan Karya Lain', style: AppTextStyles.bodySm.copyWith(color: AppColors.muted)),
+        const SizedBox(height: 2),
+        Text(label,
+            style: AppTextStyles.labelMd.copyWith(color: AppColors.success, fontSize: 12),
+            overflow: TextOverflow.ellipsis,
+            maxLines: 1),
+      ],
     );
   }
 
