@@ -2,6 +2,10 @@
 
 Konteks proyek untuk Claude Code. Baca file ini sebelum mengerjakan task apa pun di repo ini.
 
+**Alur kerja Git (branching, PR, code review) ada di [`GIT_WORKFLOW.md`](GIT_WORKFLOW.md)** — baca
+file itu sebelum membuat/mengubah branch apa pun. Ringkas: jangan coding langsung di `main`/`develop`,
+selalu kerja di `feature/seniman/*` / `feature/kolektor/*` / `feature/shared/*`, lalu PR ke `develop`.
+
 ## Ringkasan Proyek
 
 **Nama produk:** GALERIA (sebelumnya bernama "ArtKey" — nama lama ini masih mungkin muncul di beberapa dokumen/aset lama, abaikan, pakai "GALERIA" untuk semua materi baru).
