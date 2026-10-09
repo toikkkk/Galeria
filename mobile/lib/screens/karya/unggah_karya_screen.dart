@@ -3,9 +3,9 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 
-import '../../models/karya.dart';
 import '../../services/katalog_service.dart';
 import '../../theme/app_theme.dart';
+import '../../utils/coming_soon.dart';
 
 /// Konversi dari
 /// docs/design/role_seniman_2/.../galeria_unggah_karya_detail_karya_langkah_2_dari_2/code.html
@@ -193,9 +193,15 @@ class _UnggahKaryaScreenState extends State<UnggahKaryaScreen> {
                         : _photoThumbFile(_mainPhoto!, label: 'UTAMA'),
                   ),
                   const SizedBox(width: AppSpacing.sm),
-                  _photoThumb(sampleKarya[3].assetPath, deletable: true),
-                  const SizedBox(width: AppSpacing.sm),
-                  _addPhotoBtn(),
+                  // Backend saat ini HANYA terima 1 foto per karya (lihat
+                  // POST /api/karya) -- tombol ini kasih feedback jujur,
+                  // bukan menampilkan foto palsu kedua yang tidak pernah
+                  // benar-benar terkirim. Lihat audit navigasi role
+                  // Seniman, 2026-10.
+                  GestureDetector(
+                    onTap: () => showComingSoon(context, 'Unggah multi-foto'),
+                    child: _addPhotoBtn(),
+                  ),
                 ],
               ),
             ),
@@ -447,39 +453,6 @@ class _UnggahKaryaScreenState extends State<UnggahKaryaScreen> {
               radius: 13,
               backgroundColor: Colors.white.withValues(alpha: 0.9),
               child: const Icon(Icons.edit_outlined, size: 14),
-            ),
-          ),
-        ],
-      );
-
-  Widget _photoThumb(String asset, {String? label, bool deletable = false}) => Stack(
-        children: [
-          ClipRRect(
-            borderRadius: BorderRadius.circular(AppRadius.md),
-            child: Image.asset(asset, width: 110, height: 130, fit: BoxFit.cover),
-          ),
-          if (label != null)
-            Positioned(
-              top: 8,
-              left: 8,
-              child: Container(
-                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                decoration: BoxDecoration(
-                  color: AppColors.accent,
-                  borderRadius: BorderRadius.circular(AppRadius.xs),
-                ),
-                child: Text(label,
-                    style: const TextStyle(
-                        color: Colors.white, fontSize: 9, fontWeight: FontWeight.bold)),
-              ),
-            ),
-          Positioned(
-            bottom: 8,
-            right: 8,
-            child: CircleAvatar(
-              radius: 13,
-              backgroundColor: Colors.white.withValues(alpha: 0.9),
-              child: Icon(deletable ? Icons.delete_outline : Icons.edit_outlined, size: 14),
             ),
           ),
         ],
