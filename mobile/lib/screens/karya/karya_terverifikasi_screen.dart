@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 
 import '../../models/karya.dart';
 import '../../services/digital_art_identity_service.dart';
@@ -204,13 +205,25 @@ class KaryaTerverifikasiScreen extends StatelessWidget {
                                 Text(result?.phash ?? '-- (pratinjau, belum ada data)',
                                     style: const TextStyle(
                                         fontFamily: 'monospace', fontWeight: FontWeight.w600, fontSize: 12)),
-                                Row(
-                                  children: [
-                                    const Icon(Icons.copy, size: 14, color: AppColors.accent),
-                                    const SizedBox(width: 4),
-                                    Text('Salin',
-                                        style: AppTextStyles.labelSm.copyWith(color: AppColors.accent, fontSize: 11)),
-                                  ],
+                                InkWell(
+                                  onTap: result?.phash == null
+                                      ? null
+                                      : () async {
+                                          await Clipboard.setData(ClipboardData(text: result!.phash));
+                                          if (context.mounted) {
+                                            ScaffoldMessenger.of(context).showSnackBar(
+                                              const SnackBar(content: Text('Fingerprint disalin ke clipboard')),
+                                            );
+                                          }
+                                        },
+                                  child: Row(
+                                    children: [
+                                      const Icon(Icons.copy, size: 14, color: AppColors.accent),
+                                      const SizedBox(width: 4),
+                                      Text('Salin',
+                                          style: AppTextStyles.labelSm.copyWith(color: AppColors.accent, fontSize: 11)),
+                                    ],
+                                  ),
                                 ),
                               ],
                             ),

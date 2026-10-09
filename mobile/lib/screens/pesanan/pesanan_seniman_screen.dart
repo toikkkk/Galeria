@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../../theme/app_theme.dart';
+import '../../utils/coming_soon.dart';
 
 /// Konversi dari 3 layar terpisah di docs/design/role_seniman_2/... yang
 /// sebenarnya satu layar dengan 3 status tab (screenshot Stitch diekspor
@@ -201,9 +202,13 @@ class _SelesaiTab extends StatelessWidget {
       );
 }
 
+// Endpoint manajemen pesanan (checkout/transaksi) BELUM dibangun di backend
+// (lihat CLAUDE.md "Belum dikerjakan") -- tombol ini tetap dibuat benar-benar
+// bisa diklik (kasih feedback jelas), BUKAN dibiarkan `onPressed: () {}`
+// yang terlihat seperti rusak. Lihat audit navigasi role Seniman, 2026-10.
 Widget _outlinedAction(BuildContext context, IconData icon, String label) => Expanded(
       child: OutlinedButton.icon(
-        onPressed: () {},
+        onPressed: () => showComingSoon(context, label),
         icon: Icon(icon, size: 16),
         label: Text(label, style: const TextStyle(fontSize: 12)),
       ),
@@ -211,7 +216,7 @@ Widget _outlinedAction(BuildContext context, IconData icon, String label) => Exp
 
 Widget _filledAction(BuildContext context, IconData icon, String label) => Expanded(
       child: ElevatedButton.icon(
-        onPressed: () {},
+        onPressed: () => showComingSoon(context, label),
         icon: Icon(icon, size: 16),
         label: Text(label, style: const TextStyle(fontSize: 12)),
       ),

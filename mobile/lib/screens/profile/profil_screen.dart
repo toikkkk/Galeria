@@ -1,17 +1,33 @@
 import 'package:flutter/material.dart';
 
 import '../../theme/app_theme.dart';
+import '../../utils/coming_soon.dart';
 
 /// Konversi dari
 /// docs/design/role_seniman_1/.../galeria_profil_akun_seniman/code.html
 ///
 /// Data (nama toko, statistik, saldo) masih placeholder -- sama dengan
 /// DashboardScreen, sambungkan ke backend nanti (lihat TODO di sana).
+///
+/// [onLihatProfilToko]/[onDataDiri] -- dua menu yang SUDAH punya layar
+/// tujuan nyata di app (`/toko`, `/verifikasi-identitas`), jadi di-thread
+/// lewat constructor supaya main.dart yang memutuskan rute (pola konsisten
+/// dgn layar lain). Menu lain yang belum punya layar tujuan ditangani
+/// langsung di file ini via [showComingSoon] -- lihat audit navigasi role
+/// Seniman, 2026-10.
 class ProfilScreen extends StatelessWidget {
-  const ProfilScreen({super.key, this.onNavTap, this.onLogout});
+  const ProfilScreen({
+    super.key,
+    this.onNavTap,
+    this.onLogout,
+    this.onLihatProfilToko,
+    this.onDataDiri,
+  });
 
   final ValueChanged<int>? onNavTap;
   final VoidCallback? onLogout;
+  final VoidCallback? onLihatProfilToko;
+  final VoidCallback? onDataDiri;
 
   @override
   Widget build(BuildContext context) {
@@ -20,7 +36,10 @@ class ProfilScreen extends StatelessWidget {
       appBar: AppBar(
         title: Text('Profil', style: AppTextStyles.headlineMd),
         actions: [
-          IconButton(onPressed: () {}, icon: const Icon(Icons.notifications_outlined)),
+          IconButton(
+            onPressed: () => showComingSoon(context, 'Notifikasi'),
+            icon: const Icon(Icons.notifications_outlined),
+          ),
           Padding(
             padding: const EdgeInsets.only(right: AppSpacing.sm),
             child: CircleAvatar(
@@ -39,15 +58,19 @@ class ProfilScreen extends StatelessWidget {
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               Text('Profil', style: AppTextStyles.headlineLg),
-              Container(
-                width: AppSpacing.touchTarget,
-                height: AppSpacing.touchTarget,
-                decoration: BoxDecoration(
-                  color: AppColors.surfaceContainer,
-                  shape: BoxShape.circle,
-                  boxShadow: const [BoxShadow(color: Colors.black12, blurRadius: 4)],
+              InkWell(
+                onTap: () => showComingSoon(context, 'Pengaturan'),
+                customBorder: const CircleBorder(),
+                child: Container(
+                  width: AppSpacing.touchTarget,
+                  height: AppSpacing.touchTarget,
+                  decoration: BoxDecoration(
+                    color: AppColors.surfaceContainer,
+                    shape: BoxShape.circle,
+                    boxShadow: const [BoxShadow(color: Colors.black12, blurRadius: 4)],
+                  ),
+                  child: const Icon(Icons.settings_outlined),
                 ),
-                child: const Icon(Icons.settings_outlined),
               ),
             ],
           ),
@@ -129,7 +152,7 @@ class ProfilScreen extends StatelessWidget {
                 ),
                 const Divider(height: AppSpacing.lg),
                 TextButton.icon(
-                  onPressed: () {},
+                  onPressed: onLihatProfilToko ?? () => showComingSoon(context, 'Profil Toko'),
                   icon: const Icon(Icons.open_in_new, size: 16),
                   label: const Text('Lihat Profil Toko'),
                   style: TextButton.styleFrom(
@@ -154,22 +177,23 @@ class ProfilScreen extends StatelessWidget {
             ),
           ),
           const SizedBox(height: AppSpacing.sm),
-          _group('TOKO', [
-            _MenuItemData(Icons.storefront_outlined, 'Kelola Galeri'),
+          _group(context, 'TOKO', [
+            _MenuItemData(Icons.storefront_outlined, 'Kelola Galeri', onTap: () => onNavTap?.call(1)),
             _MenuItemData(Icons.account_balance_wallet_outlined, 'Data Rekening & Dompet',
                 trailingText: 'Rp 184.750.000', trailingColor: AppColors.accent),
             _MenuItemData(Icons.inventory_2_outlined, 'Pengaturan Pengiriman & Packing'),
             _MenuItemData(Icons.workspace_premium_outlined, 'Langganan', badge: 'PRO'),
           ]),
           const SizedBox(height: AppSpacing.sm),
-          _group('AKUN', [
-            _MenuItemData(Icons.badge_outlined, 'Data Diri & KTP', badge: 'Terverifikasi', badgeColor: AppColors.success),
+          _group(context, 'AKUN', [
+            _MenuItemData(Icons.badge_outlined, 'Data Diri & KTP',
+                badge: 'Terverifikasi', badgeColor: AppColors.success, onTap: onDataDiri),
             _MenuItemData(Icons.lock_outline, 'Ubah Password'),
             _MenuItemData(Icons.notifications_outlined, 'Notifikasi'),
             _MenuItemData(Icons.translate_outlined, 'Bahasa', trailingText: 'Indonesia'),
           ]),
           const SizedBox(height: AppSpacing.sm),
-          _group('BANTUAN', [
+          _group(context, 'BANTUAN', [
             _MenuItemData(Icons.help_outline, 'Pusat Bantuan'),
             _MenuItemData(Icons.description_outlined, 'Syarat & Ketentuan'),
             _MenuItemData(Icons.policy_outlined, 'Kebijakan Privasi'),
@@ -252,7 +276,7 @@ class ProfilScreen extends StatelessWidget {
         ],
       );
 
-  Widget _group(String title, List<_MenuItemData> items) => Container(
+  Widget _group(BuildContext context, String title, List<_MenuItemData> items) => Container(
         margin: const EdgeInsets.only(bottom: AppSpacing.sm),
         decoration: BoxDecoration(
           color: Colors.white,
@@ -274,14 +298,14 @@ class ProfilScreen extends StatelessWidget {
                     height: 1,
                     indent: AppSpacing.cardInner,
                     endIndent: AppSpacing.cardInner),
-              _menuTile(items[i]),
+              _menuTile(context, items[i]),
             ],
           ],
         ),
       );
 
-  Widget _menuTile(_MenuItemData d) => InkWell(
-        onTap: () {},
+  Widget _menuTile(BuildContext context, _MenuItemData d) => InkWell(
+        onTap: d.onTap ?? () => showComingSoon(context, d.label),
         child: Padding(
           padding: const EdgeInsets.symmetric(
               horizontal: AppSpacing.cardInner, vertical: AppSpacing.sm),
@@ -342,7 +366,7 @@ class ProfilScreen extends StatelessWidget {
 
 class _MenuItemData {
   _MenuItemData(this.icon, this.label,
-      {this.trailingText, this.trailingColor, this.badge, this.badgeColor});
+      {this.trailingText, this.trailingColor, this.badge, this.badgeColor, this.onTap});
 
   final IconData icon;
   final String label;
@@ -350,4 +374,8 @@ class _MenuItemData {
   final Color? trailingColor;
   final String? badge;
   final Color? badgeColor;
+
+  /// Null = belum ada layar tujuan -- [_menuTile] fallback ke
+  /// [showComingSoon].
+  final VoidCallback? onTap;
 }

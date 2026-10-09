@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 
 import '../../theme/app_theme.dart';
+import '../../utils/coming_soon.dart';
 
 /// Konversi dari
 /// docs/design/role_seniman_2/.../galeria_event_berhasil_diterbitkan/code.html
@@ -160,10 +162,21 @@ class EventBerhasilScreen extends StatelessWidget {
                             Row(
                               mainAxisAlignment: MainAxisAlignment.spaceAround,
                               children: [
-                                _shareIcon(Icons.link, 'Salin Tautan'),
-                                _shareIcon(Icons.chat_bubble_outline, 'WhatsApp'),
-                                _shareIcon(Icons.photo_camera_outlined, 'Instagram'),
-                                _shareIcon(Icons.groups_outlined, 'Komunitas'),
+                                _shareIcon(Icons.link, 'Salin Tautan', () async {
+                                  await Clipboard.setData(
+                                      const ClipboardData(text: 'https://galeria.app/event/demo'));
+                                  if (context.mounted) {
+                                    ScaffoldMessenger.of(context).showSnackBar(
+                                      const SnackBar(content: Text('Tautan disalin ke clipboard')),
+                                    );
+                                  }
+                                }),
+                                _shareIcon(Icons.chat_bubble_outline, 'WhatsApp',
+                                    () => showComingSoon(context, 'Bagikan ke WhatsApp')),
+                                _shareIcon(Icons.photo_camera_outlined, 'Instagram',
+                                    () => showComingSoon(context, 'Bagikan ke Instagram')),
+                                _shareIcon(Icons.groups_outlined, 'Komunitas',
+                                    () => showComingSoon(context, 'Bagikan ke komunitas')),
                               ],
                             ),
                           ],
@@ -206,21 +219,25 @@ class EventBerhasilScreen extends StatelessWidget {
         ],
       );
 
-  Widget _shareIcon(IconData icon, String label) => Column(
-        children: [
-          Container(
-            width: 44,
-            height: 44,
-            alignment: Alignment.center,
-            decoration: BoxDecoration(
-              color: AppColors.surfaceContainerLow,
-              shape: BoxShape.circle,
-              border: Border.all(color: AppColors.border),
+  Widget _shareIcon(IconData icon, String label, VoidCallback onTap) => InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(AppRadius.full),
+        child: Column(
+          children: [
+            Container(
+              width: 44,
+              height: 44,
+              alignment: Alignment.center,
+              decoration: BoxDecoration(
+                color: AppColors.surfaceContainerLow,
+                shape: BoxShape.circle,
+                border: Border.all(color: AppColors.border),
+              ),
+              child: Icon(icon, size: 20, color: AppColors.onSurfaceVariant),
             ),
-            child: Icon(icon, size: 20, color: AppColors.onSurfaceVariant),
-          ),
-          const SizedBox(height: 4),
-          Text(label, style: AppTextStyles.bodySm.copyWith(fontSize: 11)),
-        ],
+            const SizedBox(height: 4),
+            Text(label, style: AppTextStyles.bodySm.copyWith(fontSize: 11)),
+          ],
+        ),
       );
 }

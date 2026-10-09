@@ -1,12 +1,18 @@
 import 'package:flutter/material.dart';
 
 import '../../theme/app_theme.dart';
+import '../../utils/coming_soon.dart';
 
 /// Konversi dari
 /// docs/design/role_seniman_1/.../galeria_verifikasi_identitas/code.html
 ///
 /// TODO(backend): sambungkan tombol "Ganti"/"Unggah Swafoto" ke image
-/// picker + endpoint upload dokumen identitas asli. Saat ini murni UI.
+/// picker + endpoint upload dokumen identitas asli -- BEDA dari foto karya
+/// (unggah_karya_screen.dart), endpoint upload dokumen identitas BELUM ADA
+/// sama sekali, jadi sengaja TIDAK dibangun image picker "separuh jalan"
+/// yang ujungnya tidak tersimpan ke mana pun. Tombol kasih feedback jujur
+/// (lihat audit navigasi role Seniman, 2026-10); alur tetap bisa lanjut
+/// lewat "Lanjut"/"Lewati".
 class VerifikasiIdentitasScreen extends StatelessWidget {
   const VerifikasiIdentitasScreen({
     super.key,
@@ -296,7 +302,7 @@ class _KtpCard extends StatelessWidget {
                 ),
               ),
               TextButton.icon(
-                onPressed: () {},
+                onPressed: () => showComingSoon(context, 'Ganti foto KTP'),
                 icon: const Icon(Icons.refresh, size: 14),
                 label: const Text('Ganti'),
                 style: TextButton.styleFrom(
@@ -469,7 +475,7 @@ class _SwafotoCard extends StatelessWidget {
           ),
           const SizedBox(height: AppSpacing.sm),
           ElevatedButton.icon(
-            onPressed: () {},
+            onPressed: () => showComingSoon(context, 'Unggah swafoto'),
             icon: const Icon(Icons.upload_outlined, size: 16, color: AppColors.accent),
             label: const Text('Unggah Swafoto'),
             style: ElevatedButton.styleFrom(

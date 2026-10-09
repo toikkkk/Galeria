@@ -2,16 +2,31 @@ import 'package:flutter/material.dart';
 
 import '../../models/karya.dart';
 import '../../theme/app_theme.dart';
+import '../../utils/coming_soon.dart';
 
 /// Konversi dari
 /// docs/design/role_seniman_1/.../galeria_detail_komunitas_perupa_realis_nusantara/code.html
 ///
 /// Isi feed (postingan, jumlah anggota, dll) semuanya CONTOH -- belum ada
 /// fitur komunitas nyata di backend (fitur "PRO", lihat CLAUDE.md).
-class CommunityDetailScreen extends StatelessWidget {
+///
+/// Tab "Diskusi" & toggle "Diikuti"/like postingan SUDAH benar-benar
+/// berfungsi (state lokal murni, tidak perlu backend) -- 3 tab lain
+/// (Karya/Event/Anggota) belum punya data nyata, jadi menampilkan pesan
+/// jujur alih-alih konten yang dikarang. Lihat audit navigasi role
+/// Seniman, 2026-10.
+class CommunityDetailScreen extends StatefulWidget {
   const CommunityDetailScreen({super.key, required this.onBack});
 
   final VoidCallback onBack;
+
+  @override
+  State<CommunityDetailScreen> createState() => _CommunityDetailScreenState();
+}
+
+class _CommunityDetailScreenState extends State<CommunityDetailScreen> {
+  int _tabIndex = 0;
+  bool _diikuti = true;
 
   @override
   Widget build(BuildContext context) {
@@ -51,12 +66,12 @@ class CommunityDetailScreen extends StatelessWidget {
                         child: Row(
                           mainAxisAlignment: MainAxisAlignment.spaceBetween,
                           children: [
-                            _roundIconBtn(Icons.arrow_back, onBack),
+                            _roundIconBtn(Icons.arrow_back, widget.onBack),
                             Row(
                               children: [
-                                _roundIconBtn(Icons.share, () {}),
+                                _roundIconBtn(Icons.share, () => showComingSoon(context, 'Bagikan komunitas')),
                                 const SizedBox(width: 8),
-                                _roundIconBtn(Icons.more_horiz, () {}),
+                                _roundIconBtn(Icons.more_horiz, () => showComingSoon(context, 'Opsi lainnya')),
                               ],
                             ),
                           ],
@@ -146,9 +161,10 @@ class CommunityDetailScreen extends StatelessWidget {
                       children: [
                         Expanded(
                           child: OutlinedButton.icon(
-                            onPressed: () {},
-                            icon: const Icon(Icons.check, size: 16, color: AppColors.accent),
-                            label: const Text('Diikuti'),
+                            onPressed: () => setState(() => _diikuti = !_diikuti),
+                            icon: Icon(_diikuti ? Icons.check : Icons.add,
+                                size: 16, color: AppColors.accent),
+                            label: Text(_diikuti ? 'Diikuti' : 'Ikuti'),
                             style: OutlinedButton.styleFrom(
                               backgroundColor: AppColors.surfaceContainerHigh,
                               side: BorderSide.none,
@@ -159,7 +175,7 @@ class CommunityDetailScreen extends StatelessWidget {
                         const SizedBox(width: AppSpacing.xs),
                         Expanded(
                           child: OutlinedButton.icon(
-                            onPressed: () {},
+                            onPressed: () => showComingSoon(context, 'Undang anggota'),
                             icon: const Icon(Icons.person_add_outlined, size: 16),
                             label: const Text('Undang'),
                             style: OutlinedButton.styleFrom(
@@ -170,15 +186,19 @@ class CommunityDetailScreen extends StatelessWidget {
                           ),
                         ),
                         const SizedBox(width: AppSpacing.xs),
-                        Container(
-                          width: 40,
-                          height: 40,
-                          decoration: BoxDecoration(
-                            color: Colors.white,
-                            borderRadius: BorderRadius.circular(AppRadius.md),
-                            boxShadow: const [BoxShadow(color: Colors.black12, blurRadius: 4)],
+                        InkWell(
+                          onTap: () => showComingSoon(context, 'Notifikasi komunitas'),
+                          borderRadius: BorderRadius.circular(AppRadius.md),
+                          child: Container(
+                            width: 40,
+                            height: 40,
+                            decoration: BoxDecoration(
+                              color: Colors.white,
+                              borderRadius: BorderRadius.circular(AppRadius.md),
+                              boxShadow: const [BoxShadow(color: Colors.black12, blurRadius: 4)],
+                            ),
+                            child: const Icon(Icons.notifications_none, size: 18),
                           ),
-                          child: const Icon(Icons.notifications_none, size: 18),
                         ),
                       ],
                     ),
@@ -192,14 +212,27 @@ class CommunityDetailScreen extends StatelessWidget {
                       ),
                       child: Row(
                         children: [
-                          Expanded(child: _tab('Diskusi', active: true)),
-                          Expanded(child: _tab('Karya')),
-                          Expanded(child: _tab('Event')),
-                          Expanded(child: _tab('Anggota')),
+                          for (final (i, label) in const ['Diskusi', 'Karya', 'Event', 'Anggota'].indexed)
+                            Expanded(
+                              child: InkWell(
+                                onTap: () => setState(() => _tabIndex = i),
+                                child: _tab(label, active: _tabIndex == i),
+                              ),
+                            ),
                         ],
                       ),
                     ),
                     const SizedBox(height: AppSpacing.sm),
+                    if (_tabIndex != 0)
+                      Container(
+                        padding: const EdgeInsets.all(AppSpacing.lg),
+                        alignment: Alignment.center,
+                        child: Text(
+                          'Konten tab ini belum tersedia.',
+                          style: AppTextStyles.bodySm.copyWith(color: AppColors.muted),
+                        ),
+                      )
+                    else ...[
                     // Composer
                     Container(
                       padding: const EdgeInsets.all(AppSpacing.sm),
@@ -218,20 +251,24 @@ class CommunityDetailScreen extends StatelessWidget {
                           ),
                           const SizedBox(width: AppSpacing.sm),
                           Expanded(
-                            child: Container(
-                              height: 36,
-                              padding: const EdgeInsets.symmetric(horizontal: AppSpacing.sm),
-                              decoration: BoxDecoration(
-                                color: AppColors.surfaceContainerLow,
-                                borderRadius: BorderRadius.circular(AppRadius.full),
+                            child: InkWell(
+                              onTap: () => showComingSoon(context, 'Buat postingan'),
+                              borderRadius: BorderRadius.circular(AppRadius.full),
+                              child: Container(
+                                height: 36,
+                                padding: const EdgeInsets.symmetric(horizontal: AppSpacing.sm),
+                                decoration: BoxDecoration(
+                                  color: AppColors.surfaceContainerLow,
+                                  borderRadius: BorderRadius.circular(AppRadius.full),
+                                ),
+                                alignment: Alignment.centerLeft,
+                                child: Text('Bagikan proses atau karyamu...',
+                                    style: AppTextStyles.bodySm.copyWith(color: AppColors.muted)),
                               ),
-                              alignment: Alignment.centerLeft,
-                              child: Text('Bagikan proses atau karyamu...',
-                                  style: AppTextStyles.bodySm.copyWith(color: AppColors.muted)),
                             ),
                           ),
                           IconButton(
-                              onPressed: () {},
+                              onPressed: () => showComingSoon(context, 'Unggah foto postingan'),
                               icon: const Icon(Icons.photo_library_outlined,
                                   size: 18, color: AppColors.accent)),
                         ],
@@ -271,6 +308,7 @@ class CommunityDetailScreen extends StatelessWidget {
                       likes: 48,
                       comments: 12,
                     ),
+                    ],
                     const SizedBox(height: 80),
                   ]),
                 ),
@@ -281,7 +319,7 @@ class CommunityDetailScreen extends StatelessWidget {
             right: 16,
             bottom: 24,
             child: FloatingActionButton(
-              onPressed: () {},
+              onPressed: () => showComingSoon(context, 'Buat postingan'),
               backgroundColor: AppColors.accent,
               child: const Icon(Icons.edit_note, color: Colors.white),
             ),
@@ -328,7 +366,7 @@ class CommunityDetailScreen extends StatelessWidget {
       );
 }
 
-class _PostCard extends StatelessWidget {
+class _PostCard extends StatefulWidget {
   const _PostCard({
     required this.initials,
     required this.name,
@@ -348,7 +386,29 @@ class _PostCard extends StatelessWidget {
   final bool liked;
 
   @override
+  State<_PostCard> createState() => _PostCardState();
+}
+
+class _PostCardState extends State<_PostCard> {
+  late bool _liked = widget.liked;
+  late int _likes = widget.likes;
+
+  void _toggleLike() {
+    setState(() {
+      _liked = !_liked;
+      _likes += _liked ? 1 : -1;
+    });
+  }
+
+  @override
   Widget build(BuildContext context) {
+    final initials = widget.initials;
+    final name = widget.name;
+    final meta = widget.meta;
+    final body = widget.body;
+    final comments = widget.comments;
+    final imageAsset = widget.imageAsset;
+    final pinned = widget.pinned;
     return Container(
       padding: const EdgeInsets.all(AppSpacing.sm),
       decoration: BoxDecoration(
@@ -380,7 +440,10 @@ class _PostCard extends StatelessWidget {
                     ],
                   ),
                 ),
-                const Icon(Icons.more_horiz, size: 18, color: AppColors.muted),
+                InkWell(
+                  onTap: () => showComingSoon(context, 'Opsi postingan'),
+                  child: const Icon(Icons.more_horiz, size: 18, color: AppColors.muted),
+                ),
               ],
             ),
             const Divider(height: AppSpacing.sm),
@@ -410,7 +473,11 @@ class _PostCard extends StatelessWidget {
                   ],
                 ),
               ),
-              if (!pinned) const Icon(Icons.more_horiz, size: 18, color: AppColors.muted),
+              if (!pinned)
+                InkWell(
+                  onTap: () => showComingSoon(context, 'Opsi postingan'),
+                  child: const Icon(Icons.more_horiz, size: 18, color: AppColors.muted),
+                ),
             ],
           ),
           const SizedBox(height: AppSpacing.xs),
@@ -419,22 +486,31 @@ class _PostCard extends StatelessWidget {
             const SizedBox(height: AppSpacing.sm),
             ClipRRect(
               borderRadius: BorderRadius.circular(AppRadius.md),
-              child: Image.asset(imageAsset!, height: 180, width: double.infinity, fit: BoxFit.cover),
+              child: Image.asset(imageAsset, height: 180, width: double.infinity, fit: BoxFit.cover),
             ),
           ],
           const SizedBox(height: AppSpacing.xs),
           Row(
             children: [
-              Icon(liked ? Icons.favorite : Icons.favorite_border,
-                  size: 18, color: liked ? AppColors.error : AppColors.muted),
+              InkWell(
+                onTap: _toggleLike,
+                child: Icon(_liked ? Icons.favorite : Icons.favorite_border,
+                    size: 18, color: _liked ? AppColors.error : AppColors.muted),
+              ),
               const SizedBox(width: 4),
-              Text('$likes', style: AppTextStyles.labelSm.copyWith(color: AppColors.muted)),
+              Text('$_likes', style: AppTextStyles.labelSm.copyWith(color: AppColors.muted)),
               const SizedBox(width: AppSpacing.md),
-              const Icon(Icons.chat_bubble_outline, size: 18, color: AppColors.muted),
+              InkWell(
+                onTap: () => showComingSoon(context, 'Komentar'),
+                child: const Icon(Icons.chat_bubble_outline, size: 18, color: AppColors.muted),
+              ),
               const SizedBox(width: 4),
               Text('$comments', style: AppTextStyles.labelSm.copyWith(color: AppColors.muted)),
               const Spacer(),
-              const Icon(Icons.share_outlined, size: 18, color: AppColors.muted),
+              InkWell(
+                onTap: () => showComingSoon(context, 'Bagikan postingan'),
+                child: const Icon(Icons.share_outlined, size: 18, color: AppColors.muted),
+              ),
             ],
           ),
         ],
