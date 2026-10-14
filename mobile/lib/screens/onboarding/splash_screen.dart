@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 
 import '../../theme/app_theme.dart';
+import '../../widgets/galeria_logo.dart';
 
 /// Konversi dari docs/design/role_seniman_1/.../galeria_splash_screen/code.html
 ///
@@ -75,17 +76,7 @@ class _SplashScreenState extends State<SplashScreen> {
                   // Center logo + title
                   Column(
                     children: [
-                      Container(
-                        width: 112,
-                        height: 112,
-                        alignment: Alignment.center,
-                        decoration: BoxDecoration(
-                          shape: BoxShape.circle,
-                          color: AppColors.accent.withValues(alpha: 0.05),
-                        ),
-                        child: const Icon(Icons.auto_awesome,
-                            color: AppColors.accent, size: 56),
-                      ),
+                      const GaleriaLogo(size: 160),
                       const SizedBox(height: AppSpacing.lg),
                       Text(
                         'G A L E R I A',

@@ -11,7 +11,9 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from database import get_db
 from schemas.dashboard import (
     AliranSeniman,
+    NotifikasiSeniman,
     PenjualanBulan,
+    RiwayatPenarikan,
     RingkasanSeniman,
     SegmenPembeliResponse,
     SenimanDemoItem,
@@ -73,3 +75,17 @@ async def segmen_pembeli(seniman_id: str, db: AsyncSession = Depends(get_db)):
 @router.get("/pasar/tren", response_model=TrenPasar)
 async def tren_pasar(db: AsyncSession = Depends(get_db)):
     return await repo.tren_pasar(db)
+
+
+@router.get("/seniman/{seniman_id}/penarikan", response_model=RiwayatPenarikan)
+async def penarikan(seniman_id: str, db: AsyncSession = Depends(get_db)):
+    """Riwayat tarik dana (turunan dari pendapatan bersih bulanan, data contoh)."""
+    sid, _ = await _seniman_atau_404(db, seniman_id)
+    return await repo.riwayat_penarikan(db, sid)
+
+
+@router.get("/seniman/{seniman_id}/notifikasi", response_model=list[NotifikasiSeniman])
+async def notifikasi(seniman_id: str, db: AsyncSession = Depends(get_db)):
+    """Notifikasi: pembelian kolektor, hasil lelang, tindakan (data contoh)."""
+    sid, _ = await _seniman_atau_404(db, seniman_id)
+    return await repo.notifikasi_seniman(db, sid)

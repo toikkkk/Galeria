@@ -330,3 +330,122 @@ async def tren_pasar(db: AsyncSession) -> dict:
         for r in aliran_rows
     ]
     return {"seniman_ramai": seniman[:10], "aliran_ramai": aliran_ramai}
+
+
+# Rekening tujuan contoh -- belum ada tabel rekening/penarikan nyata.
+_TUJUAN_CONTOH = "BCA ••••1234"
+
+
+async def riwayat_penarikan(db: AsyncSession, sid: uuid.UUID, limit: int = 12) -> dict:
+    """Riwayat tarik dana TURUNAN dari pendapatan bersih bulanan.
+
+    Belum ada tabel penarikan nyata (fitur payout belum dibangun) -- tiap
+    bulan yang sudah lewat dianggap ditarik tgl 5 bulan berikutnya
+    ("berhasil"); bulan terakhir data dianggap "diproses". Data contoh,
+    BUKAN catatan keuangan nyata.
+    """
+    S = _schema()
+    rows = (
+        await db.execute(
+            text(
+                f"""
+                SELECT bulan, pendapatan_bersih_idr
+                FROM {S}.v_seniman_metrik_bulanan
+                WHERE seniman_id = :sid AND pendapatan_bersih_idr > 0
+                ORDER BY bulan DESC
+                LIMIT :lim
+                """
+            ),
+            {"sid": sid, "lim": limit},
+        )
+    ).all()
+    items = []
+    total = 0
+    for i, r in enumerate(rows):
+        b = r.bulan
+        tahun, bln = (b.year, b.month) if hasattr(b, "year") else (int(str(b)[:4]), int(str(b)[5:7]))
+        ny, nm = (tahun + 1, 1) if bln == 12 else (tahun, bln + 1)
+        diproses = i == 0
+        jumlah = int(r.pendapatan_bersih_idr)
+        if not diproses:
+            total += jumlah
+        items.append(
+            {
+                "id": f"tarik-{tahun:04d}{bln:02d}",
+                "periode_bulan": f"{tahun:04d}-{bln:02d}",
+                "jumlah_idr": jumlah,
+                "tanggal": datetime(ny, nm, 5, 10, 0, tzinfo=timezone.utc).isoformat(),
+                "status": "diproses" if diproses else "berhasil",
+                "tujuan": _TUJUAN_CONTOH,
+            }
+        )
+    return {"total_ditarik_idr": total, "items": items}
+
+
+async def notifikasi_seniman(db: AsyncSession, sid: uuid.UUID, limit: int = 20) -> list[dict]:
+    """Notifikasi TURUNAN dari transaksi dummy terbaru: pembelian kolektor,
+    hasil lelang, dan tindakan (pesanan perlu dikemas).
+
+    Belum ada tabel notifikasi/lelang nyata. Aturan deterministik: tiap
+    transaksi -> notifikasi "pembelian"; tiap transaksi ke-4 dianggap
+    terjual lewat lelang ("lelang"); 2 transaksi terbaru -> "tindakan"
+    pesanan perlu dikemas. Data contoh.
+    """
+    S = _schema()
+    t = waktu_acuan()
+    rows = (
+        await db.execute(
+            text(
+                f"""
+                SELECT tr.id, tr.harga_final_idr, tr.created_at,
+                       k.title, kl.display_name AS kolektor
+                FROM {S}.transaksi tr
+                JOIN {S}.karya k ON k.id = tr.karya_id
+                JOIN {S}.kolektor kl ON kl.id = tr.pembeli_id
+                WHERE tr.penjual_id = :sid AND tr.created_at <= CAST(:t AS timestamptz)
+                ORDER BY tr.created_at DESC
+                LIMIT :lim
+                """
+            ),
+            {"sid": sid, "t": t, "lim": limit},
+        )
+    ).all()
+    out: list[dict] = []
+    for i, r in enumerate(rows):
+        waktu = r.created_at.isoformat()
+        harga = int(r.harga_final_idr)
+        if i < 2:
+            out.append(
+                {
+                    "id": f"tindakan-{r.id}",
+                    "tipe": "tindakan",
+                    "judul": "Pesanan perlu dikemas",
+                    "deskripsi": f'"{r.title}" untuk {r.kolektor} -- kemas dan serahkan ke kurir.',
+                    "waktu": waktu,
+                    "nominal_idr": harga,
+                }
+            )
+        if i % 4 == 3:
+            out.append(
+                {
+                    "id": f"lelang-{r.id}",
+                    "tipe": "lelang",
+                    "judul": "Lelang selesai",
+                    "deskripsi": f'"{r.title}" laku lewat lelang. Pemenang: {r.kolektor}.',
+                    "waktu": waktu,
+                    "nominal_idr": harga,
+                }
+            )
+        else:
+            out.append(
+                {
+                    "id": f"beli-{r.id}",
+                    "tipe": "pembelian",
+                    "judul": "Karya dibeli kolektor",
+                    "deskripsi": f'{r.kolektor} membeli "{r.title}".',
+                    "waktu": waktu,
+                    "nominal_idr": harga,
+                }
+            )
+    out.sort(key=lambda n: (n["waktu"], n["tipe"] == "tindakan"), reverse=True)
+    return out
