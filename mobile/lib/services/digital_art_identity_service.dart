@@ -1,5 +1,7 @@
 import 'dart:io';
 
+import '../models/picked_image.dart';
+
 import 'package:http_parser/http_parser.dart';
 
 import 'api_client.dart';
@@ -132,10 +134,11 @@ class DigitalArtIdentityService {
   /// `karya.status_verifikasi` diperbarui (lihat routers/verification.py).
   /// Dipakai SETELAH [KatalogService.createKarya] berhasil (karya_id sudah
   /// ada di database).
-  Future<VerificationResult> verifyKarya(String karyaId, File imageFile) async {
+  Future<VerificationResult> verifyKarya(String karyaId, PickedImage image) async {
     final data = await _client.postMultipart(
       '/api/karya/$karyaId/verify',
-      file: imageFile,
+      bytes: image.bytes,
+      filename: image.name,
       contentType: MediaType('image', 'jpeg'),
     );
     return VerificationResult.fromJson(data as Map<String, dynamic>);
