@@ -119,6 +119,7 @@ app.include_router(verification.router)
 app.include_router(dashboard_seniman.router)
 app.include_router(katalog_dummy.router)
 app.include_router(karya_upload.router)
+app.include_router(gambar.router)
 
 
 @app.get("/")

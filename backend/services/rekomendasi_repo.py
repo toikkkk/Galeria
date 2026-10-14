@@ -61,7 +61,9 @@ def parse_uuid(value: str) -> uuid.UUID | None:
 
 
 def image_url(image_key: str | None) -> str | None:
-    base = os.environ.get("R2_PUBLIC_URL_BASE", "").strip()
+    # GAMBAR_PROXY_BASE (opsional): sajikan gambar lewat backend sendiri bila r2.dev diblokir
+    # DNS provider (lihat routers/gambar.py). Kosong = langsung ke R2 seperti semula.
+    base = os.environ.get("GAMBAR_PROXY_BASE", "").strip() or os.environ.get("R2_PUBLIC_URL_BASE", "").strip()
     if not image_key or not base:
         return None
     return f"{base.rstrip('/')}/{image_key}"
