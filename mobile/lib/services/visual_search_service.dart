@@ -24,6 +24,7 @@ class VisualSearchResult {
     required this.verdictMessage,
     required this.matches,
     required this.stylePredictions,
+    this.styleConfident = true,
   });
 
   /// "confirmed" | "ambiguous" | "not_found" -- lihat
@@ -38,6 +39,10 @@ class VisualSearchResult {
   /// tapi SENGAJA tidak ditampilkan mentah ke user (sama spt `similarity`
   /// di [VisualSearchMatch]) -- cukup nama style-nya, jangan overclaim.
   final List<StylePrediction> stylePredictions;
+
+  /// false bila keyakinan gaya teratas di bawah ambang backend (VS_STYLE_ABSTAIN_T)
+  /// -> UI jangan menyebut gaya sebagai fakta, tampilkan "belum pasti".
+  final bool styleConfident;
 
   bool get isConfirmed => verdict == 'confirmed';
   bool get isAmbiguous => verdict == 'ambiguous';
@@ -108,6 +113,7 @@ class VisualSearchService {
       verdictMessage: data['verdict_message'] as String,
       matches: matches,
       stylePredictions: stylePredictions,
+      styleConfident: (data['style_confident'] as bool?) ?? true,
     );
   }
 }
