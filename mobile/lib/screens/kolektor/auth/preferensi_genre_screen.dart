@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../../../models/karya.dart';
 import '../../../theme/app_theme.dart';
+import '../../../widgets/galeria_logo.dart';
 
 /// Konversi dari
 /// docs/KOLEKTOR FITUR UTAMA/.../galeria_preferensi_genre_seni/code.html
@@ -45,9 +46,10 @@ class _PreferensiGenreScreenState extends State<PreferensiGenreScreen> {
           onPressed: widget.onBack,
           icon: const Icon(Icons.arrow_back),
         ),
-        title: Text(
-          'GALERIA',
-          style: AppTextStyles.headlineSm.copyWith(letterSpacing: 2),
+        title: GaleriaLogo(
+          size: 28,
+          withWordmark: true,
+          textStyle: AppTextStyles.headlineSm.copyWith(letterSpacing: 2),
         ),
         centerTitle: true,
         actions: [
