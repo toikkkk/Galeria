@@ -1,0 +1,13 @@
+{
+  "Art_Nouveau": 0,
+  "Baroque": 1,
+  "Cubism": 2,
+  "Expressionism": 3,
+  "Impressionism": 4,
+  "Naive_Art_Primitivism": 5,
+  "Northern_Renaissance": 6,
+  "Post_Impressionism": 7,
+  "Realism": 8,
+  "Romanticism": 9,
+  "Symbolism": 10
+}
