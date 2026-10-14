@@ -40,13 +40,33 @@ def _ambil(url: str, tujuan: Path) -> None:
     tmp.replace(tujuan)
 
 
+def _folder_lokal() -> Path | None:
+    """Folder gambar dataset di mesin ini (opsional). Isi ``GAMBAR_LOCAL_DIR`` di .env, atau
+    biarkan kosong: otomatis memakai ``ml-visual-search/data/raw`` bila ada. Dipakai lebih dulu
+    daripada R2 -- berguna bila ``r2.dev`` terblokir (DNS/SNI) di jaringan tempat demo."""
+    env = os.environ.get("GAMBAR_LOCAL_DIR", "").strip()
+    d = Path(env) if env else Path(__file__).resolve().parent.parent.parent / "ml-visual-search" / "data" / "raw"
+    return d if d.is_dir() else None
+
+
 @router.get("/gambar/{key:path}")
 async def gambar(key: str) -> Response:
+    if not _KEY_OK.match(key):
+        raise HTTPException(404, "Gambar tidak ditemukan")
+
+    lokal_dir = _folder_lokal()
+    if lokal_dir is not None:
+        lokal = lokal_dir / key.rsplit("/", 1)[-1]   # key tervalidasi _KEY_OK: tanpa "..", hanya nama file
+        if lokal.is_file():
+            return Response(
+                lokal.read_bytes(),
+                media_type=_TIPE[key.rsplit(".", 1)[-1].lower()],
+                headers={"Cache-Control": "public, max-age=86400"},
+            )
+
     base = os.environ.get("R2_PUBLIC_URL_BASE", "").strip().rstrip("/")
     if not base:
         raise HTTPException(503, "R2_PUBLIC_URL_BASE belum di-set")
-    if not _KEY_OK.match(key):
-        raise HTTPException(404, "Gambar tidak ditemukan")
 
     file = _CACHE / key
     if not file.exists():

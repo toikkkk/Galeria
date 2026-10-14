@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../../../models/karya.dart';
 import '../../../theme/app_theme.dart';
+import '../../../utils/coming_soon.dart';
 
 /// Konversi dari
 /// docs/KOLEKTOR FITUR PEMBELIAN PEMBAYARAN/.../galeria_pesanan_selesai_ulasan/code.html
@@ -177,7 +178,7 @@ class _PesananSelesaiScreenState extends State<PesananSelesaiScreen> {
                     ],
                   ),
                 ),
-                TextButton(onPressed: () {}, child: const Text('Lihat')),
+                TextButton(onPressed: () => showComingSoon(context, 'Lihat'), child: const Text('Lihat')),
               ],
             ),
           ),
@@ -296,7 +297,7 @@ class _PesananSelesaiScreenState extends State<PesananSelesaiScreen> {
           ),
           const SizedBox(height: AppSpacing.xs),
           OutlinedButton.icon(
-            onPressed: () {},
+            onPressed: () => showComingSoon(context, 'Unduh bukti transaksi'),
             icon: const Icon(Icons.receipt_long_outlined, size: 18),
             label: const Text('Unduh Bukti Transaksi Resmi (PDF)'),
           ),

@@ -38,6 +38,8 @@ def _to_list_item(karya: Karya, fp: KaryaFingerprint | None = None) -> KaryaList
         # POST /api/karya -- jadikan path absolut "/uploads/..." di sini,
         # client (mobile) yang prepend base URL (lihat schemas/katalog.py).
         image_url=f"/{karya.image_key}" if karya.image_key else None,
+        lebar_cm=karya.lebar_cm,
+        tinggi_cm=karya.tinggi_cm,
     )
 
 

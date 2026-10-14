@@ -4,6 +4,7 @@ import '../../../models/karya.dart';
 import '../../../theme/app_theme.dart';
 import '../../../widgets/kolektor/kolektor_bottom_nav.dart';
 import '../../../widgets/karya_image.dart';
+import '../../../utils/coming_soon.dart';
 
 /// Konversi dari
 /// docs/KOLEKTOR FITUR UTAMA/.../galeria_koleksi_saya/code.html
@@ -163,7 +164,7 @@ class KoleksiSayaScreen extends StatelessWidget {
                   ),
                 ),
                 TextButton(
-                  onPressed: () {},
+                  onPressed: () => showComingSoon(context, 'Hubungi'),
                   style: TextButton.styleFrom(
                     backgroundColor: AppColors.primary,
                     foregroundColor: Colors.white,
@@ -330,7 +331,7 @@ class _CertificateCard extends StatelessWidget {
               children: [
                 Expanded(
                   child: TextButton.icon(
-                    onPressed: () {},
+                    onPressed: () => showComingSoon(context, 'Sertifikat'),
                     icon: const Icon(
                       Icons.workspace_premium_outlined,
                       size: 15,
@@ -345,7 +346,7 @@ class _CertificateCard extends StatelessWidget {
                 Container(width: 1, height: 20, color: AppColors.border),
                 Expanded(
                   child: TextButton.icon(
-                    onPressed: () {},
+                    onPressed: () => showComingSoon(context, 'Jual kembali'),
                     icon: const Icon(
                       Icons.swap_horiz,
                       size: 15,

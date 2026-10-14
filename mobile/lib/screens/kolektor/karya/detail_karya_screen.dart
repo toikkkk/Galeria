@@ -1,9 +1,12 @@
 import 'package:flutter/material.dart';
 
+import 'package:share_plus/share_plus.dart';
+
 import '../../../models/karya.dart';
 import '../../../theme/app_theme.dart';
 import '../../../widgets/karya_image.dart';
 import '../../../widgets/kolektor/karya_grid_card.dart';
+import '../../../utils/coming_soon.dart';
 
 /// Konversi dari
 /// docs/KOLEKTOR FITUR PEMBELIAN PEMBAYARAN/.../galeria_detail_karya_seni/code.html
@@ -46,8 +49,13 @@ class DetailKaryaScreen extends StatelessWidget {
         ),
         title: Text('Detail Karya', style: AppTextStyles.headlineSm),
         actions: [
-          IconButton(onPressed: () {}, icon: const Icon(Icons.share_outlined)),
-          IconButton(onPressed: () {}, icon: const Icon(Icons.favorite_border)),
+          IconButton(
+            onPressed: () => SharePlus.instance.share(
+              ShareParams(text: '${karya.title} — ${karya.artistName} di GALERIA\n${karya.shareUrl}'),
+            ),
+            icon: const Icon(Icons.share_outlined),
+          ),
+          IconButton(onPressed: () => showComingSoon(context, 'Favorit'), icon: const Icon(Icons.favorite_border)),
         ],
       ),
       body: ListView(
@@ -325,7 +333,7 @@ class DetailKaryaScreen extends StatelessWidget {
             ),
             const SizedBox(width: AppSpacing.xs),
             IconButton.outlined(
-              onPressed: () {},
+              onPressed: () => showComingSoon(context, 'Chat dengan penjual'),
               icon: const Icon(Icons.chat_bubble_outline),
             ),
             const SizedBox(width: AppSpacing.xs),

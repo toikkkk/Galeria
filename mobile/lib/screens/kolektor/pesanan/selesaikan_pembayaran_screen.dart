@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../../../theme/app_theme.dart';
+import 'package:flutter/services.dart';
 
 /// Konversi dari
 /// docs/KOLEKTOR FITUR PEMBELIAN PEMBAYARAN/.../galeria_selesaikan_pembayaran/code.html
@@ -130,7 +131,10 @@ class SelesaikanPembayaranScreen extends StatelessWidget {
                   ],
                 ),
                 IconButton(
-                  onPressed: () {},
+                  onPressed: () {
+                    Clipboard.setData(ClipboardData(text: totalIdr.toString()));
+                    ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Disalin ke papan klip')));
+                  },
                   icon: const Icon(Icons.content_copy, size: 18),
                 ),
               ],
@@ -216,7 +220,10 @@ class SelesaikanPembayaranScreen extends StatelessWidget {
                         ],
                       ),
                       TextButton.icon(
-                        onPressed: () {},
+                        onPressed: () {
+                    Clipboard.setData(ClipboardData(text: '8801294018274920'));
+                    ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Disalin ke papan klip')));
+                  },
                         icon: const Icon(Icons.content_copy, size: 14),
                         label: const Text('Salin'),
                       ),

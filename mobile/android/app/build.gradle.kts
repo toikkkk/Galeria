@@ -39,6 +39,11 @@ android {
     }
 }
 
+dependencies {
+    // AR dinding: deteksi bidang vertikal + hit test (Google Maven)
+    implementation("com.google.ar:core:1.56.0")
+}
+
 flutter {
     source = "../.."
 }

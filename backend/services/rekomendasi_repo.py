@@ -11,6 +11,7 @@ from __future__ import annotations
 import os
 import re
 import uuid
+from pathlib import Path
 
 from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -27,6 +28,17 @@ _ALASAN_TEKS = {
     "karya_baru": "Baru terpasang",
     "populer_umum": "Sedang diminati kolektor lain",
 }
+
+def _muat_disembunyikan() -> list[str]:
+    f = Path(__file__).resolve().parent.parent / "fixtures" / "karya_disembunyikan.txt"
+    if not f.is_file():
+        return []
+    return [b.strip() for b in f.read_text(encoding="utf-8").splitlines() if b.strip() and not b.startswith("#")]
+
+
+# Karya yang disembunyikan dari pengguna (konten nudis/vulgar) -- lihat fixtures/karya_disembunyikan.txt
+_DISEMBUNYIKAN = _muat_disembunyikan()
+_FILTER_SENSITIF = "NOT (k.image_filename = ANY(CAST(:disembunyikan AS text[])))"
 
 _URUTAN = {
     "terbaru": "k.created_at DESC, k.id",
@@ -110,8 +122,8 @@ async def katalog(
     hanya_tersedia: bool,
 ) -> tuple[list[dict], int]:
     S = _schema()
-    where = ["TRUE"]
-    params: dict = {"limit": page_size, "offset": (page - 1) * page_size}
+    where = [_FILTER_SENSITIF]
+    params: dict = {"limit": page_size, "offset": (page - 1) * page_size, "disembunyikan": _DISEMBUNYIKAN}
     if gaya:
         where.append("k.style_name = :gaya")
         params["gaya"] = gaya
@@ -203,12 +215,12 @@ async def rekomendasi(db: AsyncSession, kolektor_id: uuid.UUID, top_k: int) -> d
                 JOIN {S}.karya k ON k.id = r.karya_id
                 JOIN {S}.seniman s ON s.id = k.seniman_id
                 {_BELUM_TERJUAL.format(S=S)}
-                WHERE r.kolektor_id = :id AND tr.id IS NULL
+                WHERE r.kolektor_id = :id AND tr.id IS NULL AND {_FILTER_SENSITIF}
                 ORDER BY r.peringkat
                 LIMIT :k
                 """
             ),
-            {"id": kolektor_id, "k": top_k},
+            {"id": kolektor_id, "k": top_k, "disembunyikan": _DISEMBUNYIKAN},
         )
     ).mappings().all()
     if not rows:

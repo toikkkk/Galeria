@@ -405,6 +405,8 @@ class VisualSearchService:
                     "gallery_name": karya.gallery_name,
                     "price_idr": karya.price_idr,
                     "image_filename": karya.image_filename,
+                    "lebar_cm": karya.lebar_cm,
+                    "tinggi_cm": karya.tinggi_cm,
                 }
             )
         return matches, similarities

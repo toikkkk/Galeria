@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../../../models/lelang.dart';
 import '../../../theme/app_theme.dart';
 import '../../../widgets/kolektor/kolektor_bottom_nav.dart';
+import '../../../utils/coming_soon.dart';
 
 /// Konversi dari
 /// docs/KOLEKTOR FITUR UTAMA/.../galeria_lelang_karya/code.html
@@ -53,8 +54,8 @@ class _LelangScreenState extends State<LelangScreen> {
         ),
         title: Text('Lelang Karya', style: AppTextStyles.headlineMd),
         actions: [
-          IconButton(onPressed: () {}, icon: const Icon(Icons.help_outline)),
-          IconButton(onPressed: () {}, icon: const Icon(Icons.tune)),
+          IconButton(onPressed: () => showComingSoon(context, 'Bantuan'), icon: const Icon(Icons.help_outline)),
+          IconButton(onPressed: () => showComingSoon(context, 'Bantuan'), icon: const Icon(Icons.tune)),
         ],
       ),
       body: Column(
@@ -291,7 +292,7 @@ class _LotCard extends StatelessWidget {
                     )
                   else
                     OutlinedButton.icon(
-                      onPressed: () {},
+                      onPressed: () => showComingSoon(context, 'Pengingat lelang'),
                       icon: const Icon(
                         Icons.notifications_active_outlined,
                         size: 15,

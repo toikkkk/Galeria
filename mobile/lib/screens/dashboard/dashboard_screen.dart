@@ -8,6 +8,7 @@ import '../../widgets/galeria_logo.dart';
 import '../../utils/format.dart';
 import '../../widgets/dashboard/dashboard_sections.dart';
 import '../../widgets/dashboard/sales_chart_card.dart';
+import '../../utils/coming_soon.dart';
 
 /// Konversi dari
 /// docs/design/role_seniman_1/.../galeria_dashboard_seniman_galeri/code.html
@@ -321,7 +322,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                     children: [
                       Expanded(
                         child: FilledButton.icon(
-                          onPressed: () {},
+                          onPressed: () => showComingSoon(context, 'Tarik Dana'),
                           icon: const Icon(Icons.payments_outlined, size: 18),
                           label: const Text('Tarik Dana'),
                           style: FilledButton.styleFrom(

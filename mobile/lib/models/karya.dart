@@ -18,6 +18,8 @@ class Karya {
     this.imageUrl,
     this.senimanId,
     this.aiGeneratedProbability,
+    this.lebarCm,
+    this.tinggiCm,
   });
 
   /// UUID dari database -- kosong ('') untuk [sampleKarya] lokal (belum
@@ -56,6 +58,10 @@ class Karya {
   /// Skor Art-to-AI (0..1, kemungkinan AI-generated) dari verification
   /// engine. `null` = karya belum pernah dicek engine (mis. karya seed).
   final double? aiGeneratedProbability;
+  /// Ukuran fisik karya (cm) -- dipakai AR supaya lukisan tampil dgn skala asli.
+  /// `null` = belum diisi seniman; AR memakai ukuran perkiraan dan melabelinya begitu.
+  final double? lebarCm;
+  final double? tinggiCm;
 
   String get priceFormatted {
     final s = priceIdr.toString();
@@ -109,6 +115,8 @@ class Karya {
       senimanId: json['seniman_id'] as String?,
       aiGeneratedProbability:
           (json['ai_generated_probability'] as num?)?.toDouble(),
+      lebarCm: (json['lebar_cm'] as num?)?.toDouble(),
+      tinggiCm: (json['tinggi_cm'] as num?)?.toDouble(),
     );
   }
 }
