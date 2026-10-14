@@ -90,3 +90,28 @@ class AliranRamai(BaseModel):
 class TrenPasar(BaseModel):
     seniman_ramai: list[SenimanRamai]
     aliran_ramai: list[AliranRamai]
+
+
+class PenarikanDana(BaseModel):
+    """Satu baris riwayat tarik dana (payout pendapatan bersih bulanan)."""
+
+    id: str
+    periode_bulan: str  # "YYYY-MM" -- pendapatan bulan yang ditarik
+    jumlah_idr: int
+    tanggal: str  # ISO-8601
+    status: str  # "berhasil" | "diproses"
+    tujuan: str
+
+
+class RiwayatPenarikan(BaseModel):
+    total_ditarik_idr: int
+    items: list[PenarikanDana]
+
+
+class NotifikasiSeniman(BaseModel):
+    id: str
+    tipe: str  # "pembelian" | "lelang" | "tindakan"
+    judul: str
+    deskripsi: str
+    waktu: str  # ISO-8601
+    nominal_idr: int | None = None
