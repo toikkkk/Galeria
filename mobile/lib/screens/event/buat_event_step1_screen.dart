@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../../models/karya.dart';
 import '../../theme/app_theme.dart';
+import '../../utils/coming_soon.dart';
 import '../../widgets/event_stepper.dart';
 
 /// Konversi dari
@@ -221,7 +222,7 @@ class _BuatEventStep1ScreenState extends State<BuatEventStep1Screen> {
                           children: [
                             InkWell(
                               borderRadius: BorderRadius.circular(AppRadius.md),
-                              onTap: () {},
+                              onTap: () => showComingSoon(context, 'Tambah karya ke event'),
                               child: Container(
                                 width: 80,
                                 height: 80,

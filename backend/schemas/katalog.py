@@ -20,6 +20,11 @@ class KaryaListItem(BaseModel):
     price_idr: int
     is_promoted: bool
     image_filename: str
+    # Path relatif (mis. "/uploads/karya/<uuid>.jpg") kalau karya di-upload
+    # lewat POST /api/karya (lihat routers/karya_upload.py) -- mobile
+    # prepend base URL-nya sendiri. NULL = karya lama/seed, mobile fallback
+    # ke asset lokal lewat `image_filename` (lihat models/karya.dart).
+    image_url: str | None = None
 
 
 class KaryaDetail(KaryaListItem):

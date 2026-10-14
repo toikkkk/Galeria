@@ -48,6 +48,10 @@ optuna_study.db
 # --- Backend (FastAPI) ------------------------------------------------------
 backend/.env
 backend/**/__pycache__/
+# Gambar karya ter-upload (penyimpanan LOKAL sementara, ganti R2 nanti --
+# lihat backend/routers/karya_upload.py). Data demo per-mesin, bukan asset
+# yang perlu dibagikan lewat git.
+backend/uploads/
 
 # --- Mobile (Flutter) -------------------------------------------------------
 # Flutter's own `mobile/.gitignore` (dari `flutter create`) sudah cover

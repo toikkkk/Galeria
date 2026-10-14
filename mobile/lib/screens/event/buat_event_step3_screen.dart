@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../../theme/app_theme.dart';
+import '../../utils/coming_soon.dart';
 import '../../widgets/event_stepper.dart';
 
 /// Konversi dari
@@ -21,6 +22,15 @@ class _BuatEventStep3ScreenState extends State<BuatEventStep3Screen> {
   bool _siarkanKomunitas = true;
   bool _bannerUtama = true;
   bool _setujuKetentuan = false;
+
+  // Daftar tiket nyata (bukan lagi 2 _ticketRow hardcode) -- supaya tombol
+  // hapus benar-benar menghilangkan baris, bukan dead. Lihat audit
+  // navigasi role Seniman, 2026-10.
+  final List<_Tiket> _tiket = [
+    _Tiket('Tiket Reguler', 'Umum', 'Rp 50.000', '120'),
+    _Tiket('Kurator VIP', 'VIP Access', 'Rp 250.000', '30',
+        note: 'Termasuk katalog cetak bertanda tangan & tur privat.'),
+  ];
 
   @override
   Widget build(BuildContext context) {
@@ -80,13 +90,12 @@ class _BuatEventStep3ScreenState extends State<BuatEventStep3Screen> {
                     Text('Kategori Tiket', style: AppTextStyles.headlineSm),
                   ]),
                   const SizedBox(height: AppSpacing.sm),
-                  _ticketRow('Tiket Reguler', 'Umum', 'Rp 50.000', '120'),
-                  const SizedBox(height: AppSpacing.sm),
-                  _ticketRow('Kurator VIP', 'VIP Access', 'Rp 250.000', '30',
-                      note: 'Termasuk katalog cetak bertanda tangan & tur privat.'),
-                  const SizedBox(height: AppSpacing.sm),
+                  for (final t in _tiket) ...[
+                    _ticketRow(t),
+                    const SizedBox(height: AppSpacing.sm),
+                  ],
                   OutlinedButton.icon(
-                    onPressed: () {},
+                    onPressed: () => showComingSoon(context, 'Tambah jenis tiket'),
                     icon: const Icon(Icons.add, size: 18),
                     label: const Text('Tambah Jenis Tiket Baru'),
                   ),
@@ -187,7 +196,7 @@ class _BuatEventStep3ScreenState extends State<BuatEventStep3Screen> {
             children: [
               Expanded(
                 child: OutlinedButton.icon(
-                  onPressed: () {},
+                  onPressed: () => showComingSoon(context, 'Pratinjau event'),
                   icon: const Icon(Icons.visibility_outlined, size: 18),
                   label: const Text('Pratinjau'),
                 ),
@@ -255,7 +264,7 @@ class _BuatEventStep3ScreenState extends State<BuatEventStep3Screen> {
     );
   }
 
-  Widget _ticketRow(String name, String badge, String price, String kuota, {String? note}) {
+  Widget _ticketRow(_Tiket t) {
     return Container(
       padding: const EdgeInsets.all(AppSpacing.sm),
       decoration:
@@ -267,18 +276,18 @@ class _BuatEventStep3ScreenState extends State<BuatEventStep3Screen> {
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               Row(children: [
-                Text(name, style: AppTextStyles.labelMd),
+                Text(t.name, style: AppTextStyles.labelMd),
                 const SizedBox(width: 6),
                 Container(
                   padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 1),
                   decoration: BoxDecoration(
                       color: AppColors.surfaceContainerHighest,
                       borderRadius: BorderRadius.circular(AppRadius.full)),
-                  child: Text(badge, style: AppTextStyles.overline.copyWith(fontSize: 9)),
+                  child: Text(t.badge, style: AppTextStyles.overline.copyWith(fontSize: 9)),
                 ),
               ]),
               IconButton(
-                onPressed: () {},
+                onPressed: () => setState(() => _tiket.remove(t)),
                 icon: const Icon(Icons.delete_outline, size: 18, color: AppColors.muted),
                 padding: EdgeInsets.zero,
                 constraints: const BoxConstraints(),
@@ -288,18 +297,18 @@ class _BuatEventStep3ScreenState extends State<BuatEventStep3Screen> {
           const SizedBox(height: 4),
           Row(children: [
             Text('Tarif: ', style: AppTextStyles.bodySm.copyWith(color: AppColors.muted)),
-            Text(price, style: AppTextStyles.labelMd),
+            Text(t.price, style: AppTextStyles.labelMd),
             const SizedBox(width: AppSpacing.sm),
             Text('Kuota: ', style: AppTextStyles.bodySm.copyWith(color: AppColors.muted)),
-            Text(kuota, style: AppTextStyles.labelMd),
+            Text(t.kuota, style: AppTextStyles.labelMd),
           ]),
-          if (note != null) ...[
+          if (t.note != null) ...[
             const SizedBox(height: 4),
             Row(children: [
               const Icon(Icons.auto_awesome, size: 13, color: AppColors.accent),
               const SizedBox(width: 4),
               Expanded(
-                  child: Text(note,
+                  child: Text(t.note!,
                       style: AppTextStyles.bodySm.copyWith(
                           color: AppColors.accent, fontStyle: FontStyle.italic, fontSize: 11))),
             ]),
@@ -350,4 +359,11 @@ class _BuatEventStep3ScreenState extends State<BuatEventStep3Screen> {
       ),
     );
   }
+}
+
+class _Tiket {
+  _Tiket(this.name, this.badge, this.price, this.kuota, {this.note});
+
+  final String name, badge, price, kuota;
+  final String? note;
 }

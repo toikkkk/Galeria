@@ -1,24 +1,34 @@
 import 'package:flutter/material.dart';
 
-import '../../models/karya.dart';
+import '../../services/digital_art_identity_service.dart';
 import '../../theme/app_theme.dart';
 
 /// Konversi dari
 /// docs/design/role_seniman_2/.../galeria_karya_perlu_ditinjau/code.html
 ///
-/// Karya pembanding & skor di sini CONTOH -- nilai asli dari
-/// `ml-digital-art-identity/` nanti (lihat CLAUDE.md).
+/// [result] (opsional) = hasil ASLI verifikasi. Layar ini bisa dipicu oleh
+/// 2 sinyal BERBEDA (lihat DigitalArtIdentityService._decide_status):
+/// (a) duplikat borderline (jarak embedding dekat ambang, belum "sangat
+/// yakin"), ATAU (b) `ai_detection_result == 'ai_generated_terdeteksi'`
+/// (yang TIDAK PERNAH auto-tolak, selalu ke sini). UI harus jelas membedakan
+/// kedua kasus -- jangan selalu tampilkan "ditemukan kemiripan" kalau yang
+/// sebenarnya terjadi cuma indikasi AI.
 class KaryaPerluDitinjauScreen extends StatelessWidget {
   const KaryaPerluDitinjauScreen({
     super.key,
     required this.onClose,
     required this.onAjukanPeninjauan,
     required this.onKembali,
+    this.result,
   });
 
   final VoidCallback onClose;
   final VoidCallback onAjukanPeninjauan;
   final VoidCallback onKembali;
+  final VerificationResult? result;
+
+  bool get _karenaDuplikat => result?.artToArtResult == 'duplikat_terdeteksi';
+  bool get _karenaAi => result?.aiDetectionResult == 'ai_generated_terdeteksi';
 
   @override
   Widget build(BuildContext context) {
@@ -75,11 +85,17 @@ class KaryaPerluDitinjauScreen extends StatelessWidget {
             ),
           ),
           const SizedBox(height: AppSpacing.md),
-          Text('Ditemukan Kemiripan Dengan Karya Lain',
-              textAlign: TextAlign.center, style: AppTextStyles.headlineLg.copyWith(fontSize: 22)),
+          Text(
+            _karenaDuplikat ? 'Ditemukan Kemiripan Dengan Karya Lain' : 'Terindikasi Dibuat oleh AI',
+            textAlign: TextAlign.center,
+            style: AppTextStyles.headlineLg.copyWith(fontSize: 22),
+          ),
           const SizedBox(height: 6),
           Text(
-            'Kami menemukan karya dengan kemiripan tinggi. Tim kurator akan meninjau dalam 1x24 jam.',
+            _karenaDuplikat
+                ? 'Kami menemukan karya dengan kemiripan tinggi. Tim kurator akan meninjau dalam 1x24 jam.'
+                : 'Sistem mendeteksi indikasi karya dibuat oleh AI generatif. Ini BUKAN tuduhan pasti -- '
+                    'tim kurator akan meninjau manual dalam 1x24 jam sebelum ada keputusan apa pun.',
             textAlign: TextAlign.center,
             style: AppTextStyles.bodyMd.copyWith(color: AppColors.muted),
           ),
@@ -99,9 +115,11 @@ class KaryaPerluDitinjauScreen extends StatelessWidget {
                   children: [
                     Row(
                       children: [
-                        const Icon(Icons.pattern, size: 18, color: AppColors.muted),
+                        Icon(_karenaDuplikat ? Icons.pattern : Icons.auto_awesome,
+                            size: 18, color: AppColors.muted),
                         const SizedBox(width: 6),
-                        Text('Indeks Kemiripan Visual', style: AppTextStyles.labelMd),
+                        Text(_karenaDuplikat ? 'Jarak Embedding Art-to-Art' : 'Probabilitas Art-to-AI',
+                            style: AppTextStyles.labelMd),
                       ],
                     ),
                     Container(
@@ -117,25 +135,37 @@ class KaryaPerluDitinjauScreen extends StatelessWidget {
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    Text('Tingkat Kemiripan', style: AppTextStyles.bodySm.copyWith(color: AppColors.muted)),
-                    Text('78%', style: AppTextStyles.headlineMd.copyWith(color: AppColors.accent)),
+                    Text(_karenaDuplikat ? 'Jarak ke karya terdekat' : 'Probabilitas AI-generated',
+                        style: AppTextStyles.bodySm.copyWith(color: AppColors.muted)),
+                    Text(
+                      _karenaDuplikat
+                          ? (result?.duplicateMatches.isNotEmpty == true
+                              ? result!.duplicateMatches.first.distance.toStringAsFixed(3)
+                              : '--')
+                          : '${((result?.aiGeneratedProbability ?? 0) * 100).toStringAsFixed(1)}%',
+                      style: AppTextStyles.headlineMd.copyWith(color: AppColors.accent),
+                    ),
                   ],
                 ),
                 const SizedBox(height: 4),
                 ClipRRect(
                   borderRadius: BorderRadius.circular(AppRadius.full),
-                  child: const LinearProgressIndicator(
-                    value: 0.78,
+                  child: LinearProgressIndicator(
+                    value: _karenaDuplikat
+                        ? (result?.duplicateMatches.isNotEmpty == true
+                            ? (1 - (result!.duplicateMatches.first.distance / 0.10).clamp(0, 1)).toDouble()
+                            : 0)
+                        : (result?.aiGeneratedProbability ?? 0),
                     minHeight: 8,
                     backgroundColor: AppColors.surfaceContainerHighest,
-                    valueColor: AlwaysStoppedAnimation(AppColors.accent),
+                    valueColor: const AlwaysStoppedAnimation(AppColors.accent),
                   ),
                 ),
                 const SizedBox(height: 4),
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    Text('Toleransi Normal (<70%)',
+                    Text(_karenaDuplikat ? 'Ambang duplikat: 0,10' : 'Ambang indikasi: 50%',
                         style: AppTextStyles.labelSm.copyWith(color: AppColors.muted, fontSize: 10)),
                     Text('Batas Audit Terlampaui',
                         style: AppTextStyles.labelSm.copyWith(color: AppColors.accent, fontSize: 10, fontWeight: FontWeight.bold)),
@@ -145,46 +175,66 @@ class KaryaPerluDitinjauScreen extends StatelessWidget {
             ),
           ),
           const SizedBox(height: AppSpacing.lg),
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text('Karya Pembanding', style: AppTextStyles.headlineSm),
-                  Text('Karya terdaftar dengan kecocokan pola tertinggi',
-                      style: AppTextStyles.bodySm.copyWith(color: AppColors.muted)),
-                ],
-              ),
-              Text('2 TEMUAN', style: AppTextStyles.overline.copyWith(color: AppColors.accent)),
-            ],
-          ),
-          const SizedBox(height: AppSpacing.sm),
-          SizedBox(
-            height: 260,
-            child: ListView(
-              scrollDirection: Axis.horizontal,
+          if (_karenaDuplikat && (result?.duplicateMatches.isNotEmpty ?? false)) ...[
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                _comparisonCard(
-                  asset: sampleKarya[3].assetPath,
-                  simPct: '82% Mirip',
-                  source: 'Galeri Nasional Indonesia',
-                  title: 'Potret Putri Bangsawan',
-                  meta: 'Tahun 2019 · Minyak di Kanvas',
-                  statusLabel: 'Koleksi Terproteksi',
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text('Karya Pembanding', style: AppTextStyles.headlineSm),
+                    Text('Karya terdaftar dengan jarak embedding terdekat',
+                        style: AppTextStyles.bodySm.copyWith(color: AppColors.muted)),
+                  ],
                 ),
-                const SizedBox(width: AppSpacing.sm),
-                _comparisonCard(
-                  asset: sampleKarya[0].assetPath,
-                  simPct: '74% Mirip',
-                  source: 'Artemis Art Heritage',
-                  title: 'Nyonya Mahkota Renaisans',
-                  meta: 'Tahun 2021 · Cat Minyak',
-                  statusLabel: 'Terverifikasi Publik',
-                ),
+                Text('${result!.duplicateMatches.length} TEMUAN',
+                    style: AppTextStyles.overline.copyWith(color: AppColors.accent)),
               ],
             ),
-          ),
+            const SizedBox(height: AppSpacing.sm),
+            SizedBox(
+              height: 260,
+              child: ListView(
+                scrollDirection: Axis.horizontal,
+                children: [
+                  for (final m in result!.duplicateMatches.take(5))
+                    Padding(
+                      padding: const EdgeInsets.only(right: AppSpacing.sm),
+                      child: _comparisonCard(
+                        asset: 'assets/images/catalog/${m.imageFilename}',
+                        simPct: 'jarak ${m.distance.toStringAsFixed(3)}',
+                        source: 'Katalog GALERIA',
+                        title: m.title,
+                        meta: m.artistName,
+                        statusLabel: 'Terdaftar di GALERIA',
+                      ),
+                    ),
+                ],
+              ),
+            ),
+          ] else if (_karenaAi) ...[
+            Container(
+              padding: const EdgeInsets.all(AppSpacing.cardInner),
+              decoration: BoxDecoration(
+                color: AppColors.surfaceContainerLow,
+                borderRadius: BorderRadius.circular(AppRadius.md),
+              ),
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Icon(Icons.info_outline, size: 18, color: AppColors.accent),
+                  const SizedBox(width: AppSpacing.sm),
+                  Expanded(
+                    child: Text(
+                      'Tidak ada karya pembanding untuk kasus ini -- indikasi datang dari pola piksel '
+                      'yang dianggap model mirip hasil AI generatif, bukan dari kecocokan dengan karya lain.',
+                      style: AppTextStyles.bodySm.copyWith(color: AppColors.muted),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
           const SizedBox(height: AppSpacing.md),
           Container(
             padding: const EdgeInsets.all(AppSpacing.cardInner),
