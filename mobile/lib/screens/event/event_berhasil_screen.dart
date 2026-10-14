@@ -1,6 +1,11 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 
 import '../../theme/app_theme.dart';
+import '../../state/studio_store.dart';
+import '../../utils/coming_soon.dart';
+import '../../utils/format.dart';
+import '../../utils/format_waktu.dart';
 
 /// Konversi dari
 /// docs/design/role_seniman_2/.../galeria_event_berhasil_diterbitkan/code.html
@@ -10,8 +15,27 @@ class EventBerhasilScreen extends StatelessWidget {
   final VoidCallback onKelolaEvent;
   final VoidCallback onKembaliDasbor;
 
+  static String _jadwal(EventPameran? e) {
+    if (e == null || e.tanggalMulai == null) return '-';
+    final mulai = formatTanggal(e.tanggalMulai!);
+    final selesai = e.tanggalSelesai == null || e.tanggalSelesai == e.tanggalMulai
+        ? ''
+        : ' - ${formatTanggal(e.tanggalSelesai!)}';
+    final jam = (e.jamBuka != null && e.jamTutup != null)
+        ? ' · ${formatJam(e.jamBuka!)} - ${formatJam(e.jamTutup!)}'
+        : '';
+    return '$mulai$selesai$jam';
+  }
+
   @override
   Widget build(BuildContext context) {
+    final e = StudioStore.instance.lastPublished;
+    final lokasi = e == null
+        ? '-'
+        : (e.format == 'online' ? 'Online · ${e.linkOnline}' : '${e.namaLokasi}, ${e.kota}');
+    final tiketInfo = e == null
+        ? '-'
+        : '${e.totalKuota} tiket · ${e.gratis ? 'gratis' : 'mulai ${formatRupiah(e.tiket.map((t) => t.hargaIdr).reduce((a, b) => a < b ? a : b))}'}';
     return Scaffold(
       backgroundColor: AppColors.surface,
       body: SafeArea(
@@ -75,7 +99,7 @@ class EventBerhasilScreen extends StatelessWidget {
                                     decoration: BoxDecoration(
                                         color: Colors.black54,
                                         borderRadius: BorderRadius.circular(AppRadius.full)),
-                                    child: Text('PAMERAN GALERI FISIK',
+                                    child: Text((e?.format == 'online' ? 'PAMERAN ONLINE' : 'PAMERAN GALERI FISIK'),
                                         style: AppTextStyles.overline
                                             .copyWith(color: AppColors.accentSoft, fontSize: 9)),
                                   ),
@@ -107,15 +131,15 @@ class EventBerhasilScreen extends StatelessWidget {
                               child: Column(
                                 crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
-                                  Text('Pameran Tunggal: Jejak Cahaya Nusantara',
+                                  Text(e == null ? 'Event' : '${e.tema}: ${e.nama}',
                                       style: AppTextStyles.headlineSm),
                                   const Divider(height: AppSpacing.md),
-                                  _metaRow(Icons.calendar_today, '20 - 26 Okt 2026 · 10:00 - 20:00 WIB'),
+                                  _metaRow(Icons.calendar_today, _jadwal(e)),
                                   const SizedBox(height: 6),
-                                  _metaRow(Icons.location_on_outlined, 'Galeri Nasional Indonesia, Jakarta Pusat'),
+                                  _metaRow(Icons.location_on_outlined, lokasi),
                                   const SizedBox(height: 6),
                                   _metaRow(Icons.confirmation_number_outlined,
-                                      '150 tiket · mulai Rp 50.000'),
+                                      tiketInfo),
                                   const SizedBox(height: AppSpacing.sm),
                                   Row(
                                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -160,10 +184,21 @@ class EventBerhasilScreen extends StatelessWidget {
                             Row(
                               mainAxisAlignment: MainAxisAlignment.spaceAround,
                               children: [
-                                _shareIcon(Icons.link, 'Salin Tautan'),
-                                _shareIcon(Icons.chat_bubble_outline, 'WhatsApp'),
-                                _shareIcon(Icons.photo_camera_outlined, 'Instagram'),
-                                _shareIcon(Icons.groups_outlined, 'Komunitas'),
+                                _shareIcon(Icons.link, 'Salin Tautan', () async {
+                                  await Clipboard.setData(
+                                      const ClipboardData(text: 'https://galeria.app/event/demo'));
+                                  if (context.mounted) {
+                                    ScaffoldMessenger.of(context).showSnackBar(
+                                      const SnackBar(content: Text('Tautan disalin ke clipboard')),
+                                    );
+                                  }
+                                }),
+                                _shareIcon(Icons.chat_bubble_outline, 'WhatsApp',
+                                    () => showComingSoon(context, 'Bagikan ke WhatsApp')),
+                                _shareIcon(Icons.photo_camera_outlined, 'Instagram',
+                                    () => showComingSoon(context, 'Bagikan ke Instagram')),
+                                _shareIcon(Icons.groups_outlined, 'Komunitas',
+                                    () => showComingSoon(context, 'Bagikan ke komunitas')),
                               ],
                             ),
                           ],
@@ -206,21 +241,25 @@ class EventBerhasilScreen extends StatelessWidget {
         ],
       );
 
-  Widget _shareIcon(IconData icon, String label) => Column(
-        children: [
-          Container(
-            width: 44,
-            height: 44,
-            alignment: Alignment.center,
-            decoration: BoxDecoration(
-              color: AppColors.surfaceContainerLow,
-              shape: BoxShape.circle,
-              border: Border.all(color: AppColors.border),
+  Widget _shareIcon(IconData icon, String label, VoidCallback onTap) => InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(AppRadius.full),
+        child: Column(
+          children: [
+            Container(
+              width: 44,
+              height: 44,
+              alignment: Alignment.center,
+              decoration: BoxDecoration(
+                color: AppColors.surfaceContainerLow,
+                shape: BoxShape.circle,
+                border: Border.all(color: AppColors.border),
+              ),
+              child: Icon(icon, size: 20, color: AppColors.onSurfaceVariant),
             ),
-            child: Icon(icon, size: 20, color: AppColors.onSurfaceVariant),
-          ),
-          const SizedBox(height: 4),
-          Text(label, style: AppTextStyles.bodySm.copyWith(fontSize: 11)),
-        ],
+            const SizedBox(height: 4),
+            Text(label, style: AppTextStyles.bodySm.copyWith(fontSize: 11)),
+          ],
+        ),
       );
 }

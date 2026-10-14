@@ -10,6 +10,7 @@ import '../../../services/api_client.dart';
 import '../../../services/katalog_service.dart';
 import '../../../services/rekomendasi_service.dart';
 import '../../../theme/app_theme.dart';
+import '../../../widgets/galeria_logo.dart';
 import '../../../widgets/kolektor/karya_grid_card.dart';
 import '../../../widgets/kolektor/kolektor_bottom_nav.dart';
 import '../../../widgets/karya_image.dart';
@@ -142,13 +143,11 @@ class _BerandaKolektorScreenState extends State<BerandaKolektorScreen> {
       appBar: AppBar(
         title: Row(
           children: [
-            const Icon(
-              Icons.diamond_outlined,
-              size: 20,
-              color: AppColors.accent,
+            GaleriaLogo(
+              size: 32,
+              withWordmark: true,
+              textStyle: AppTextStyles.headlineMd,
             ),
-            const SizedBox(width: AppSpacing.xs),
-            Text('GALERIA', style: AppTextStyles.headlineMd),
           ],
         ),
         actions: [

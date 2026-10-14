@@ -2,9 +2,9 @@ import 'package:flutter/material.dart';
 
 import '../../config/demo_seniman.dart';
 import '../../models/dashboard_seniman.dart';
-import '../../models/karya.dart';
 import '../../services/dashboard_service.dart';
 import '../../theme/app_theme.dart';
+import '../../widgets/galeria_logo.dart';
 import '../../utils/format.dart';
 import '../../widgets/dashboard/dashboard_sections.dart';
 import '../../widgets/dashboard/sales_chart_card.dart';
@@ -14,8 +14,7 @@ import '../../widgets/dashboard/sales_chart_card.dart';
 ///
 /// Angka penjualan/omzet/aliran/segmen/tren pasar diambil dari backend
 /// (`GET /api/dashboard/...`) -- DATA SINTETIS (schema `dummy_rekomendasi`),
-/// dilabeli "Data contoh". Elemen yang tidak punya data (Tarik Dana,
-/// Perlu Tindakan, Lot unggulan) tetap placeholder berlabel "Contoh".
+/// dilabeli "Data contoh". Tombol Tarik Dana masih placeholder.
 /// Dashboard hanya statistik deskriptif, bukan prediksi/saran harga.
 class DashboardScreen extends StatefulWidget {
   const DashboardScreen({
@@ -25,6 +24,9 @@ class DashboardScreen extends StatefulWidget {
     this.onKomunitasTap,
     this.onAdakanEvent,
     this.onPromosikanKarya,
+    this.onNotifikasiTap,
+    this.onBuatLelang,
+    this.onRiwayatTap,
     this.service,
   });
 
@@ -33,6 +35,9 @@ class DashboardScreen extends StatefulWidget {
   final VoidCallback? onKomunitasTap;
   final VoidCallback? onAdakanEvent;
   final VoidCallback? onPromosikanKarya;
+  final VoidCallback? onNotifikasiTap;
+  final VoidCallback? onBuatLelang;
+  final VoidCallback? onRiwayatTap;
 
   /// Untuk testing; default membuat [DashboardService] sendiri.
   final DashboardService? service;
@@ -151,10 +156,10 @@ class _DashboardScreenState extends State<DashboardScreen> {
         title: Row(
           children: [
             Flexible(
-              child: Text(
-                'GALERIA',
-                overflow: TextOverflow.ellipsis,
-                style: AppTextStyles.headlineMd,
+              child: GaleriaLogo(
+                size: 32,
+                withWordmark: true,
+                textStyle: AppTextStyles.headlineMd,
               ),
             ),
             const SizedBox(width: AppSpacing.xs),
@@ -173,15 +178,19 @@ class _DashboardScreenState extends State<DashboardScreen> {
         ),
         actions: [
           IconButton(
-            onPressed: () {},
+            onPressed: widget.onNotifikasiTap,
             icon: const Icon(Icons.notifications_outlined),
           ),
           Padding(
             padding: const EdgeInsets.only(right: AppSpacing.sm),
-            child: CircleAvatar(
-              radius: 16,
-              backgroundColor: AppColors.primary,
-              child: const Icon(Icons.person, size: 16, color: Colors.white),
+            child: InkWell(
+              onTap: () => widget.onNavTap?.call(4),
+              customBorder: const CircleBorder(),
+              child: CircleAvatar(
+                radius: 16,
+                backgroundColor: AppColors.primary,
+                child: const Icon(Icons.person, size: 16, color: Colors.white),
+              ),
             ),
           ),
         ],
@@ -307,7 +316,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                     ],
                   ),
                   const SizedBox(height: AppSpacing.sm),
-                  // Tarik Dana / Riwayat: placeholder (belum ada data penarikan).
+                  // Tarik Dana: placeholder (belum ada payout nyata). Riwayat -> riwayat tarik dana.
                   Row(
                     children: [
                       Expanded(
@@ -325,7 +334,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                       const SizedBox(width: AppSpacing.xs),
                       Expanded(
                         child: OutlinedButton.icon(
-                          onPressed: () {},
+                          onPressed: widget.onRiwayatTap,
                           icon: const Icon(
                             Icons.schedule,
                             size: 18,
@@ -407,19 +416,20 @@ class _DashboardScreenState extends State<DashboardScreen> {
                   label: 'Unggah Karya',
                   onTap: widget.onUploadKarya,
                 ),
-                const _QuickAction(
+                _QuickAction(
                   icon: Icons.gavel_outlined,
                   label: 'Buat Lelang',
+                  onTap: widget.onBuatLelang,
                 ),
                 _QuickAction(
                   icon: Icons.campaign_outlined,
                   label: 'Promosikan',
+                  pro: true,
                   onTap: widget.onPromosikanKarya,
                 ),
                 _QuickAction(
                   icon: Icons.groups_outlined,
                   label: 'Komunitas',
-                  pro: true,
                   onTap: widget.onKomunitasTap,
                 ),
                 _QuickAction(
@@ -440,116 +450,6 @@ class _DashboardScreenState extends State<DashboardScreen> {
             tren: data.tren,
           ),
           const SizedBox(height: AppSpacing.md),
-          // Perlu tindakan -- CONTOH (tidak ada data pesanan/lelang nyata)
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Flexible(
-                child: Text(
-                  'Perlu Tindakan',
-                  overflow: TextOverflow.ellipsis,
-                  style: AppTextStyles.headlineMd,
-                ),
-              ),
-              const SizedBox(width: AppSpacing.xs),
-              const DataContohBadge(label: 'CONTOH'),
-            ],
-          ),
-          const SizedBox(height: AppSpacing.sm),
-          const _ActionRow(
-            dotColor: AppColors.accent,
-            title: '2 pesanan perlu dikemas',
-            subtitle: 'Batas waktu pengiriman kurir seni besok, 18:00 WIB',
-          ),
-          const SizedBox(height: AppSpacing.xs),
-          const _ActionRow(
-            dotColor: AppColors.error,
-            title: '1 lelang primer berakhir hari ini',
-            subtitle: 'Lot #104: Sang Putri Mahkota Renaisans',
-          ),
-          const SizedBox(height: AppSpacing.lg),
-          // Spotlight -- CONTOH (tidak ada data lelang)
-          Container(
-            padding: const EdgeInsets.all(AppSpacing.sm),
-            decoration: BoxDecoration(
-              color: AppColors.surfaceContainerLow,
-              borderRadius: BorderRadius.circular(AppRadius.md),
-            ),
-            child: Row(
-              children: [
-                ClipRRect(
-                  borderRadius: BorderRadius.circular(AppRadius.sm),
-                  child: Image.asset(
-                    sampleKarya[3].assetPath,
-                    width: 56,
-                    height: 56,
-                    fit: BoxFit.cover,
-                  ),
-                ),
-                const SizedBox(width: AppSpacing.sm),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Wrap(
-                        spacing: 6,
-                        runSpacing: 2,
-                        crossAxisAlignment: WrapCrossAlignment.center,
-                        children: [
-                          Text(
-                            'LOT UNGGULAN BERJALAN',
-                            style: AppTextStyles.overline.copyWith(
-                              color: AppColors.accent,
-                            ),
-                          ),
-                          const DataContohBadge(label: 'CONTOH'),
-                        ],
-                      ),
-                      Text(
-                        'Sang Putri Mahkota Renaisans',
-                        style: AppTextStyles.headlineSm.copyWith(
-                          fontStyle: FontStyle.italic,
-                          fontSize: 16,
-                        ),
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                      Text.rich(
-                        TextSpan(
-                          style: AppTextStyles.bodySm.copyWith(
-                            color: AppColors.muted,
-                          ),
-                          children: const [
-                            TextSpan(text: 'Tawaran Tertinggi: '),
-                            TextSpan(
-                              text: 'Rp 48.000.000',
-                              style: TextStyle(
-                                fontWeight: FontWeight.w700,
-                                color: AppColors.onSurface,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-                CircleAvatar(
-                  radius: 18,
-                  backgroundColor: AppColors.surfaceContainer,
-                  child: const Icon(Icons.arrow_forward, size: 16),
-                ),
-              ],
-            ),
-          ),
-          const SizedBox(height: AppSpacing.sm),
-          Text(
-            'Data contoh: penjualan, harga, dan pembeli di dashboard ini sintetis dan bukan data pasar nyata. '
-            'Dashboard hanya menampilkan statistik, bukan saran atau prediksi harga.',
-            style: AppTextStyles.bodySm.copyWith(
-              color: AppColors.muted,
-              fontSize: 11,
-            ),
-          ),
           const SizedBox(height: AppSpacing.xl),
         ],
       ),
@@ -740,58 +640,6 @@ class _StatCard extends StatelessWidget {
             ),
             overflow: TextOverflow.ellipsis,
           ),
-        ],
-      ),
-    );
-  }
-}
-
-class _ActionRow extends StatelessWidget {
-  const _ActionRow({
-    required this.dotColor,
-    required this.title,
-    required this.subtitle,
-  });
-
-  final Color dotColor;
-  final String title, subtitle;
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.all(AppSpacing.sm),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(AppRadius.md),
-        boxShadow: const [BoxShadow(color: Colors.black12, blurRadius: 4)],
-      ),
-      child: Row(
-        children: [
-          Padding(
-            padding: const EdgeInsets.only(top: 4, right: AppSpacing.xs),
-            child: Container(
-              width: 10,
-              height: 10,
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                color: dotColor,
-              ),
-            ),
-          ),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(title, style: AppTextStyles.labelMd),
-                Text(
-                  subtitle,
-                  style: AppTextStyles.bodySm.copyWith(color: AppColors.muted),
-                  overflow: TextOverflow.ellipsis,
-                ),
-              ],
-            ),
-          ),
-          const Icon(Icons.chevron_right, color: AppColors.muted),
         ],
       ),
     );

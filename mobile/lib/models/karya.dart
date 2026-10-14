@@ -17,6 +17,7 @@ class Karya {
     this.isPromoted = false,
     this.imageUrl,
     this.senimanId,
+    this.aiGeneratedProbability,
   });
 
   /// UUID dari database -- kosong ('') untuk [sampleKarya] lokal (belum
@@ -24,6 +25,14 @@ class Karya {
   /// `GET /api/katalog` atau `POST /api/visual-search`.
   final String id;
   final String assetPath;
+
+  /// Path relatif ke gambar ter-upload sungguhan (mis.
+  /// `/uploads/karya/{id}.jpg`, lihat backend/schemas/katalog.py) --
+  /// null utk karya lama/[sampleKarya] yang masih pakai [assetPath] (asset
+  /// lokal dibundling). Widget [KaryaImage] (lihat widgets/karya_image.dart)
+  /// yang memutuskan mana dipakai -- JANGAN prepend base URL di sini (model
+  /// data murni, tidak boleh tahu soal `kApiBaseUrl`).
+  final String? imageUrl;
   final String title;
   final String artistName;
   final String styleName;
@@ -41,12 +50,12 @@ class Karya {
   /// di backend.
   final bool isPromoted;
 
-  /// URL gambar publik (Cloudflare R2) -- diisi backend utk karya katalog
-  /// dummy (`GET /api/katalog-dummy`). `null` = pakai asset lokal [assetPath].
-  final String? imageUrl;
-
   /// UUID seniman pembuat (hanya dari katalog dummy; `null` utk data lokal).
   final String? senimanId;
+
+  /// Skor Art-to-AI (0..1, kemungkinan AI-generated) dari verification
+  /// engine. `null` = karya belum pernah dicek engine (mis. karya seed).
+  final double? aiGeneratedProbability;
 
   String get priceFormatted {
     final s = priceIdr.toString();
@@ -98,6 +107,8 @@ class Karya {
       isPromoted: (json['is_promoted'] as bool?) ?? false,
       imageUrl: json['image_url'] as String?,
       senimanId: json['seniman_id'] as String?,
+      aiGeneratedProbability:
+          (json['ai_generated_probability'] as num?)?.toDouble(),
     );
   }
 }
