@@ -1,17 +1,23 @@
 import 'package:flutter/material.dart';
 
+import '../../services/digital_art_identity_service.dart';
 import '../../theme/app_theme.dart';
 
 /// Konversi dari
 /// docs/design/role_seniman_2/.../galeria_karya_tidak_dapat_didaftarkan/code.html
 ///
-/// Skor & alasan penolakan di sini CONTOH -- nilai asli dari
-/// `ml-digital-art-identity/` nanti (lihat CLAUDE.md).
+/// [result] (opsional) = hasil ASLI verifikasi. PENTING (lihat
+/// DigitalArtIdentityService._decide_status di backend): layar ini HANYA
+/// muncul utk duplikat yang SANGAT yakin (pHash near-exact ATAU jarak
+/// embedding << ambang) -- "ai_generated_terdeteksi" SENDIRIAN TIDAK PERNAH
+/// berakhir di sini, selalu ke /karya-perlu-ditinjau. Jadi copy di layar ini
+/// cuma bicara soal DUPLIKASI, bukan "kuat dibuat AI" (beda dari versi lama).
 class KaryaDitolakScreen extends StatelessWidget {
-  const KaryaDitolakScreen({super.key, required this.onBack, required this.onAjukanBanding});
+  const KaryaDitolakScreen({super.key, required this.onBack, required this.onAjukanBanding, this.result});
 
   final VoidCallback onBack;
   final VoidCallback onAjukanBanding;
+  final VerificationResult? result;
 
   @override
   Widget build(BuildContext context) {
@@ -85,7 +91,10 @@ class KaryaDitolakScreen extends StatelessWidget {
                 textAlign: TextAlign.center, style: AppTextStyles.headlineLg),
             const SizedBox(height: 6),
             Text(
-              'Karya Anda terindikasi memiliki kemiripan dengan karya lain dan juga kuat sebagai hasil buatan AI.',
+              result?.duplicateMatches.isNotEmpty == true
+                  ? 'Karya Anda sangat mirip dengan "${result!.duplicateMatches.first.title}" '
+                      'oleh ${result!.duplicateMatches.first.artistName} yang sudah terdaftar di GALERIA.'
+                  : 'Karya Anda terindikasi memiliki kemiripan sangat tinggi dengan karya lain yang sudah terdaftar di GALERIA.',
               textAlign: TextAlign.center,
               style: AppTextStyles.bodyMd.copyWith(color: AppColors.muted),
             ),
@@ -120,24 +129,33 @@ class KaryaDitolakScreen extends StatelessWidget {
                     ],
                   ),
                   const SizedBox(height: AppSpacing.xs),
+                  // Jarak Euclidean embedding Art-to-Art (BUKAN skor 0-100 --
+                  // itu angka karangan versi lama). Semakin KECIL = semakin mirip.
                   Row(
                     crossAxisAlignment: CrossAxisAlignment.baseline,
                     textBaseline: TextBaseline.alphabetic,
                     children: [
-                      Text('94',
+                      Text(
+                          result?.duplicateMatches.isNotEmpty == true
+                              ? result!.duplicateMatches.first.distance.toStringAsFixed(3)
+                              : '--',
                           style: AppTextStyles.displayLg.copyWith(color: AppColors.error, fontSize: 34)),
                       const SizedBox(width: 4),
-                      Text('/ 100', style: AppTextStyles.bodySm.copyWith(color: AppColors.muted)),
+                      Text('jarak (ambang 0,10)', style: AppTextStyles.bodySm.copyWith(color: AppColors.muted)),
                     ],
                   ),
                   const SizedBox(height: 6),
                   ClipRRect(
                     borderRadius: BorderRadius.circular(AppRadius.full),
-                    child: const LinearProgressIndicator(
-                      value: 0.94,
+                    child: LinearProgressIndicator(
+                      // Diskalakan terbalik (jarak kecil = bar penuh) hanya utk
+                      // visual, bukan makna persentase formal.
+                      value: result?.duplicateMatches.isNotEmpty == true
+                          ? (1 - (result!.duplicateMatches.first.distance / 0.10).clamp(0, 1)).toDouble()
+                          : 0,
                       minHeight: 8,
                       backgroundColor: AppColors.surfaceContainerHigh,
-                      valueColor: AlwaysStoppedAnimation(AppColors.error),
+                      valueColor: const AlwaysStoppedAnimation(AppColors.error),
                     ),
                   ),
                   const SizedBox(height: 6),

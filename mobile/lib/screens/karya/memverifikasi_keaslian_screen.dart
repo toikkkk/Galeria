@@ -1,23 +1,30 @@
-import 'dart:async';
+import 'dart:io';
 
 import 'package:flutter/material.dart';
 
-import '../../models/karya.dart';
+import '../../services/digital_art_identity_service.dart';
 import '../../theme/app_theme.dart';
 
 /// Konversi dari
 /// docs/design/role_seniman_2/.../galeria_memverifikasi_keaslian_karya/code.html
 ///
-/// UI murni -- logic sesungguhnya (deteksi duplikasi + deteksi AI-generated)
-/// adalah scope `ml-digital-art-identity/` (anggota tim lain, lihat
-/// CLAUDE.md). Di sini cuma simulasi timer lalu panggil [onDone].
-///
-/// TODO(ml-digital-art-identity): ganti simulasi timer dengan polling status
-/// verifikasi asli dari backend begitu endpointnya ada.
+/// Panggil `POST /api/karya/{karyaId}/verify` SUNGGUHAN (lewat
+/// [DigitalArtIdentityService.verifyKarya]) -- verifikasi RESMI, hasilnya
+/// DISIMPAN dan `karya.status_verifikasi` diperbarui (beda dari mode
+/// pratinjau yang dipakai sebelum karya ada di database). [onDone] menerima
+/// hasil asli supaya caller (lihat main.dart) bisa branch ke layar yang
+/// tepat (terverifikasi/ditolak/perlu_ditinjau).
 class MemverifikasiKeaslianScreen extends StatefulWidget {
-  const MemverifikasiKeaslianScreen({super.key, required this.onDone});
+  const MemverifikasiKeaslianScreen({
+    super.key,
+    required this.image,
+    required this.karyaId,
+    required this.onDone,
+  });
 
-  final VoidCallback onDone;
+  final File image;
+  final String karyaId;
+  final ValueChanged<VerificationResult> onDone;
 
   @override
   State<MemverifikasiKeaslianScreen> createState() => _MemverifikasiKeaslianScreenState();
@@ -28,10 +35,24 @@ class _MemverifikasiKeaslianScreenState extends State<MemverifikasiKeaslianScree
   late final AnimationController _spin =
       AnimationController(vsync: this, duration: const Duration(seconds: 12))..repeat();
 
+  String? _error;
+
   @override
   void initState() {
     super.initState();
-    Timer(const Duration(seconds: 3), widget.onDone);
+    _runVerification();
+  }
+
+  Future<void> _runVerification() async {
+    setState(() => _error = null);
+    try {
+      final result = await DigitalArtIdentityService().verifyKarya(widget.karyaId, widget.image);
+      if (!mounted) return;
+      widget.onDone(result);
+    } catch (e) {
+      if (!mounted) return;
+      setState(() => _error = 'Gagal menghubungi server verifikasi: $e');
+    }
   }
 
   @override
@@ -50,6 +71,7 @@ class _MemverifikasiKeaslianScreenState extends State<MemverifikasiKeaslianScree
               horizontal: AppSpacing.screenGutter, vertical: AppSpacing.lg),
           child: Column(
             children: [
+              if (_error != null) ..._errorBanner(),
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: AppSpacing.sm, vertical: 4),
                 decoration: BoxDecoration(
@@ -100,7 +122,7 @@ class _MemverifikasiKeaslianScreenState extends State<MemverifikasiKeaslianScree
                       ),
                       child: ClipRRect(
                         borderRadius: BorderRadius.circular(AppRadius.md),
-                        child: Image.asset(sampleKarya[3].assetPath, fit: BoxFit.cover),
+                        child: Image.file(widget.image, fit: BoxFit.cover),
                       ),
                     ),
                     Positioned(
@@ -137,22 +159,31 @@ class _MemverifikasiKeaslianScreenState extends State<MemverifikasiKeaslianScree
                 ),
                 child: Column(
                   children: [
+                    // Art-to-Art & Art-to-AI berjalan BERSAMAAN dalam 1 panggilan
+                    // backend (lihat DigitalArtIdentityService.verify()) -- jadi
+                    // keduanya ditampilkan "memindai" sekaligus, BUKAN bertahap
+                    // (dulu salah satu ditampilkan palsu "Selesai" dari awal).
                     _stepRow(
-                        icon: Icons.check,
-                        iconBg: AppColors.success,
-                        title: 'Menganalisis kemiripan dengan karya lainnya',
+                        loading: _error == null,
+                        icon: _error != null ? Icons.error_outline : null,
+                        iconBg: _error != null ? AppColors.errorContainer : AppColors.accentSoft,
+                        iconColor: AppColors.error,
+                        title: 'Menganalisis kemiripan dengan karya lainnya (Art-to-Art)',
                         subtitle: 'Mendeteksi kemiripan visual, komposisi, & palet karya lain',
-                        status: 'Selesai',
-                        statusColor: AppColors.success),
+                        status: _error != null ? 'Gagal' : 'Memindai...',
+                        statusColor: _error != null ? AppColors.error : AppColors.accent,
+                        active: _error == null),
                     const SizedBox(height: AppSpacing.xs),
                     _stepRow(
-                        loading: true,
-                        iconBg: AppColors.accentSoft,
-                        title: 'Menganalisis kemungkinan dibuat oleh AI',
+                        loading: _error == null,
+                        icon: _error != null ? Icons.error_outline : null,
+                        iconBg: _error != null ? AppColors.errorContainer : AppColors.accentSoft,
+                        iconColor: AppColors.error,
+                        title: 'Menganalisis kemungkinan dibuat oleh AI (Art-to-AI)',
                         subtitle: 'Mendeteksi artefak sintetis dan pola piksel generatif AI',
-                        status: 'Memindai...',
-                        statusColor: AppColors.accent,
-                        active: true),
+                        status: _error != null ? 'Gagal' : 'Memindai...',
+                        statusColor: _error != null ? AppColors.error : AppColors.accent,
+                        active: _error == null),
                     const SizedBox(height: AppSpacing.xs),
                     _stepRow(
                         icon: Icons.hourglass_empty,
@@ -177,7 +208,7 @@ class _MemverifikasiKeaslianScreenState extends State<MemverifikasiKeaslianScree
                 ],
               ),
               const SizedBox(height: 4),
-              Text('Harap jangan menutup aplikasi selama enkripsi sertifikat berlangsung.',
+              Text('Harap jangan menutup aplikasi selama proses analisis berlangsung.',
                   textAlign: TextAlign.center,
                   style: AppTextStyles.overline.copyWith(color: AppColors.muted, fontSize: 9)),
             ],
@@ -186,6 +217,41 @@ class _MemverifikasiKeaslianScreenState extends State<MemverifikasiKeaslianScree
       ),
     );
   }
+
+  List<Widget> _errorBanner() => [
+        Container(
+          width: double.infinity,
+          padding: const EdgeInsets.all(AppSpacing.sm),
+          decoration: BoxDecoration(
+            color: AppColors.errorContainer,
+            borderRadius: BorderRadius.circular(AppRadius.md),
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  const Icon(Icons.wifi_off, size: 18, color: AppColors.error),
+                  const SizedBox(width: 6),
+                  Expanded(
+                    child: Text('Verifikasi gagal',
+                        style: AppTextStyles.labelMd.copyWith(color: AppColors.error)),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 4),
+              Text(_error ?? '', style: AppTextStyles.bodySm.copyWith(color: AppColors.error)),
+              const SizedBox(height: AppSpacing.sm),
+              OutlinedButton.icon(
+                onPressed: _runVerification,
+                icon: const Icon(Icons.refresh, size: 16),
+                label: const Text('Coba Lagi'),
+              ),
+            ],
+          ),
+        ),
+        const SizedBox(height: AppSpacing.md),
+      ];
 
   Widget _stepRow({
     IconData? icon,

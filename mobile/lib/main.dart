@@ -1,5 +1,9 @@
+import 'dart:io';
+
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
+
+import 'services/digital_art_identity_service.dart';
 
 import 'models/karya.dart';
 import 'models/lelang.dart';
@@ -15,6 +19,7 @@ import 'screens/event/buat_event_step3_screen.dart';
 import 'screens/event/event_berhasil_screen.dart';
 import 'screens/karya/karya_ditolak_screen.dart';
 import 'screens/karya/karya_perlu_ditinjau_screen.dart';
+import 'screens/karya/karya_saya_screen.dart';
 import 'screens/karya/karya_terverifikasi_screen.dart';
 import 'screens/karya/memverifikasi_keaslian_screen.dart';
 import 'screens/karya/promosikan_karya_screen.dart';
@@ -50,6 +55,21 @@ void main() {
   runApp(const GaleriaApp());
 }
 
+/// Routing hasil verifikasi Digital Art Identity (Art-to-Art + Art-to-AI)
+/// berdasarkan `rekomendasi_status` ASLI dari backend -- lihat
+/// DigitalArtIdentityService._decide_status (backend/services/
+/// digital_art_identity_service.py) untuk aturan lengkapnya.
+void _goToHasilVerifikasi(BuildContext context, VerificationResult result) {
+  switch (result.rekomendasiStatus) {
+    case 'ditolak':
+      context.go('/karya-ditolak', extra: result);
+    case 'perlu_ditinjau':
+      context.go('/karya-perlu-ditinjau', extra: result);
+    default: // 'terverifikasi'
+      context.go('/karya-terverifikasi', extra: result);
+  }
+}
+
 /// Handler bersama untuk bottom-nav Kolektor (0=Beranda, 1=Lelang,
 /// 2=Pesanan, 3=Profil).
 void _goKolektorTab(BuildContext context, int index) {
@@ -65,6 +85,38 @@ void _goKolektorTab(BuildContext context, int index) {
   }
 }
 
+/// Bottom nav 5-slot role Seniman (DashboardScreen & ProfilScreen) --
+/// SEBELUMNYA index 1 ("Karya") tidak punya tujuan SAMA SEKALI di seluruh
+/// app (gap sistemik, bukan cuma lupa isi callback). Disatukan jadi 1
+/// fungsi (pola sama dgn [_goKolektorTab]) supaya kedua layar konsisten.
+/// Lihat audit navigasi role Seniman, 2026-10.
+///
+/// Index 0/1/4 (Dasbor/Karya Saya/Profil) TETAP pakai `go()` -- 3 layar ini
+/// tidak pernah bergantung pada `context.pop()` utk tombol kembalinya
+/// (Dasbor & Profil malah tidak punya tombol kembali sama sekali, Karya
+/// Saya eksplisit `go('/dashboard')`), jadi aman jadi tab-switch murni
+/// tanpa riwayat numpuk -- pola standar bottom nav.
+///
+/// Index 2 (FAB tengah, "+") pakai `push()` -- /unggah-karya PUNYA tombol
+/// kembali yang pakai `context.pop()`, jadi WAJIB ada riwayat navigasi
+/// supaya kembali ke tab manapun yang sedang aktif saat FAB ditekan
+/// (bukan selalu balik ke Dasbor). Lihat perbaikan navigasi "kembali"
+/// role Seniman, 2026-10.
+void _goSenimanTab(BuildContext context, int index) {
+  switch (index) {
+    case 0:
+      context.go('/dashboard');
+    case 1:
+      context.go('/karya-saya');
+    case 2:
+      context.push('/unggah-karya');
+    case 3:
+      context.go('/pesanan-seniman');
+    case 4:
+      context.go('/profil');
+  }
+}
+
 final _router = GoRouter(
   initialLocation: '/splash',
   routes: [
@@ -76,8 +128,11 @@ final _router = GoRouter(
     GoRoute(
       path: '/welcome',
       builder: (context, state) => WelcomeScreen(
-        onLoginTap: () => context.go('/login'),
-        onRegisterTap: () => context.go('/role-selection'),
+        // push (bukan go) -- /login & /role-selection pakai context.pop()
+        // utk tombol kembali, butuh riwayat navigasi supaya ada tujuan.
+        // Lihat perbaikan navigasi "kembali" role Seniman, 2026-10.
+        onLoginTap: () => context.push('/login'),
+        onRegisterTap: () => context.push('/role-selection'),
         // Sebelumnya selalu ke '/dashboard' (Seniman) -- ini penyebab utama
         // "masuk sebagai tamu langsung jadi Seniman". Tamu = pengalaman
         // Kolektor (jelajah katalog), sesuai use-case marketplace utama.
@@ -89,10 +144,12 @@ final _router = GoRouter(
       builder: (context, state) => RoleSelectionScreen(
         onBack: () => context.pop(),
         onContinue: (role) {
+          // push -- sama alasannya, /daftar-seniman & /daftar-kolektor
+          // pakai context.pop() utk tombol kembali.
           if (role == UserRole.seniman) {
-            context.go('/daftar-seniman');
+            context.push('/daftar-seniman');
           } else {
-            context.go('/daftar-kolektor');
+            context.push('/daftar-kolektor');
           }
         },
       ),
@@ -108,7 +165,8 @@ final _router = GoRouter(
             context.go('/beranda-kolektor');
           }
         },
-        onRegisterTap: () => context.go('/role-selection'),
+        // push -- sama alasan di atas.
+        onRegisterTap: () => context.push('/role-selection'),
       ),
     ),
 
@@ -117,8 +175,12 @@ final _router = GoRouter(
       path: '/daftar-seniman',
       builder: (context, state) => DaftarSenimanScreen(
         onBack: () => context.pop(),
-        onContinue: () => context.go('/verifikasi-identitas'),
-        onLoginTap: () => context.go('/login'),
+        // push -- /verifikasi-identitas pakai context.pop() (BUKAN cuma
+        // dipanggil dari sini, lihat juga onDataDiri di /profil di bawah,
+        // yang sudah push -- kalau dua entry point beda (go vs push), pop()
+        // hanya benar utk salah satunya).
+        onContinue: () => context.push('/verifikasi-identitas'),
+        onLoginTap: () => context.push('/login'),
       ),
     ),
     GoRoute(
@@ -132,12 +194,11 @@ final _router = GoRouter(
     GoRoute(
       path: '/dashboard',
       builder: (context, state) => DashboardScreen(
-        onUploadKarya: () => context.go('/unggah-karya'),
-        onNavTap: (i) {
-          if (i == 3) context.push('/pesanan-seniman');
-          if (i == 4) context.go('/profil');
-        },
-        onKomunitasTap: () => context.go('/komunitas'),
+        // push -- /unggah-karya & /komunitas pakai context.pop() utk
+        // tombol kembali, butuh riwayat navigasi.
+        onUploadKarya: () => context.push('/unggah-karya'),
+        onNavTap: (i) => _goSenimanTab(context, i),
+        onKomunitasTap: () => context.push('/komunitas'),
         // Bottom sheet "Seniman PRO" -- upgrade demo langsung ke wizard
         // buat event (belum ada alur pembayaran subscription nyata).
         onAdakanEvent: () => showAdakanEventSheet(
@@ -150,10 +211,17 @@ final _router = GoRouter(
     GoRoute(
       path: '/profil',
       builder: (context, state) => ProfilScreen(
-        onNavTap: (i) {
-          if (i == 0) context.go('/dashboard');
-        },
+        onNavTap: (i) => _goSenimanTab(context, i),
         onLogout: () => context.go('/welcome'),
+        onLihatProfilToko: () => context.push('/toko'),
+        onDataDiri: () => context.push('/verifikasi-identitas'),
+      ),
+    ),
+    GoRoute(
+      path: '/karya-saya',
+      builder: (context, state) => KaryaSayaScreen(
+        onBack: () => context.go('/dashboard'),
+        onUploadKarya: () => context.push('/unggah-karya'),
       ),
     ),
     GoRoute(
@@ -165,30 +233,39 @@ final _router = GoRouter(
       path: '/unggah-karya',
       builder: (context, state) => UnggahKaryaScreen(
         onBack: () => context.pop(),
-        onSubmitted: () => context.go('/memverifikasi-keaslian'),
+        onSubmitted: (data) => context.go('/memverifikasi-keaslian', extra: data),
       ),
     ),
     GoRoute(
       path: '/memverifikasi-keaslian',
-      builder: (context, state) => MemverifikasiKeaslianScreen(
-        // TODO(ml-digital-art-identity): harusnya branch ke
-        // /karya-terverifikasi, /karya-ditolak, atau /karya-perlu-ditinjau
-        // sesuai hasil verifikasi asli -- sementara selalu ke jalur sukses
-        // (demo/UI-only, backend verifikasi belum ada).
-        onDone: () => context.go('/karya-terverifikasi'),
-      ),
+      builder: (context, state) {
+        final data = state.extra as ({File image, String karyaId});
+        return MemverifikasiKeaslianScreen(
+          image: data.image,
+          karyaId: data.karyaId,
+          // Branch ke layar hasil sesuai `rekomendasi_status` ASLI dari
+          // backend (lihat DigitalArtIdentityService._decide_status) --
+          // bukan selalu ke jalur sukses lagi.
+          onDone: (result) => _goToHasilVerifikasi(context, result),
+        );
+      },
     ),
     GoRoute(
       path: '/karya-terverifikasi',
       builder: (context, state) => KaryaTerverifikasiScreen(
+        result: state.extra as VerificationResult?,
         onClose: () => context.go('/dashboard'),
         onLihatGaleri: () => context.go('/dashboard'),
-        onUnggahLagi: () => context.go('/unggah-karya'),
+        // push -- samakan dgn 2 entry point lain ke /unggah-karya (dashboard
+        // quick-action & FAB), supaya tombol kembalinya (pop()) konsisten
+        // berfungsi apa pun jalur masuknya.
+        onUnggahLagi: () => context.push('/unggah-karya'),
       ),
     ),
     GoRoute(
       path: '/karya-ditolak',
       builder: (context, state) => KaryaDitolakScreen(
+        result: state.extra as VerificationResult?,
         onBack: () => context.go('/dashboard'),
         onAjukanBanding: () => context.go('/dashboard'),
       ),
@@ -196,6 +273,7 @@ final _router = GoRouter(
     GoRoute(
       path: '/karya-perlu-ditinjau',
       builder: (context, state) => KaryaPerluDitinjauScreen(
+        result: state.extra as VerificationResult?,
         onClose: () => context.go('/dashboard'),
         onAjukanPeninjauan: () => context.go('/dashboard'),
         onKembali: () => context.go('/dashboard'),
@@ -203,8 +281,12 @@ final _router = GoRouter(
     ),
     GoRoute(
       path: '/pesanan-seniman',
-      builder: (context, state) =>
-          PesananSenimanScreen(onBack: () => context.pop()),
+      builder: (context, state) => PesananSenimanScreen(
+        // Dituju via tab-switch (go(), lihat _goSenimanTab) -- pop() tidak
+        // bisa diandalkan (bisa tidak ada riwayat). Pola sama dgn
+        // /karya-saya.
+        onBack: () => context.go('/dashboard'),
+      ),
     ),
     GoRoute(
       path: '/promosikan-karya',
@@ -251,8 +333,9 @@ final _router = GoRouter(
       path: '/daftar-kolektor',
       builder: (context, state) => DaftarKolektorScreen(
         onBack: () => context.pop(),
-        onContinue: () => context.go('/preferensi-genre'),
-        onLoginTap: () => context.go('/login'),
+        // push -- /preferensi-genre pakai context.pop() utk tombol kembali.
+        onContinue: () => context.push('/preferensi-genre'),
+        onLoginTap: () => context.push('/login'),
       ),
     ),
     GoRoute(

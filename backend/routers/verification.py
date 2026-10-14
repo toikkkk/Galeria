@@ -23,7 +23,7 @@ from PIL import Image, ImageOps
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from database import get_db
-from models.karya import Karya
+from models.karya import Karya, StatusVerifikasiKarya
 from schemas.verification import VerificationResult
 
 router = APIRouter(prefix="/api", tags=["verification"])
@@ -63,8 +63,15 @@ async def verify_karya(
     db: AsyncSession = Depends(get_db),
 ):
     """Verifikasi RESMI karya yang sudah ada di tabel ``karya`` -- hasil
-    disimpan (``karya_fingerprints`` + ``karya_verifikasi_log``) dan
-    di-commit sebelum response dikembalikan.
+    disimpan (``karya_fingerprints`` + ``karya_verifikasi_log``) DAN
+    ``karya.status_verifikasi`` diperbarui mengikuti ``rekomendasi_status``
+    (lihat DigitalArtIdentityService._decide_status) sebelum di-commit.
+
+    CATATAN JUJUR: ini auto-apply rekomendasi, BUKAN proses review manusia
+    sungguhan utk kasus "perlu_ditinjau" -- admin dashboard utk override
+    manual belum dibangun (di luar scope saat ini). Karya "perlu_ditinjau"
+    tetap TIDAK tampil di GET /api/katalog (lihat routers/katalog.py,
+    hanya "terverifikasi" yang tampil) sampai status-nya diubah manual.
     """
     try:
         karya_uuid = uuid.UUID(karya_id)
@@ -78,5 +85,7 @@ async def verify_karya(
     image = await _read_image(file)
     service = request.app.state.digital_art_identity_service
     result = await service.verify(image, db=db, karya_id=karya_uuid, persist=True)
+
+    karya.status_verifikasi = StatusVerifikasiKarya(result["rekomendasi_status"])
     await db.commit()
     return VerificationResult(**result, persisted=True)
