@@ -3,6 +3,7 @@ import 'package:flutter/services.dart';
 
 import '../../models/karya.dart';
 import '../../services/digital_art_identity_service.dart';
+import '../../state/upload_preview.dart';
 import '../../theme/app_theme.dart';
 
 /// Konversi dari
@@ -137,19 +138,21 @@ class KaryaTerverifikasiScreen extends StatelessWidget {
                       children: [
                         ClipRRect(
                           borderRadius: BorderRadius.circular(AppRadius.md),
-                          child: Image.asset(sampleKarya[3].assetPath, width: 72, height: 88, fit: BoxFit.cover),
+                          child: UploadPreview.last != null
+                              ? Image.memory(UploadPreview.last!.image.bytes, width: 72, height: 88, fit: BoxFit.cover)
+                              : Image.asset(sampleKarya[3].assetPath, width: 72, height: 88, fit: BoxFit.cover),
                         ),
                         const SizedBox(width: AppSpacing.sm),
                         Expanded(
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              Text('KLASIK REALISME',
+                              Text((UploadPreview.last?.style ?? 'KLASIK REALISME').toUpperCase(),
                                   style: AppTextStyles.overline.copyWith(fontSize: 9, color: AppColors.accent)),
-                              Text('Sang Putri Mahkota Renaisans',
+                              Text(UploadPreview.last?.title ?? 'Sang Putri Mahkota Renaisans',
                                   style: AppTextStyles.headlineSm.copyWith(fontSize: 16),
                                   overflow: TextOverflow.ellipsis),
-                              Text('Sanggar Rupa Nusantara · 2024',
+                              Text('${UploadPreview.last?.artist ?? 'Sanggar Rupa Nusantara'} · ${DateTime.now().year}',
                                   style: AppTextStyles.bodySm.copyWith(color: AppColors.muted)),
                               const SizedBox(height: 4),
                               Row(

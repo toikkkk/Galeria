@@ -34,6 +34,9 @@ class KaryaListItem(BaseModel):
     ai_generated_probability: float | None = None
     model_version_arttoart: str | None = None
     model_version_arttoai: str | None = None
+    # Ukuran fisik (cm) utk AR; None = belum diisi seniman
+    lebar_cm: float | None = None
+    tinggi_cm: float | None = None
 
 
 class KaryaDetail(KaryaListItem):

@@ -28,6 +28,8 @@ class CatalogMatch(BaseModel):
     # mobile/assets/images/catalog/ (belum ada hosting gambar/R2, lihat
     # CLAUDE.md "Di Luar Scope Fase Ini").
     image_filename: str
+    lebar_cm: float | None = None   # ukuran fisik utk AR (None = belum diisi)
+    tinggi_cm: float | None = None
 
 
 class VisualSearchResponse(BaseModel):

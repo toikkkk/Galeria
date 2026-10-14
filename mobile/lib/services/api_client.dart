@@ -12,7 +12,14 @@ import 'package:http_parser/http_parser.dart';
 /// -- ini paling robust dibanding IP WiFi yang bisa berubah-ubah, dan cocok
 /// dgn alur kerja tim yang sejauh ini selalu pakai HP fisik via USB (lihat
 /// mobile/docs/SETUP_ANDROID.md).
-const kApiBaseUrl = 'http://127.0.0.1:8000';
+///
+/// Tanpa USB/`adb reverse`: jalankan dgn
+/// `flutter run --dart-define=API_BASE_URL=http://<IP-laptop>:8000` (HP & laptop satu WiFi,
+/// backend dijalankan dgn `--host 0.0.0.0`).
+const kApiBaseUrl = String.fromEnvironment(
+  'API_BASE_URL',
+  defaultValue: 'http://127.0.0.1:8000',
+);
 
 /// `true` = katalog & rekomendasi dari data dummy (`GET /api/katalog-dummy`,
 /// 2.000 karya, gambar R2). `false` = katalog lama (`GET /api/katalog`, 8
