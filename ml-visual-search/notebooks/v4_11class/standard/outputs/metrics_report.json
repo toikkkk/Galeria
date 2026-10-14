@@ -1,0 +1,119 @@
+{
+  "n_test": 4449,
+  "accuracy": 0.75118004045853,
+  "mse": 0.35815510153770447,
+  "top3_accuracy": 0.9271746459878625,
+  "macro_f1": 0.7477018558595924,
+  "weighted_f1": 0.7503480922498791,
+  "macro_f1_subset": 0.7477018558595924,
+  "subset_classes": [
+    "Art_Nouveau",
+    "Baroque",
+    "Cubism",
+    "Expressionism",
+    "Impressionism",
+    "Naive_Art_Primitivism",
+    "Northern_Renaissance",
+    "Post_Impressionism",
+    "Realism",
+    "Romanticism",
+    "Symbolism"
+  ],
+  "subset_min_support": 8,
+  "per_class": {
+    "Art_Nouveau": {
+      "precision": 0.7647058823529411,
+      "recall": 0.7116788321167883,
+      "f1-score": 0.7372400756143668,
+      "support": 274.0
+    },
+    "Baroque": {
+      "precision": 0.8287937743190662,
+      "recall": 0.8801652892561983,
+      "f1-score": 0.8537074148296593,
+      "support": 242.0
+    },
+    "Cubism": {
+      "precision": 0.752,
+      "recall": 0.7286821705426356,
+      "f1-score": 0.7401574803149606,
+      "support": 129.0
+    },
+    "Expressionism": {
+      "precision": 0.6089965397923875,
+      "recall": 0.555205047318612,
+      "f1-score": 0.5808580858085809,
+      "support": 317.0
+    },
+    "Impressionism": {
+      "precision": 0.8342059336823735,
+      "recall": 0.8467670504871567,
+      "f1-score": 0.8404395604395605,
+      "support": 1129.0
+    },
+    "Naive_Art_Primitivism": {
+      "precision": 0.7515151515151515,
+      "recall": 0.7654320987654321,
+      "f1-score": 0.7584097859327217,
+      "support": 162.0
+    },
+    "Northern_Renaissance": {
+      "precision": 0.8994974874371859,
+      "recall": 0.927461139896373,
+      "f1-score": 0.9132653061224489,
+      "support": 193.0
+    },
+    "Post_Impressionism": {
+      "precision": 0.6228813559322034,
+      "recall": 0.6377440347071583,
+      "f1-score": 0.6302250803858521,
+      "support": 461.0
+    },
+    "Realism": {
+      "precision": 0.6973532796317606,
+      "recall": 0.7301204819277108,
+      "f1-score": 0.7133608004708653,
+      "support": 830.0
+    },
+    "Romanticism": {
+      "precision": 0.743142144638404,
+      "recall": 0.7286063569682152,
+      "f1-score": 0.7358024691358025,
+      "support": 409.0
+    },
+    "Symbolism": {
+      "precision": 0.7638376383763837,
+      "recall": 0.6831683168316832,
+      "f1-score": 0.7212543554006968,
+      "support": 303.0
+    },
+    "accuracy": 0.75118004045853,
+    "macro avg": {
+      "precision": 0.7515390170616235,
+      "recall": 0.745002801710724,
+      "f1-score": 0.7477018558595924,
+      "support": 4449.0
+    },
+    "weighted avg": {
+      "precision": 0.750430174371004,
+      "recall": 0.75118004045853,
+      "f1-score": 0.7503480922498791,
+      "support": 4449.0
+    }
+  },
+  "checkpoint": {
+    "epoch": 30,
+    "monitor_value": 0.7524271556284919,
+    "note": "EMA"
+  },
+  "tuning": {
+    "ran": false,
+    "best_params": {
+      "learning_rate": 0.0002584949196006611,
+      "backbone_lr_mult": 0.18427033274320545,
+      "weight_decay": 0.0009849813063176139,
+      "dropout": 0.2017262123368978,
+      "unfreeze_frac": 0.4406353983164585
+    }
+  }
+}
