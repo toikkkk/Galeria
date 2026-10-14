@@ -2,7 +2,10 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
 import '../../theme/app_theme.dart';
+import '../../state/studio_store.dart';
 import '../../utils/coming_soon.dart';
+import '../../utils/format.dart';
+import '../../utils/format_waktu.dart';
 
 /// Konversi dari
 /// docs/design/role_seniman_2/.../galeria_event_berhasil_diterbitkan/code.html
@@ -12,8 +15,27 @@ class EventBerhasilScreen extends StatelessWidget {
   final VoidCallback onKelolaEvent;
   final VoidCallback onKembaliDasbor;
 
+  static String _jadwal(EventPameran? e) {
+    if (e == null || e.tanggalMulai == null) return '-';
+    final mulai = formatTanggal(e.tanggalMulai!);
+    final selesai = e.tanggalSelesai == null || e.tanggalSelesai == e.tanggalMulai
+        ? ''
+        : ' - ${formatTanggal(e.tanggalSelesai!)}';
+    final jam = (e.jamBuka != null && e.jamTutup != null)
+        ? ' · ${formatJam(e.jamBuka!)} - ${formatJam(e.jamTutup!)}'
+        : '';
+    return '$mulai$selesai$jam';
+  }
+
   @override
   Widget build(BuildContext context) {
+    final e = StudioStore.instance.lastPublished;
+    final lokasi = e == null
+        ? '-'
+        : (e.format == 'online' ? 'Online · ${e.linkOnline}' : '${e.namaLokasi}, ${e.kota}');
+    final tiketInfo = e == null
+        ? '-'
+        : '${e.totalKuota} tiket · ${e.gratis ? 'gratis' : 'mulai ${formatRupiah(e.tiket.map((t) => t.hargaIdr).reduce((a, b) => a < b ? a : b))}'}';
     return Scaffold(
       backgroundColor: AppColors.surface,
       body: SafeArea(
@@ -77,7 +99,7 @@ class EventBerhasilScreen extends StatelessWidget {
                                     decoration: BoxDecoration(
                                         color: Colors.black54,
                                         borderRadius: BorderRadius.circular(AppRadius.full)),
-                                    child: Text('PAMERAN GALERI FISIK',
+                                    child: Text((e?.format == 'online' ? 'PAMERAN ONLINE' : 'PAMERAN GALERI FISIK'),
                                         style: AppTextStyles.overline
                                             .copyWith(color: AppColors.accentSoft, fontSize: 9)),
                                   ),
@@ -109,15 +131,15 @@ class EventBerhasilScreen extends StatelessWidget {
                               child: Column(
                                 crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
-                                  Text('Pameran Tunggal: Jejak Cahaya Nusantara',
+                                  Text(e == null ? 'Event' : '${e.tema}: ${e.nama}',
                                       style: AppTextStyles.headlineSm),
                                   const Divider(height: AppSpacing.md),
-                                  _metaRow(Icons.calendar_today, '20 - 26 Okt 2026 · 10:00 - 20:00 WIB'),
+                                  _metaRow(Icons.calendar_today, _jadwal(e)),
                                   const SizedBox(height: 6),
-                                  _metaRow(Icons.location_on_outlined, 'Galeri Nasional Indonesia, Jakarta Pusat'),
+                                  _metaRow(Icons.location_on_outlined, lokasi),
                                   const SizedBox(height: 6),
                                   _metaRow(Icons.confirmation_number_outlined,
-                                      '150 tiket · mulai Rp 50.000'),
+                                      tiketInfo),
                                   const SizedBox(height: AppSpacing.sm),
                                   Row(
                                     mainAxisAlignment: MainAxisAlignment.spaceBetween,

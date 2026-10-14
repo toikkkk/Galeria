@@ -1,8 +1,8 @@
-import 'dart:io';
 
 import 'package:http_parser/http_parser.dart';
 
 import '../models/karya.dart';
+import '../models/picked_image.dart';
 import 'api_client.dart';
 
 /// Wrapper tipis ke `GET /api/katalog` (lihat backend/routers/katalog.py).
@@ -89,7 +89,7 @@ class KatalogService {
   /// ada, dua parameter ini harus dihapus dari sini, diambil dari token
   /// login di backend.
   Future<String> createKarya({
-    required File image,
+    required PickedImage image,
     required String title,
     required String artistName,
     required String galleryName,
@@ -100,7 +100,8 @@ class KatalogService {
   }) async {
     final data = await _client.postMultipart(
       '/api/karya',
-      file: image,
+      bytes: image.bytes,
+      filename: image.name,
       fields: {
         'title': title,
         'artist_name': artistName,
