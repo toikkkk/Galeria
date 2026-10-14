@@ -17,6 +17,7 @@ class Karya {
     this.isPromoted = false,
     this.imageUrl,
     this.senimanId,
+    this.aiGeneratedProbability,
   });
 
   /// UUID dari database -- kosong ('') untuk [sampleKarya] lokal (belum
@@ -51,6 +52,10 @@ class Karya {
 
   /// UUID seniman pembuat (hanya dari katalog dummy; `null` utk data lokal).
   final String? senimanId;
+
+  /// Skor Art-to-AI (0..1, kemungkinan AI-generated) dari verification
+  /// engine. `null` = karya belum pernah dicek engine (mis. karya seed).
+  final double? aiGeneratedProbability;
 
   String get priceFormatted {
     final s = priceIdr.toString();
@@ -102,6 +107,8 @@ class Karya {
       isPromoted: (json['is_promoted'] as bool?) ?? false,
       imageUrl: json['image_url'] as String?,
       senimanId: json['seniman_id'] as String?,
+      aiGeneratedProbability:
+          (json['ai_generated_probability'] as num?)?.toDouble(),
     );
   }
 }

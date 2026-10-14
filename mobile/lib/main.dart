@@ -222,6 +222,7 @@ final _router = GoRouter(
       builder: (context, state) => KaryaSayaScreen(
         onBack: () => context.go('/dashboard'),
         onUploadKarya: () => context.push('/unggah-karya'),
+        onKaryaTap: (karya) => context.push('/karya/detail', extra: karya),
       ),
     ),
     GoRoute(

@@ -26,6 +26,29 @@ class KatalogService {
     return items.map(Karya.fromJson).toList();
   }
 
+  /// Versi berhalaman `GET /api/katalog` dgn total, pencarian [q], dan
+  /// filter [senimanId] ("milik saya" -- diisi setelah Login tersedia).
+  Future<KatalogDummyPage> fetchKatalogTerverifikasi({
+    int page = 1,
+    int pageSize = 20,
+    String? q,
+    String? senimanId,
+  }) async {
+    final qs = Uri(queryParameters: {
+      'page': '$page',
+      'page_size': '$pageSize',
+      if (q != null && q.trim().isNotEmpty) 'q': q.trim(),
+      'seniman_id': ?senimanId,
+    }).query;
+    final data = await _client.getJson('/api/katalog?$qs');
+    final items = (data['items'] as List).cast<Map<String, dynamic>>();
+    return KatalogDummyPage(
+      items: items.map(Karya.fromJson).toList(),
+      page: data['page'] as int,
+      total: data['total'] as int,
+    );
+  }
+
   /// `GET /api/katalog-dummy` (katalog 2.000 karya dummy, filter di server).
   Future<KatalogDummyPage> fetchKatalogDummy({
     int page = 1,
