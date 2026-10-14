@@ -540,7 +540,7 @@ class _ResultCard extends StatelessWidget {
     // sbg "gaya terdeteksi" -- BUKAN style karya #1 hasil pencarian, karena
     // karya terdekat belum tentu relevan kalau verdict-nya not_found -- lalu
     // filter kandidat katalog lain yang senada).
-    final detectedStyle = result.stylePredictions.isNotEmpty
+    final detectedStyle = result.styleConfident && result.stylePredictions.isNotEmpty
         ? result.stylePredictions.first.style
         : null;
     final styleMatches = detectedStyle == null

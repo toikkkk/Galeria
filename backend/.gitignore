@@ -1,0 +1,4 @@
+
+# cadangan lokal
+.env.bak*
+scripts/embedding_backup_*.npz

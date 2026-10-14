@@ -29,6 +29,7 @@ Artefak yang dikonsumsi (hasil dari ``ml-visual-search/``):
 from __future__ import annotations
 
 import json
+import os
 from pathlib import Path
 
 import cv2
@@ -212,6 +213,9 @@ def _candidate_crops(
     return candidates
 
 
+_STYLE_ABSTAIN_T = float(os.getenv("VS_STYLE_ABSTAIN_T", "0.70"))
+
+
 class VisualSearchService:
     """Singleton-ish service: 1 instance dibuat saat startup, dipakai semua request."""
 
@@ -335,7 +339,9 @@ class VisualSearchService:
                 best_crop_label = label
 
         verdict = confidence_verdict(best_similarities)
+        style_confident = bool(best_style_probs) and max(best_style_probs) >= _STYLE_ABSTAIN_T
         return {
+            "style_confident": style_confident,
             # Style dari crop yang SAMA dgn yang menentukan best_matches --
             # bukan style dari kandidat crop lain, supaya konsisten dgn hasil.
             "style_predictions": self._top_style_predictions(best_style_probs),
