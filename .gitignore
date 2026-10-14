@@ -75,3 +75,7 @@ mobile/**/*.iml
 .idea/
 .DS_Store
 Thumbs.db
+
+# --- ml-visual-search/notebooks: model & hasil besar di dalam folder versi (JANGAN di-commit) ---
+ml-visual-search/notebooks/**/checkpoints/*
+ml-visual-search/notebooks/**/export/*
