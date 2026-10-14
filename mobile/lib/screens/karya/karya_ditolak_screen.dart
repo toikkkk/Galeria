@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../../services/digital_art_identity_service.dart';
 import '../../theme/app_theme.dart';
+import '../../widgets/galeria_logo.dart';
 
 /// Konversi dari
 /// docs/design/role_seniman_2/.../galeria_karya_tidak_dapat_didaftarkan/code.html
@@ -29,7 +30,11 @@ class KaryaDitolakScreen extends StatelessWidget {
           crossAxisAlignment: CrossAxisAlignment.start,
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Text('GALERIA', style: AppTextStyles.headlineSm.copyWith(fontSize: 16)),
+            GaleriaLogo(
+              size: 22,
+              withWordmark: true,
+              textStyle: AppTextStyles.headlineSm.copyWith(fontSize: 16),
+            ),
             Text('STATUS VERIFIKASI', style: AppTextStyles.overline.copyWith(fontSize: 8)),
           ],
         ),
