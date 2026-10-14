@@ -1,4 +1,4 @@
-import 'dart:io';
+import '../../models/picked_image.dart';
 
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
@@ -32,7 +32,7 @@ class UnggahKaryaScreen extends StatefulWidget {
   /// Dipanggil setelah karya berhasil dibuat di database -- membawa file
   /// foto asli + `karya_id` baru, supaya layar verifikasi berikutnya
   /// memanggil endpoint verifikasi RESMI (bukan pratinjau).
-  final ValueChanged<({File image, String karyaId})> onSubmitted;
+  final ValueChanged<({PickedImage image, String karyaId})> onSubmitted;
 
   @override
   State<UnggahKaryaScreen> createState() => _UnggahKaryaScreenState();
@@ -44,7 +44,7 @@ class _UnggahKaryaScreenState extends State<UnggahKaryaScreen> {
   bool _originalChecked = true;
   bool _termsChecked = true;
   bool _submitting = false;
-  File? _mainPhoto;
+  PickedImage? _mainPhoto;
 
   final _titleCtrl = TextEditingController(text: 'Sang Putri Mahkota Renaisans');
   // UI pakai label "Panjang"/"Lebar" (desain Stitch asli), skema backend
@@ -90,8 +90,8 @@ class _UnggahKaryaScreenState extends State<UnggahKaryaScreen> {
         title: _titleCtrl.text.trim(),
         // PLACEHOLDER -- lihat catatan jujur di docstring kelas ini (Auth
         // belum ada, belum tahu siapa seniman yang sedang login).
-        artistName: 'Seniman GALERIA (Demo)',
-        galleryName: 'Studio Pribadi Seniman',
+        artistName: 'Sanggar Rupa Nusantara',
+        galleryName: 'Sanggar Rupa Nusantara',
         styleName: _genre,
         priceIdr: harga,
         // "Panjang" (UI) -> tinggi_cm, "Lebar" (UI) -> lebar_cm (lihat
@@ -114,7 +114,9 @@ class _UnggahKaryaScreenState extends State<UnggahKaryaScreen> {
     try {
       final XFile? picked = await ImagePicker().pickImage(source: ImageSource.gallery);
       if (picked == null || !mounted) return;
-      setState(() => _mainPhoto = File(picked.path));
+      final bytes = await picked.readAsBytes();
+      if (!mounted) return;
+      setState(() => _mainPhoto = PickedImage(bytes: bytes, name: picked.name));
     } catch (e) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
@@ -425,11 +427,11 @@ class _UnggahKaryaScreenState extends State<UnggahKaryaScreen> {
     );
   }
 
-  Widget _photoThumbFile(File file, {String? label}) => Stack(
+  Widget _photoThumbFile(PickedImage file, {String? label}) => Stack(
         children: [
           ClipRRect(
             borderRadius: BorderRadius.circular(AppRadius.md),
-            child: Image.file(file, width: 110, height: 130, fit: BoxFit.cover),
+            child: Image.memory(file.bytes, width: 110, height: 130, fit: BoxFit.cover),
           ),
           if (label != null)
             Positioned(

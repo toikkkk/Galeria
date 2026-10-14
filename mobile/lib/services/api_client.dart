@@ -1,5 +1,6 @@
 import 'dart:convert';
 import 'dart:io';
+import 'dart:typed_data';
 
 import 'package:http/http.dart' as http;
 import 'package:http_parser/http_parser.dart';
@@ -50,19 +51,29 @@ class ApiClient {
 
   Future<dynamic> postMultipart(
     String path, {
-    required File file,
+    File? file,
+    Uint8List? bytes,
+    String filename = 'upload.jpg',
     Map<String, String>? fields,
     MediaType? contentType,
   }) async {
+    assert(file != null || bytes != null, 'butuh file atau bytes');
     final Uri uri = Uri.parse('$kApiBaseUrl$path').replace(
       queryParameters: fields,
     );
     try {
       final request = http.MultipartRequest('POST', uri)
         ..files.add(
-          await http.MultipartFile.fromPath(
+          bytes != null
+              ? http.MultipartFile.fromBytes(
+                  'file',
+                  bytes,
+                  filename: filename,
+                  contentType: contentType,
+                )
+              : await http.MultipartFile.fromPath(
             'file',
-            file.path,
+            file!.path,
             // Tanpa ini, http.MultipartFile.fromPath NEBAK content-type dari
             // ekstensi file -- file temp dari CameraController.takePicture()
             // kadang tidak punya ekstensi yang dikenali, jadi fallback ke

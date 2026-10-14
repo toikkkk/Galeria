@@ -1,4 +1,4 @@
-import 'dart:io';
+import '../../models/picked_image.dart';
 
 import 'package:flutter/material.dart';
 
@@ -22,7 +22,7 @@ class MemverifikasiKeaslianScreen extends StatefulWidget {
     required this.onDone,
   });
 
-  final File image;
+  final PickedImage image;
   final String karyaId;
   final ValueChanged<VerificationResult> onDone;
 
@@ -122,7 +122,7 @@ class _MemverifikasiKeaslianScreenState extends State<MemverifikasiKeaslianScree
                       ),
                       child: ClipRRect(
                         borderRadius: BorderRadius.circular(AppRadius.md),
-                        child: Image.file(widget.image, fit: BoxFit.cover),
+                        child: Image.memory(widget.image.bytes, fit: BoxFit.cover),
                       ),
                     ),
                     Positioned(
