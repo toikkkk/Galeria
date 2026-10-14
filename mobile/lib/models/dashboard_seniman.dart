@@ -189,3 +189,69 @@ class TrenPasar {
         aliranRamai: (j['aliran_ramai'] as List).cast<Map<String, dynamic>>().map(AliranRamai.fromJson).toList(),
       );
 }
+
+class PenarikanDana {
+  const PenarikanDana({
+    required this.id,
+    required this.periodeBulan,
+    required this.jumlahIdr,
+    required this.tanggal,
+    required this.status,
+    required this.tujuan,
+  });
+
+  final String id, periodeBulan, status, tujuan;
+  final int jumlahIdr;
+  final DateTime tanggal;
+
+  bool get berhasil => status == 'berhasil';
+
+  factory PenarikanDana.fromJson(Map<String, dynamic> j) => PenarikanDana(
+        id: j['id'] as String,
+        periodeBulan: j['periode_bulan'] as String,
+        jumlahIdr: _i(j['jumlah_idr']),
+        tanggal: DateTime.parse(j['tanggal'] as String),
+        status: j['status'] as String,
+        tujuan: j['tujuan'] as String,
+      );
+}
+
+class RiwayatPenarikan {
+  const RiwayatPenarikan({required this.totalDitarikIdr, required this.items});
+
+  final int totalDitarikIdr;
+  final List<PenarikanDana> items;
+
+  factory RiwayatPenarikan.fromJson(Map<String, dynamic> j) => RiwayatPenarikan(
+        totalDitarikIdr: _i(j['total_ditarik_idr']),
+        items: (j['items'] as List)
+            .cast<Map<String, dynamic>>()
+            .map(PenarikanDana.fromJson)
+            .toList(),
+      );
+}
+
+/// `tipe`: 'pembelian' | 'lelang' | 'tindakan'.
+class NotifikasiSeniman {
+  const NotifikasiSeniman({
+    required this.id,
+    required this.tipe,
+    required this.judul,
+    required this.deskripsi,
+    required this.waktu,
+    this.nominalIdr,
+  });
+
+  final String id, tipe, judul, deskripsi;
+  final DateTime waktu;
+  final int? nominalIdr;
+
+  factory NotifikasiSeniman.fromJson(Map<String, dynamic> j) => NotifikasiSeniman(
+        id: j['id'] as String,
+        tipe: j['tipe'] as String,
+        judul: j['judul'] as String,
+        deskripsi: j['deskripsi'] as String,
+        waktu: DateTime.parse(j['waktu'] as String),
+        nominalIdr: j['nominal_idr'] == null ? null : _i(j['nominal_idr']),
+      );
+}

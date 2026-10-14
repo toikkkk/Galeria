@@ -38,4 +38,14 @@ class DashboardService {
     final data = await _client.getJson('/api/dashboard/pasar/tren');
     return TrenPasar.fromJson(data as Map<String, dynamic>);
   }
+
+  Future<RiwayatPenarikan> fetchRiwayatPenarikan(String senimanId) async {
+    final data = await _client.getJson('/api/dashboard/seniman/$senimanId/penarikan');
+    return RiwayatPenarikan.fromJson(data as Map<String, dynamic>);
+  }
+
+  Future<List<NotifikasiSeniman>> fetchNotifikasi(String senimanId) async {
+    final data = await _client.getJson('/api/dashboard/seniman/$senimanId/notifikasi');
+    return _list(data).map(NotifikasiSeniman.fromJson).toList();
+  }
 }

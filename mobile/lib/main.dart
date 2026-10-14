@@ -1,4 +1,4 @@
-import 'dart:io';
+import 'models/picked_image.dart';
 
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
@@ -12,11 +12,16 @@ import 'screens/auth/login_screen.dart';
 import 'screens/auth/verifikasi_identitas_screen.dart';
 import 'screens/community/community_detail_screen.dart';
 import 'screens/dashboard/dashboard_screen.dart';
-import 'screens/event/adakan_event_sheet.dart';
 import 'screens/event/buat_event_step1_screen.dart';
 import 'screens/event/buat_event_step2_screen.dart';
 import 'screens/event/buat_event_step3_screen.dart';
 import 'screens/event/event_berhasil_screen.dart';
+import 'screens/community/komunitas_seniman_screen.dart';
+import 'screens/lelang/buat_lelang_screen.dart';
+import 'state/studio_store.dart';
+import 'widgets/pro_gate.dart';
+import 'screens/dashboard/notifikasi_seniman_screen.dart';
+import 'screens/dashboard/riwayat_penarikan_screen.dart';
 import 'screens/karya/karya_ditolak_screen.dart';
 import 'screens/karya/karya_perlu_ditinjau_screen.dart';
 import 'screens/karya/karya_saya_screen.dart';
@@ -199,14 +204,34 @@ final _router = GoRouter(
         onUploadKarya: () => context.push('/unggah-karya'),
         onNavTap: (i) => _goSenimanTab(context, i),
         onKomunitasTap: () => context.push('/komunitas'),
-        // Bottom sheet "Seniman PRO" -- upgrade demo langsung ke wizard
-        // buat event (belum ada alur pembayaran subscription nyata).
-        onAdakanEvent: () => showAdakanEventSheet(
-          context,
-          onUpgrade: () => context.push('/buat-event/1'),
-        ),
-        onPromosikanKarya: () => context.push('/promosikan-karya', extra: sampleKarya.first),
+        onBuatLelang: () => context.push('/buat-lelang'),
+        // Event & promosi = fitur Seniman PRO -- pop up upgrade dulu.
+        onAdakanEvent: () async {
+          if (await ensurePro(context, fitur: 'Membuat event pameran')) {
+            if (context.mounted) {
+              StudioStore.instance.mulaiDraftEvent();
+              context.push('/buat-event/1');
+            }
+          }
+        },
+        onPromosikanKarya: () async {
+          if (await ensurePro(context, fitur: 'Mempromosikan karya')) {
+            if (context.mounted) context.push('/promosikan-karya');
+          }
+        },
+        onNotifikasiTap: () => context.push('/notifikasi-seniman'),
+        onRiwayatTap: () => context.push('/riwayat-penarikan'),
       ),
+    ),
+    GoRoute(
+      path: '/notifikasi-seniman',
+      builder: (context, state) =>
+          NotifikasiSenimanScreen(onBack: () => context.pop()),
+    ),
+    GoRoute(
+      path: '/riwayat-penarikan',
+      builder: (context, state) =>
+          RiwayatPenarikanScreen(onBack: () => context.pop()),
     ),
     GoRoute(
       path: '/profil',
@@ -227,8 +252,30 @@ final _router = GoRouter(
     ),
     GoRoute(
       path: '/komunitas',
+      builder: (context, state) => KomunitasSenimanScreen(
+        onBack: () => context.pop(),
+        onLihatKomunitas: () => context.push('/komunitas/detail'),
+        onBuatEvent: () async {
+          if (await ensurePro(context, fitur: 'Membuat event pameran')) {
+            if (context.mounted) {
+              StudioStore.instance.mulaiDraftEvent();
+              context.push('/buat-event/1');
+            }
+          }
+        },
+      ),
+    ),
+    GoRoute(
+      path: '/komunitas/detail',
       builder: (context, state) =>
           CommunityDetailScreen(onBack: () => context.pop()),
+    ),
+    GoRoute(
+      path: '/buat-lelang',
+      builder: (context, state) => BuatLelangScreen(
+        onBack: () => context.pop(),
+        onUnggahKarya: () => context.push('/unggah-karya'),
+      ),
     ),
     GoRoute(
       path: '/unggah-karya',
@@ -240,7 +287,7 @@ final _router = GoRouter(
     GoRoute(
       path: '/memverifikasi-keaslian',
       builder: (context, state) {
-        final data = state.extra as ({File image, String karyaId});
+        final data = state.extra as ({PickedImage image, String karyaId});
         return MemverifikasiKeaslianScreen(
           image: data.image,
           karyaId: data.karyaId,
@@ -292,12 +339,15 @@ final _router = GoRouter(
     GoRoute(
       path: '/promosikan-karya',
       builder: (context, state) => PromosikanKaryaScreen(
-        karya: (state.extra as Karya?) ?? sampleKarya.first,
+        karya: state.extra as Karya?,
         onBack: () => context.pop(),
-        onLanjut: () => ScaffoldMessenger.of(context).showSnackBar(
-          // TODO(payment): belum ada alur pembayaran promosi karya nyata.
-          const SnackBar(content: Text('Alur pembayaran promosi belum tersedia')),
-        ),
+        onUnggahKarya: () => context.push('/unggah-karya'),
+        onLanjut: () {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Label promosi aktif pada karya kamu.')),
+          );
+          context.pop();
+        },
       ),
     ),
     GoRoute(
@@ -305,6 +355,7 @@ final _router = GoRouter(
       builder: (context, state) => BuatEventStep1Screen(
         onClose: () => context.pop(),
         onLanjut: () => context.push('/buat-event/2'),
+        onUnggahKarya: () => context.push('/unggah-karya'),
       ),
     ),
     GoRoute(

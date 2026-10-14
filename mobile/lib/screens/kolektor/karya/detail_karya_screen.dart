@@ -92,23 +92,13 @@ class DetailKaryaScreen extends StatelessWidget {
                 ),
                 Text(karya.title, style: AppTextStyles.headlineLg),
                 const SizedBox(height: AppSpacing.xs),
-                Row(
-                  crossAxisAlignment: CrossAxisAlignment.baseline,
-                  textBaseline: TextBaseline.alphabetic,
-                  children: [
-                    Text(
-                      'Rp',
-                      style: AppTextStyles.bodyMd.copyWith(
-                        color: AppColors.accent,
-                        fontWeight: FontWeight.w600,
-                      ),
-                    ),
-                    const SizedBox(width: 4),
-                    Text(
-                      karya.priceFormatted.replaceFirst('Rp', ''),
-                      style: AppTextStyles.displayMd.copyWith(fontSize: 24),
-                    ),
-                  ],
+                Text(
+                  'Rp ${karya.priceFormatted.replaceFirst('Rp', '')}',
+                  style: AppTextStyles.displayMd.copyWith(
+                    fontSize: 26,
+                    fontWeight: FontWeight.w700,
+                    color: AppColors.accent,
+                  ),
                 ),
                 Text(
                   'Termasuk pajak kurasi, asuransi transit & sertifikasi resmi',

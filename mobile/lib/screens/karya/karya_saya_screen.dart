@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../../models/karya.dart';
 import '../../services/katalog_service.dart';
+import '../../state/studio_store.dart';
 import '../../theme/app_theme.dart';
 import '../../widgets/karya_image.dart';
 
@@ -278,6 +279,22 @@ class _KaryaSayaCard extends StatelessWidget {
                 fit: StackFit.expand,
                 children: [
                   KaryaImage(karya: karya),
+                  if (StudioStore.instance.sedangDipromosikan(karya))
+                    Positioned(
+                      top: 8,
+                      right: 8,
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                        decoration: BoxDecoration(
+                          color: AppColors.primary,
+                          borderRadius: BorderRadius.circular(AppRadius.full),
+                        ),
+                        child: const Text(
+                          'Dipromosikan',
+                          style: TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.w600),
+                        ),
+                      ),
+                    ),
                   Positioned(
                     top: 8,
                     left: 8,

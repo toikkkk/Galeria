@@ -33,23 +33,6 @@ class ProfilScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: AppColors.surface,
-      appBar: AppBar(
-        title: Text('Profil', style: AppTextStyles.headlineMd),
-        actions: [
-          IconButton(
-            onPressed: () => showComingSoon(context, 'Notifikasi'),
-            icon: const Icon(Icons.notifications_outlined),
-          ),
-          Padding(
-            padding: const EdgeInsets.only(right: AppSpacing.sm),
-            child: CircleAvatar(
-              radius: 16,
-              backgroundColor: AppColors.primary,
-              child: const Icon(Icons.person, size: 16, color: Colors.white),
-            ),
-          ),
-        ],
-      ),
       body: ListView(
         padding: const EdgeInsets.symmetric(
             horizontal: AppSpacing.screenGutter, vertical: AppSpacing.md),

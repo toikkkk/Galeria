@@ -1,11 +1,14 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 
+import '../../state/studio_store.dart';
 import '../../theme/app_theme.dart';
-import '../../utils/coming_soon.dart';
+import '../../utils/format.dart';
 import '../../widgets/event_stepper.dart';
+import 'event_form_widgets.dart';
 
-/// Konversi dari
-/// docs/design/role_seniman_2/.../galeria_buat_event_langkah_3_dari_3_tiket_publikasi/code.html
+/// Langkah 3 wizard "Buat Event": jenis tiket (nama, harga, kuota) dan
+/// publikasi.
 class BuatEventStep3Screen extends StatefulWidget {
   const BuatEventStep3Screen({super.key, required this.onKembali, required this.onTerbitkan});
 
@@ -17,20 +20,107 @@ class BuatEventStep3Screen extends StatefulWidget {
 }
 
 class _BuatEventStep3ScreenState extends State<BuatEventStep3Screen> {
-  bool _berbayar = true;
-  bool _direktoriKolektor = true;
-  bool _siarkanKomunitas = true;
-  bool _bannerUtama = true;
-  bool _setujuKetentuan = false;
+  final _draft = StudioStore.instance.draftEvent;
+  bool _setuju = false;
+  String? _error;
 
-  // Daftar tiket nyata (bukan lagi 2 _ticketRow hardcode) -- supaya tombol
-  // hapus benar-benar menghilangkan baris, bukan dead. Lihat audit
-  // navigasi role Seniman, 2026-10.
-  final List<_Tiket> _tiket = [
-    _Tiket('Tiket Reguler', 'Umum', 'Rp 50.000', '120'),
-    _Tiket('Kurator VIP', 'VIP Access', 'Rp 250.000', '30',
-        note: 'Termasuk katalog cetak bertanda tangan & tur privat.'),
-  ];
+  Future<void> _formTiket({JenisTiket? edit}) async {
+    final nama = TextEditingController(text: edit?.nama ?? '');
+    final harga = TextEditingController(text: edit == null ? '' : '${edit.hargaIdr}');
+    final kuota = TextEditingController(text: edit == null ? '' : '${edit.kuota}');
+    final ket = TextEditingController(text: edit?.keterangan ?? '');
+    String? err;
+
+    final ok = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => StatefulBuilder(
+        builder: (ctx, setD) => AlertDialog(
+          title: Text(edit == null ? 'Tambah Jenis Tiket' : 'Ubah Tiket'),
+          content: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                TextField(controller: nama, decoration: eventDekor('Nama tiket (mis. VIP)')),
+                const SizedBox(height: AppSpacing.xs),
+                TextField(
+                  controller: harga,
+                  keyboardType: TextInputType.number,
+                  inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+                  decoration: eventDekor('Harga (0 = gratis)', prefix: 'Rp '),
+                ),
+                const SizedBox(height: AppSpacing.xs),
+                TextField(
+                  controller: kuota,
+                  keyboardType: TextInputType.number,
+                  inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+                  decoration: eventDekor('Kuota tiket'),
+                ),
+                const SizedBox(height: AppSpacing.xs),
+                TextField(controller: ket, decoration: eventDekor('Keterangan (opsional)')),
+                if (err != null) ...[
+                  const SizedBox(height: AppSpacing.xs),
+                  Text(err!, style: AppTextStyles.bodySm.copyWith(color: AppColors.error)),
+                ],
+              ],
+            ),
+          ),
+          actions: [
+            TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Batal')),
+            FilledButton(
+              onPressed: () {
+                final k = int.tryParse(kuota.text) ?? 0;
+                if (nama.text.trim().isEmpty) {
+                  setD(() => err = 'Isi nama tiket.');
+                } else if (harga.text.isEmpty) {
+                  setD(() => err = 'Isi harga tiket (0 jika gratis).');
+                } else if (k <= 0) {
+                  setD(() => err = 'Kuota harus lebih dari 0.');
+                } else {
+                  Navigator.pop(ctx, true);
+                }
+              },
+              child: const Text('Simpan'),
+            ),
+          ],
+        ),
+      ),
+    );
+
+    if (ok == true) {
+      setState(() {
+        final h = int.parse(harga.text);
+        final k = int.parse(kuota.text);
+        if (edit != null) {
+          edit
+            ..nama = nama.text.trim()
+            ..hargaIdr = h
+            ..kuota = k
+            ..keterangan = ket.text.trim();
+        } else {
+          _draft.tiket.add(
+            JenisTiket(nama: nama.text.trim(), hargaIdr: h, kuota: k, keterangan: ket.text.trim()),
+          );
+        }
+      });
+    }
+    nama.dispose();
+    harga.dispose();
+    kuota.dispose();
+    ket.dispose();
+  }
+
+  void _terbitkan() {
+    if (_draft.tiket.isEmpty) {
+      setState(() => _error = 'Tambahkan minimal 1 jenis tiket.');
+      return;
+    }
+    if (!_setuju) {
+      setState(() => _error = 'Setujui ketentuan penyelenggaraan event.');
+      return;
+    }
+    StudioStore.instance.terbitkanDraft();
+    widget.onTerbitkan();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -40,330 +130,120 @@ class _BuatEventStep3ScreenState extends State<BuatEventStep3Screen> {
         leading: IconButton(onPressed: widget.onKembali, icon: const Icon(Icons.arrow_back)),
         title: Text('Tiket & Publikasi', style: AppTextStyles.headlineSm),
       ),
-      body: SingleChildScrollView(
-        padding: const EdgeInsets.fromLTRB(
-            AppSpacing.screenGutter, AppSpacing.sm, AppSpacing.screenGutter, AppSpacing.xxl),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            const EventStepper(currentStep: 3),
-            const SizedBox(height: AppSpacing.lg),
-            Text('Model Akses Pameran', style: AppTextStyles.labelMd),
-            const SizedBox(height: AppSpacing.xs),
-            Row(
-              children: [
-                Expanded(
-                  child: _modelCard(
-                    icon: Icons.confirmation_number_outlined,
-                    title: 'Gratis',
-                    subtitle: 'Akses terbuka untuk umum',
-                    selected: !_berbayar,
-                    onTap: () => setState(() => _berbayar = false),
-                  ),
-                ),
-                const SizedBox(width: AppSpacing.sm),
-                Expanded(
-                  child: _modelCard(
-                    icon: Icons.sell_outlined,
-                    title: 'Berbayar',
-                    subtitle: 'Monetisasi tiket & tur privat',
-                    selected: _berbayar,
-                    onTap: () => setState(() => _berbayar = true),
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: AppSpacing.lg),
-            Container(
-              padding: const EdgeInsets.all(AppSpacing.md),
-              decoration: BoxDecoration(
-                color: AppColors.surfaceContainerLowest,
-                borderRadius: BorderRadius.circular(AppRadius.lg),
-                boxShadow: const [BoxShadow(color: Colors.black12, blurRadius: 6)],
-              ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(children: [
-                    const Icon(Icons.local_activity_outlined, size: 20, color: AppColors.accent),
-                    const SizedBox(width: 8),
-                    Text('Kategori Tiket', style: AppTextStyles.headlineSm),
-                  ]),
-                  const SizedBox(height: AppSpacing.sm),
-                  for (final t in _tiket) ...[
-                    _ticketRow(t),
-                    const SizedBox(height: AppSpacing.sm),
-                  ],
-                  OutlinedButton.icon(
-                    onPressed: () => showComingSoon(context, 'Tambah jenis tiket'),
-                    icon: const Icon(Icons.add, size: 18),
-                    label: const Text('Tambah Jenis Tiket Baru'),
-                  ),
-                ],
-              ),
-            ),
-            const SizedBox(height: AppSpacing.lg),
-            Container(
-              padding: const EdgeInsets.all(AppSpacing.md),
-              decoration: BoxDecoration(
-                color: AppColors.surfaceContainerLowest,
-                borderRadius: BorderRadius.circular(AppRadius.lg),
-                boxShadow: const [BoxShadow(color: Colors.black12, blurRadius: 6)],
-              ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(children: [
-                    const Icon(Icons.account_balance_wallet_outlined, size: 18, color: AppColors.accent),
-                    const SizedBox(width: 8),
-                    Text('Proyeksi Hasil Penjualan', style: AppTextStyles.headlineSm),
-                  ]),
-                  const SizedBox(height: AppSpacing.sm),
-                  _projectionRow('Pendapatan Kotor (120x Rp50rb + 30x Rp250rb)', 'Rp 13.500.000'),
-                  _projectionRow('Biaya Layanan & Verifikasi GALERIA (5%)', '- Rp 675.000',
-                      color: AppColors.error),
-                  const Divider(height: AppSpacing.md),
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    crossAxisAlignment: CrossAxisAlignment.end,
-                    children: [
-                      Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text('Estimasi Bersih Seniman', style: AppTextStyles.labelMd),
-                          Text('PENCAIRAN TERJADWAL',
-                              style: AppTextStyles.overline.copyWith(color: AppColors.accent)),
-                        ],
-                      ),
-                      Text('Rp 12.825.000',
-                          style: AppTextStyles.headlineMd.copyWith(
-                              color: AppColors.accent, fontWeight: FontWeight.bold)),
-                    ],
-                  ),
-                ],
-              ),
-            ),
-            const SizedBox(height: AppSpacing.lg),
-            Container(
-              padding: const EdgeInsets.all(AppSpacing.md),
-              decoration: BoxDecoration(
-                color: AppColors.surfaceContainerLowest,
-                borderRadius: BorderRadius.circular(AppRadius.lg),
-                boxShadow: const [BoxShadow(color: Colors.black12, blurRadius: 6)],
-              ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(children: [
-                    const Icon(Icons.campaign_outlined, size: 20, color: AppColors.accent),
-                    const SizedBox(width: 8),
-                    Text('Publikasi & Distribusi', style: AppTextStyles.headlineSm),
-                  ]),
-                  const SizedBox(height: AppSpacing.sm),
-                  _toggleRow('Tampilkan di Direktori Kolektor',
-                      'Kurasi agenda utama bagi 50.000+ patron seni aktif.', _direktoriKolektor,
-                      (v) => setState(() => _direktoriKolektor = v)),
-                  const Divider(),
-                  _toggleRow('Siarkan ke Komunitas Kolektif',
-                      'Notifikasi aplikasi ke anggota Kolektif Abstrak & Realis.', _siarkanKomunitas,
-                      (v) => setState(() => _siarkanKomunitas = v)),
-                  const Divider(),
-                  _toggleRow('Sorotan Banner Utama Galeria (PRO)',
-                      'Posisi hero editorial selama 7 hari pameran dibuka.', _bannerUtama,
-                      (v) => setState(() => _bannerUtama = v), highlight: true),
-                ],
-              ),
-            ),
-            const SizedBox(height: AppSpacing.lg),
-            CheckboxListTile(
-              contentPadding: EdgeInsets.zero,
-              value: _setujuKetentuan,
-              onChanged: (v) => setState(() => _setujuKetentuan = v ?? false),
-              controlAffinity: ListTileControlAffinity.leading,
-              title: Text(
-                'Saya menyatakan kurasi karya orisinal, siap menyelenggarakan acara sesuai jadwal, dan tunduk pada Standar Etik & Kualitas Penyelenggara GALERIA.',
-                style: AppTextStyles.bodySm,
-              ),
-            ),
-          ],
-        ),
-      ),
-      bottomNavigationBar: SafeArea(
-        child: Padding(
-          padding: const EdgeInsets.symmetric(
-              horizontal: AppSpacing.screenGutter, vertical: AppSpacing.sm),
-          child: Row(
-            children: [
-              Expanded(
-                child: OutlinedButton.icon(
-                  onPressed: () => showComingSoon(context, 'Pratinjau event'),
-                  icon: const Icon(Icons.visibility_outlined, size: 18),
-                  label: const Text('Pratinjau'),
-                ),
-              ),
-              const SizedBox(width: AppSpacing.sm),
-              Expanded(
-                flex: 2,
-                child: ElevatedButton(
-                  onPressed: _setujuKetentuan ? widget.onTerbitkan : null,
-                  child: Row(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: const [
-                      Text('Terbitkan Event'),
-                      SizedBox(width: AppSpacing.xs),
-                      Icon(Icons.arrow_forward, size: 16),
-                    ],
-                  ),
-                ),
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-
-  Widget _modelCard({
-    required IconData icon,
-    required String title,
-    required String subtitle,
-    required bool selected,
-    required VoidCallback onTap,
-  }) {
-    return InkWell(
-      onTap: onTap,
-      borderRadius: BorderRadius.circular(AppRadius.lg),
-      child: Container(
-        padding: const EdgeInsets.all(AppSpacing.sm),
-        decoration: BoxDecoration(
-          color: selected ? AppColors.accentSoft.withValues(alpha: 0.5) : AppColors.surfaceContainerLowest,
-          borderRadius: BorderRadius.circular(AppRadius.lg),
-          border: selected ? Border.all(color: AppColors.accent, width: 2) : null,
-          boxShadow: const [BoxShadow(color: Colors.black12, blurRadius: 4)],
-        ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                CircleAvatar(
-                  radius: 16,
-                  backgroundColor: selected ? AppColors.accent : AppColors.surfaceContainer,
-                  child: Icon(icon, size: 16, color: selected ? Colors.white : AppColors.onSurface),
-                ),
-                if (selected) const Icon(Icons.check_circle, color: AppColors.accent, size: 18),
-              ],
-            ),
-            const SizedBox(height: AppSpacing.xs),
-            Text(title, style: AppTextStyles.headlineSm),
-            Text(subtitle, style: AppTextStyles.bodySm.copyWith(color: AppColors.muted, fontSize: 11)),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _ticketRow(_Tiket t) {
-    return Container(
-      padding: const EdgeInsets.all(AppSpacing.sm),
-      decoration:
-          BoxDecoration(color: AppColors.surfaceContainerLow, borderRadius: BorderRadius.circular(AppRadius.md)),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
+      body: ListView(
+        padding: const EdgeInsets.all(AppSpacing.screenGutter),
         children: [
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Row(children: [
-                Text(t.name, style: AppTextStyles.labelMd),
-                const SizedBox(width: 6),
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 1),
-                  decoration: BoxDecoration(
-                      color: AppColors.surfaceContainerHighest,
-                      borderRadius: BorderRadius.circular(AppRadius.full)),
-                  child: Text(t.badge, style: AppTextStyles.overline.copyWith(fontSize: 9)),
+          const EventStepper(currentStep: 3),
+          const SizedBox(height: AppSpacing.md),
+          EventSectionCard(
+            title: 'Jenis Tiket',
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                if (_draft.tiket.isEmpty)
+                  Text(
+                    'Belum ada tiket.',
+                    style: AppTextStyles.bodySm.copyWith(color: AppColors.muted),
+                  ),
+                for (final t in _draft.tiket) _tiketTile(t),
+                const SizedBox(height: AppSpacing.xs),
+                OutlinedButton.icon(
+                  onPressed: () => _formTiket(),
+                  icon: const Icon(Icons.add, size: 18),
+                  label: const Text('Tambah Jenis Tiket'),
                 ),
-              ]),
-              IconButton(
-                onPressed: () => setState(() => _tiket.remove(t)),
-                icon: const Icon(Icons.delete_outline, size: 18, color: AppColors.muted),
-                padding: EdgeInsets.zero,
-                constraints: const BoxConstraints(),
-              ),
-            ],
+              ],
+            ),
           ),
-          const SizedBox(height: 4),
-          Row(children: [
-            Text('Tarif: ', style: AppTextStyles.bodySm.copyWith(color: AppColors.muted)),
-            Text(t.price, style: AppTextStyles.labelMd),
-            const SizedBox(width: AppSpacing.sm),
-            Text('Kuota: ', style: AppTextStyles.bodySm.copyWith(color: AppColors.muted)),
-            Text(t.kuota, style: AppTextStyles.labelMd),
-          ]),
-          if (t.note != null) ...[
-            const SizedBox(height: 4),
-            Row(children: [
-              const Icon(Icons.auto_awesome, size: 13, color: AppColors.accent),
-              const SizedBox(width: 4),
-              Expanded(
-                  child: Text(t.note!,
-                      style: AppTextStyles.bodySm.copyWith(
-                          color: AppColors.accent, fontStyle: FontStyle.italic, fontSize: 11))),
-            ]),
-          ],
+          EventSectionCard(
+            title: 'Ringkasan Event',
+            child: Column(
+              children: [
+                _baris('Nama', _draft.nama),
+                _baris('Karya dipamerkan', '${_draft.karya.length} karya'),
+                _baris(
+                  'Lokasi',
+                  _draft.format == 'online'
+                      ? 'Online'
+                      : '${_draft.namaLokasi}, ${_draft.kota}',
+                ),
+                _baris('Total kuota', '${_draft.totalKuota} tiket'),
+                _baris(
+                  'Potensi pendapatan',
+                  _draft.gratis ? 'Gratis' : formatRupiah(_draft.potensiPendapatanIdr),
+                ),
+              ],
+            ),
+          ),
+          CheckboxListTile(
+            contentPadding: EdgeInsets.zero,
+            controlAffinity: ListTileControlAffinity.leading,
+            value: _setuju,
+            onChanged: (v) => setState(() => _setuju = v ?? false),
+            title: Text(
+              'Saya menyetujui ketentuan penyelenggaraan event di GALERIA.',
+              style: AppTextStyles.bodySm,
+            ),
+          ),
+          if (_error != null)
+            Text(_error!, style: AppTextStyles.bodySm.copyWith(color: AppColors.error)),
         ],
       ),
+      bottomNavigationBar: EventBottomBar(
+        lanjutLabel: 'Terbitkan Event',
+        onLanjut: _terbitkan,
+        onKembali: widget.onKembali,
+      ),
     );
   }
 
-  Widget _projectionRow(String label, String value, {Color? color}) => Padding(
-        padding: const EdgeInsets.symmetric(vertical: 2),
+  Widget _tiketTile(JenisTiket t) => Container(
+        margin: const EdgeInsets.only(bottom: AppSpacing.xs),
+        padding: const EdgeInsets.all(AppSpacing.sm),
+        decoration: BoxDecoration(
+          color: AppColors.surfaceContainerLow,
+          borderRadius: BorderRadius.circular(AppRadius.md),
+        ),
         child: Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
             Expanded(
-                child: Text(label, style: AppTextStyles.bodySm.copyWith(color: AppColors.muted))),
-            Text(value,
-                style: AppTextStyles.labelMd.copyWith(color: color ?? AppColors.onSurface)),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(t.nama, style: AppTextStyles.labelMd),
+                  Text(
+                    '${t.hargaIdr == 0 ? 'Gratis' : formatRupiah(t.hargaIdr)} · kuota ${t.kuota}',
+                    style: AppTextStyles.bodySm,
+                  ),
+                  if (t.keterangan.isNotEmpty)
+                    Text(
+                      t.keterangan,
+                      style: AppTextStyles.bodySm.copyWith(color: AppColors.muted, fontSize: 11),
+                    ),
+                ],
+              ),
+            ),
+            IconButton(onPressed: () => _formTiket(edit: t), icon: const Icon(Icons.edit_outlined, size: 18)),
+            IconButton(
+              onPressed: () => setState(() => _draft.tiket.remove(t)),
+              icon: const Icon(Icons.delete_outline, size: 18),
+            ),
           ],
         ),
       );
 
-  Widget _toggleRow(String title, String subtitle, bool value, ValueChanged<bool> onChanged,
-      {bool highlight = false}) {
-    return Container(
-      padding: highlight ? const EdgeInsets.all(AppSpacing.xs) : EdgeInsets.zero,
-      decoration: highlight
-          ? BoxDecoration(
-              color: AppColors.accentSoft.withValues(alpha: 0.3),
-              borderRadius: BorderRadius.circular(AppRadius.md))
-          : null,
-      child: Row(
-        children: [
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(title, style: AppTextStyles.labelMd),
-                Text(subtitle, style: AppTextStyles.bodySm.copyWith(color: AppColors.muted, fontSize: 11)),
-              ],
+  Widget _baris(String label, String value) => Padding(
+        padding: const EdgeInsets.symmetric(vertical: 4),
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Expanded(
+              child: Text(label, style: AppTextStyles.bodySm.copyWith(color: AppColors.muted)),
             ),
-          ),
-          Switch(
-              value: value,
-              onChanged: onChanged,
-              activeThumbColor: highlight ? AppColors.accent : AppColors.primary),
-        ],
-      ),
-    );
-  }
-}
-
-class _Tiket {
-  _Tiket(this.name, this.badge, this.price, this.kuota, {this.note});
-
-  final String name, badge, price, kuota;
-  final String? note;
+            Flexible(
+              child: Text(value, textAlign: TextAlign.right, style: AppTextStyles.labelMd),
+            ),
+          ],
+        ),
+      );
 }
