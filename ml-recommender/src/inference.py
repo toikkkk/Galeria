@@ -9,11 +9,41 @@ memanggil ``features.fitur_pasangan()`` -- FUNGSI YANG SAMA PERSIS dipakai
 
 from __future__ import annotations
 
+from pathlib import Path
+
 import numpy as np
 import pandas as pd
 
 from .features import FITUR, FITUR_KATEGORIKAL, N_GAYA, _Konteks, fitur_pasangan
 from .generate import WINDOW_START
+
+
+# ------------------------------------------------------- konteks + model klaster
+# Fitur ``kolektor_segmen`` dihitung oleh model clustering "cutoff" (dilatih hanya pada data sampai batas train
+# klasifikasi) -- model yang SAMA dgn saat training, supaya tidak ada train/serve skew.
+# Sumbernya: ``bundle["klaster_cutoff"]`` (disarankan: disimpan di joblib klasifikasi) atau, bila tak ada,
+# ``models/clustering_kolektor_cutoff.joblib``.
+_KLASTER_PATH = Path(__file__).resolve().parent.parent / "models" / "clustering_kolektor_cutoff.joblib"
+_klaster_cache: dict = {}
+_cx_cache: dict = {"kunci": None, "cx": None}
+
+
+def _klaster(bundle: dict) -> dict:
+    if bundle.get("klaster_cutoff") is not None:
+        return bundle["klaster_cutoff"]
+    if "obj" not in _klaster_cache:
+        import joblib
+        _klaster_cache["obj"] = joblib.load(_KLASTER_PATH)
+    return _klaster_cache["obj"]
+
+
+def _konteks(tabel: dict, bundle: dict) -> "_Konteks":
+    """``_Konteks`` itu mahal dibangun (indeks + persentil tren per pembelian); dipakai ulang selama ``tabel`` yang sama."""
+    kunci = (id(tabel["transaksi"]), id(tabel["karya"]), id(tabel["kolektor"]), id(tabel["seniman"]), id(_klaster(bundle)))
+    if _cx_cache["kunci"] != kunci:
+        _cx_cache["cx"] = _Konteks(tabel["seniman"], tabel["kolektor"], tabel["karya"], tabel["transaksi"]).pasang_klaster(_klaster(bundle))
+        _cx_cache["kunci"] = kunci
+    return _cx_cache["cx"]
 
 # ------------------------------------------------------------------- waktu --
 def _ke_hari(waktu) -> float:
@@ -115,7 +145,7 @@ def skor_kandidat(
     tanggung jawab caller. ``alasan`` = ``list[str]`` kode (lihat
     ``alasan_dari_fitur``), bukan teks siap-tampil.
     """
-    cx = _Konteks(tabel["seniman"], tabel["kolektor"], tabel["karya"], tabel["transaksi"])
+    cx = _konteks(tabel, bundle)
     kolektor_id = str(kolektor_id)
     if kolektor_id not in cx.kol_join:
         raise KeyError(f"kolektor_id {kolektor_id!r} tidak ditemukan di tabel kolektor")

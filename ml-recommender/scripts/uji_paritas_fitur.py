@@ -18,6 +18,7 @@ import argparse
 import sys
 from pathlib import Path
 
+import joblib
 import pandas as pd
 
 ROOT = Path(__file__).resolve().parent.parent
@@ -53,7 +54,9 @@ def main(n: int, seed: int) -> int:
     # jalankan_pipeline.py --dry-run. Baca dari CSV export akan salah diagnosa
     # "train/serve skew" padahal cuma pembulatan timestamp saat ekspor.
     tabel = generate(n_transaksi=1400, n_kolektor=200, n_seniman=23, n_karya=2000, seed=SEED)
-    cx = _Konteks(tabel["seniman"], tabel["kolektor"], tabel["karya"], tabel["transaksi"])
+    # fitur kolektor_segmen memakai model clustering "cutoff" -- sama dgn yang dipakai bangun_klasifikasi()
+    klaster = joblib.load(ROOT / "models" / "clustering_kolektor_cutoff.joblib")
+    cx = _Konteks(tabel["seniman"], tabel["kolektor"], tabel["karya"], tabel["transaksi"]).pasang_klaster(klaster)
 
     sampel = kls.sample(n=n, random_state=seed)
     n_baris_salah = 0

@@ -15,12 +15,9 @@ from __future__ import annotations
 
 from pathlib import Path
 
-import numpy as np
 import pandas as pd
-from sklearn.cluster import KMeans
 from sklearn.ensemble import HistGradientBoostingClassifier
-from sklearn.metrics import adjusted_rand_score, roc_auc_score, silhouette_score
-from sklearn.preprocessing import StandardScaler
+from sklearn.metrics import roc_auc_score
 
 ROOT = Path(__file__).resolve().parent.parent
 TR, EX = ROOT / "data" / "training", ROOT / "data" / "export"
@@ -57,7 +54,7 @@ def sinyal_klasifikasi() -> None:
     kls = pd.read_csv(TR / "klasifikasi_pembelian.csv")
     fitur = [c for c in kls.columns if c not in ID_COLS]
     X = kls[fitur].copy()
-    for c in ("karya_gaya", "seniman_level_reputasi"):
+    for c in ("karya_gaya", "seniman_level_reputasi", "kolektor_segmen"):
         X[c] = X[c].astype("category")
     tr, va, te = (kls["split"] == s for s in ("train", "val", "test"))
     m = HistGradientBoostingClassifier(max_iter=200, learning_rate=0.05, categorical_features="from_dtype", random_state=0)
@@ -79,18 +76,19 @@ def sinyal_klasifikasi() -> None:
 
 
 def sinyal_clustering() -> None:
+    """Sanity check clustering-v2 (UMAP + HDBSCAN): silhouette di ruang fitur asli & ARI vs label asli generator."""
+    import joblib
+    import sys
+    sys.path.insert(0, str(ROOT))
+    from src import clustering as C
+
     clu = pd.read_csv(TR / "clustering_kolektor.csv")
     lab = pd.read_csv(TR / "kolektor_label_asli.csv")
-    d = clu.merge(lab, on="kolektor_id")
-    fitur = [c for c in clu.columns if c != "kolektor_id"]
-    X = clu[fitur].copy()
-    for c in [c for c in fitur if c.endswith("_idr")]:
-        X[c] = np.log1p(X[c])
-    Z = StandardScaler().fit_transform(X)   # RobustScaler memperbesar outlier harga -> klaster kecil berisi outlier (ARI ~0.2)
-    print("[clustering] k : silhouette | ARI vs segmen_asli")
-    for k in (3, 4, 5, 6, 7):
-        km = KMeans(n_clusters=k, n_init=10, random_state=0).fit(Z)
-        print(f"  k={k}: {silhouette_score(Z, km.labels_):.3f} | {adjusted_rand_score(d['segmen_asli'], km.labels_):.3f}")
+    bundle = joblib.load(ROOT / "models" / "clustering_kolektor.joblib")
+    ev = C.evaluasi_model(bundle, clu, lab)
+    ex = ev["eksternal"]
+    print(f"[clustering {bundle['versi']}] K={ev['k']} | silhouette {ev['silhouette']:.3f} ({ev['tafsir_silhouette']}) "
+          f"| ARI vs segmen_asli {ex['ari']:.3f} | plafon (label asli) {ex['silhouette_label_asli']:.3f} | noise latih {ev['noise_latih_pct']:.1f}%")
 
 
 if __name__ == "__main__":

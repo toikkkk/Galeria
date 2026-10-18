@@ -17,8 +17,11 @@ selalu bisa dibangun ulang dan dibandingkan.
 
 MODEL PERILAKU (asumsi buatan kita, bukan fakta dunia nyata)
 ------------------------------------------------------------
-* 5 segmen kolektor dgn anggaran, laju beli, selera aliran, dan sensitivitas
-  tren yang berbeda (``SEGMEN``).
+* 5 segmen kolektor dgn anggaran, laju beli, selera aliran, sensitivitas tren, dan
+  preferensi level seniman yang BERBEDA TEGAS (``SEGMEN``). Sejak ``generator-v2`` perbedaannya
+  sengaja dibuat jelas (arketipe) dan tiap kolektor dijamin >= 3 pembelian, supaya clustering
+  perilaku punya struktur yang bisa ditemukan. Ini DESAIN data sintetis -- bukan temuan tentang
+  pembeli lukisan nyata (lihat ml-recommender/models/LAPORAN_CLUSTERING.md).
 * Seniman punya reputasi (menentukan level harga, mengikuti jumlah gambarnya di
   WikiArt sbg proksi "seberapa dikenal"), popularitas, dan KURVA TREN yang
   berubah per waktu (random walk + sebagian "breakout" lalu meredup) -- inilah
@@ -81,18 +84,45 @@ class Segmen:
     porsi: float            # porsi populasi kolektor
     anggaran_median: float  # IDR, median harga yang nyaman dibeli
     anggaran_sigma: float   # sebaran log harga yang masih "nyaman"
-    laju: float             # pengali frekuensi beli
+    laju: float             # pengali frekuensi beli (lama) / pembelian per bulan (generator-v2)
     alpha: float            # konsentrasi Dirichlet selera aliran (kecil = terpusat)
     afinitas: tuple         # (klasik, modern, kontemporer) -- bias selera kelompok aliran
     sens_tren: float        # sensitivitas thd tren seniman
+    # --- hanya dipakai generator-v2 ---
+    anggaran_sd: float = 0.35          # sebaran antar-kolektor pada pusat anggaran (log)
+    pref_level: tuple = (0.0, 0.0, 0.0)  # bonus utilitas membeli dari seniman (pemula, menengah, mapan)
 
 
-SEGMEN = [
+# Segmen generator LAMA (clustering-v1). Dipertahankan HANYA untuk "memutar ulang" aliran angka acak
+# lama, supaya tabel seniman & karya (gambar, harga, id) tetap IDENTIK dgn sebelum perombakan
+# (R2, filter karya vulgar, dan dashboard tidak perlu dibuat ulang). Tidak dipakai utk perilaku.
+SEGMEN_LAMA = [
     Segmen("premium_selektif", 0.10, 280e6, 0.45, 0.6, 0.6, (3.0, 2.0, 0.5), 0.2),
     Segmen("menengah_aktif", 0.30, 45e6, 0.55, 1.5, 0.9, (1.5, 1.5, 1.0), 0.5),
     Segmen("pemula_hemat", 0.30, 7e6, 0.45, 0.7, 0.7, (0.5, 1.5, 2.5), 0.5),
     Segmen("spesialis_aliran", 0.15, 70e6, 0.60, 1.1, 0.12, (1.0, 1.0, 1.0), 0.1),
     Segmen("pengikut_tren", 0.15, 28e6, 0.70, 1.3, 2.0, (1.0, 1.0, 1.0), 2.2),
+]
+
+# Segmen generator-v2: arketipe yang berbeda tegas pada sumbu perilaku yang BERSIH (anggaran, frekuensi
+# beli, keikutan tren, level seniman yang dibeli). ``laju`` = pembelian per bulan aktif (relatif; total
+# diskalakan ke ``n_transaksi``). Nilai-nilai ini asumsi buatan kita. Catatan desain (hasil percobaan):
+# perbedaan berbasis SELERA ALIRAN (mis. "spesialis aliran") sengaja TIDAK dijadikan sumbu pemisah klaster --
+# dgn ~3-10 pembelian per kolektor, keterpusatan selera hanya bisa bernilai 0,33/0,5/1,0 sehingga berisik, dan
+# percobaan menunjukkan memasukkannya menurunkan silhouette dari ~0,62 ke ~0,43. Selera tetap ada di data
+# (kolom porsi_gaya_*) utk profil segmen dan model klasifikasi.
+VERSI_GENERATOR = "generator-v2"
+MIN_PEMBELIAN = 3
+BOBOT_SELERA = 1.0        # bobot kecocokan aliran dalam utilitas beli (besar = selera menentukan pilihan)
+BOBOT_HARGA = 0.9         # bobot kecocokan anggaran dalam utilitas beli
+SUHU_PILIHAN = 1.0        # makin kecil = pilihan beli makin konsisten dgn selera/anggaran
+SEGMEN = [
+    #       nama              porsi anggaran sigma laju alpha afinitas        tren  sd   pref_level(pemula,menengah,mapan)
+    Segmen("premium_mapan",    0.12, 400e6, 0.30, 0.30, 4.0, (3.0, 2.0, 0.3), 0.0, 0.15, (-2.0, -1.0, 2.5)),
+    Segmen("pemburu_tren",     0.18, 45e6, 0.35, 1.30, 3.0, (1.0, 1.0, 1.0), 2.6, 0.15, (0.0, 0.5, 0.0)),
+    Segmen("kakap_aktif",      0.18, 150e6, 0.35, 1.00, 2.0, (1.5, 1.5, 0.5), 0.3, 0.15, (-1.0, 0.4, 1.0)),
+    Segmen("menengah_rutin",   0.27, 18e6, 0.35, 0.55, 6.0, (1.2, 1.2, 1.0), -0.8, 0.15, (-0.5, 1.8, -0.5)),
+    Segmen("pemula_hemat",     0.25, 4.5e6, 0.35, 0.30, 2.5, (0.5, 1.5, 2.5), 0.0, 0.15, (2.0, -0.3, -2.0)),
 ]
 
 KOTA = ["Surabaya", "Jakarta", "Bandung", "Yogyakarta", "Malang", "Denpasar", "Semarang",
@@ -205,8 +235,8 @@ def generate(n_transaksi: int = 1400, n_kolektor: int = 200, n_seniman: int = 23
     """
     if n_karya < n_transaksi * 1.1:
         raise ValueError("n_karya harus >= 1.1 x n_transaksi (1 karya hanya terjual sekali)")
-    if n_transaksi < n_kolektor:
-        raise ValueError("n_transaksi harus >= n_kolektor (tiap kolektor min. 1 pembelian)")
+    if n_transaksi < n_kolektor * MIN_PEMBELIAN:
+        raise ValueError(f"n_transaksi harus >= {MIN_PEMBELIAN} x n_kolektor (tiap kolektor min. {MIN_PEMBELIAN} pembelian)")
     rng = np.random.default_rng(seed)
     n_bulan = int(np.ceil(HARI_TOTAL / 30.4375))
     pool = pd.read_csv(POOL_PATH)
@@ -238,30 +268,49 @@ def generate(n_transaksi: int = 1400, n_kolektor: int = 200, n_seniman: int = 23
     })
 
     # ----------------------------------------------------------------- kolektor
-    seg_idx = rng.choice(len(SEGMEN), n_kolektor, p=[s.porsi for s in SEGMEN])
-    kelompok = np.zeros((3, len(GAYA)))
+    # (1) PUTAR ULANG generator lama: hasilnya dibuang, TUJUANNYA hanya menggerakkan ``rng`` persis seperti dulu
+    #     sehingga seluruh pengundian tabel karya di bawah (gambar, harga, waktu) tetap IDENTIK.
+    seg_lama = rng.choice(len(SEGMEN_LAMA), n_kolektor, p=[s.porsi for s in SEGMEN_LAMA])
+    _kel = np.zeros((3, len(GAYA)))
     for r, daftar in enumerate((KLASIK, MODERN, KONTEMPORER)):
         for g in daftar:
-            kelompok[r, G[g]] = 1.0
+            _kel[r, G[g]] = 1.0
+    for si in seg_lama:
+        s = SEGMEN_LAMA[si]
+        base = np.array(s.afinitas) @ _kel
+        rng.dirichlet(np.maximum(s.alpha * len(GAYA) * base / base.sum(), 1e-3))
+        rng.normal(0, 0.35)
+        rng.normal(0, 0.45)
+        rng.normal(0, 0.1)
+    rng.uniform(0, 540, n_kolektor)
+    _nama(rng, n_kolektor)
+    rng.choice(KOTA, n_kolektor)
+
+    # (2) Kolektor generator-v2: aliran acak SENDIRI (tidak mengganggu aliran karya).
+    rng_k = np.random.default_rng(seed + 101)
+    seg_idx = rng_k.choice(len(SEGMEN), n_kolektor, p=np.array([s.porsi for s in SEGMEN]) / sum(s.porsi for s in SEGMEN))
+    kelompok = _kel
     pref = np.zeros((n_kolektor, len(GAYA)))
     anggaran = np.zeros(n_kolektor)
     sigma = np.zeros(n_kolektor)
     laju = np.zeros(n_kolektor)
     sens = np.zeros(n_kolektor)
+    bonus_level = np.zeros((n_kolektor, 3))                       # urutan kolom: pemula, menengah, mapan
     for i, si in enumerate(seg_idx):
         s = SEGMEN[si]
         base = np.array(s.afinitas) @ kelompok          # bias selera per aliran
         conc = s.alpha * len(GAYA) * base / base.sum()
-        pref[i] = rng.dirichlet(np.maximum(conc, 1e-3))
-        anggaran[i] = np.log(s.anggaran_median) + rng.normal(0, 0.35)
+        pref[i] = rng_k.dirichlet(np.maximum(conc, 1e-3))
+        anggaran[i] = np.log(s.anggaran_median) + rng_k.normal(0, s.anggaran_sd)
         sigma[i] = s.anggaran_sigma
-        laju[i] = s.laju * np.exp(rng.normal(0, 0.45))
-        sens[i] = max(0.0, s.sens_tren + rng.normal(0, 0.1))
-    join_k = rng.uniform(0, 540, n_kolektor)
+        laju[i] = s.laju * np.exp(rng_k.normal(0, 0.12))
+        sens[i] = s.sens_tren * np.exp(rng_k.normal(0, 0.12))
+        bonus_level[i] = np.array(s.pref_level)
+    join_k = rng_k.uniform(0, 420, n_kolektor)                      # semua kolektor aktif >= ~10 bulan
     kolektor = pd.DataFrame({
         "id": [_uid("kolektor", i) for i in range(n_kolektor)],
-        "display_name": _nama(rng, n_kolektor),
-        "kota": rng.choice(KOTA, n_kolektor),
+        "display_name": _nama(rng_k, n_kolektor),
+        "kota": rng_k.choice(KOTA, n_kolektor),
         "created_at": _ts(join_k),
     })
     label = pd.DataFrame({
@@ -314,15 +363,25 @@ def generate(n_transaksi: int = 1400, n_kolektor: int = 200, n_seniman: int = 23
     })
 
     # --------------------------------------------------------------- transaksi
-    # Penjadwalan: tiap kolektor dijamin >=1 pembelian; sisanya ~ laju kolektor.
-    tambahan = rng.choice(n_kolektor, n_transaksi - n_kolektor, p=laju / laju.sum())
-    pembeli_idx = np.concatenate([np.arange(n_kolektor), tambahan])
+    # Jumlah pembelian per kolektor ~ laju x bulan aktif (dijamin >= MIN_PEMBELIAN), total diskalakan ke n_transaksi.
+    rng_t = np.random.default_rng(seed + 202)
+    bulan_aktif = (HARI_TOTAL - join_k - 1.0) / 30.4375
+    harap = laju * bulan_aktif
+    jumlah = np.maximum(MIN_PEMBELIAN, np.round(harap * n_transaksi / harap.sum())).astype(int)
+    while jumlah.sum() != n_transaksi:                       # sesuaikan ke total persis (ubah yang terbesar)
+        j = int(np.argmax(jumlah)) if jumlah.sum() > n_transaksi else int(np.argmin(jumlah / np.maximum(harap, 1e-9)))
+        jumlah[j] += -1 if jumlah.sum() > n_transaksi else 1
+        if jumlah[j] < MIN_PEMBELIAN:
+            jumlah[j] = MIN_PEMBELIAN
+            jumlah[int(np.argmax(jumlah))] -= 1
+    pembeli_idx = np.repeat(np.arange(n_kolektor), jumlah)
     sisa_hari = HARI_TOTAL - join_k[pembeli_idx] - 1.0
-    hari_event = join_k[pembeli_idx] + 1.0 + sisa_hari * rng.beta(1.3, 1.0, n_transaksi)
+    hari_event = join_k[pembeli_idx] + 1.0 + sisa_hari * rng_t.beta(1.3, 1.0, n_transaksi)
     urut = np.argsort(hari_event)
     pembeli_idx, hari_event = pembeli_idx[urut], hari_event[urut]
 
     gaya_idx = np.array([G[g] for g in gaya_karya])
+    level_idx = np.array([LEVEL.index(l) for l in level])           # 0 pemula, 1 menengah, 2 mapan
     log_harga = np.log(harga.astype(float))
     log_pop = np.log(popularitas)
     terjual = np.zeros(n_karya, dtype=bool)
@@ -334,15 +393,16 @@ def generate(n_transaksi: int = 1400, n_kolektor: int = 200, n_seniman: int = 23
         a = seniman_karya[kandidat]
         tren_t = _tren_pada(z, t)
         u = (
-            1.0 * np.log(pref[c, gaya_idx[kandidat]] + 1e-3)
-            - 0.7 * (log_harga[kandidat] - anggaran[c]) ** 2 / (2 * sigma[c] ** 2)
-            + 0.7 * sens[c] * tren_t[a]
+            BOBOT_SELERA * np.log(pref[c, gaya_idx[kandidat]] + 1e-3)
+            - BOBOT_HARGA * (log_harga[kandidat] - anggaran[c]) ** 2 / (2 * sigma[c] ** 2)
+            + 0.9 * sens[c] * tren_t[a]
             + 0.3 * log_pop[a]
+            + bonus_level[c, level_idx[a]]
         )
-        p = np.exp((u - u.max()) / 1.2)
-        k = rng.choice(kandidat, p=p / p.sum())
+        p = np.exp((u - u.max()) / SUHU_PILIHAN)
+        k = rng_t.choice(kandidat, p=p / p.sum())
         terjual[k] = True
-        final = max(int(_angka_bulat(np.array([harga[k] * rng.uniform(0.88, 1.0)]), 3)[0]), 1)
+        final = max(int(_angka_bulat(np.array([harga[k] * rng_t.uniform(0.88, 1.0)]), 3)[0]), 1)
         rows.append({
             "id": _uid("transaksi", j),
             "karya_id": karya["id"].iloc[k],

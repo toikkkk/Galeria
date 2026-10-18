@@ -5,12 +5,32 @@
 > Model yang dilatih di sini mempelajari aturan buatan kita, **bukan** perilaku pembeli nyata. Jangan klaim
 > skornya sebagai performa produksi.
 
+## Perombakan 2026-10-18 — generator-v2 + clustering-v2 (BACA DULU)
+
+Atas arahan dosen (silhouette > 0,5 dianggap valid, 0,3 cukup valid; K-Means dianggap terlalu tua; data dummy boleh disesuaikan dengan algoritma):
+
+1. **Urutan kerja sekarang: CLUSTERING DULU, lalu KLASIFIKASI.** Segmen kolektor menjadi fitur klasifikasi (`kolektor_segmen`).
+2. **Clustering = UMAP + HDBSCAN** (`src/clustering.py`, laporan `models/LAPORAN_CLUSTERING.md`), bukan K-Means. Jumlah segmen ditemukan sendiri (K = 5), kolektor baru ditetapkan lewat
+   `umap.transform` + `hdbscan.approximate_predict`. Hasil: **silhouette 0,649** (ruang fitur asli, kategori "wajar" > 0,50), ARI 0,965 terhadap label asli, stabilitas bootstrap 0,99, noise 0%.
+3. **Data dummy dirombak (`generator-v2`).** Lima arketipe kolektor yang berbeda tegas (anggaran, frekuensi, keikutan tren, level seniman), tiap kolektor ≥ 3 pembelian.
+   **Tabel `seniman`, `karya`, gambar, dan harga IDENTIK dengan sebelumnya** (diverifikasi) — jadi R2, filter karya vulgar, dan katalog tidak perlu dibuat ulang. Yang berubah: `kolektor`, `transaksi`, dan semua turunannya.
+4. **Klasifikasi dibangun ulang** dengan fitur tambahan `kolektor_segmen` (43 kolom). Skor sanity naik (HitRate@1 ≈ 0,77, AUC ≈ 0,89–0,93), **tetapi itu karena data kini jauh lebih terstruktur, bukan karena model lebih pintar.**
+   Ablasi: `kolektor_segmen` **tidak** menambah akurasi berarti (selisih < 0,02, dalam derau) karena fitur riwayat kolektor sudah memuat informasinya. Dipertahankan sesuai urutan kerja dan untuk analisis per segmen.
+
+**Kejujuran (wajib dibawa ke presentasi/laporan):**
+* Silhouette 0,65 adalah **hasil desain generator**, bukan temuan tentang pembeli lukisan nyata. Pada data nyata skor akan jauh lebih rendah.
+* Pada data ini K-Means dengan K=5 yang diberi tahu di awal juga mendapat 0,649; skornya ditentukan **datanya**. Keunggulan UMAP + HDBSCAN adalah K ditemukan sendiri, noise ditangani, dan kolektor baru bisa ditetapkan tanpa melatih ulang.
+* Fitur klaster dipilih berdasarkan kebersihan sinyal setelah percobaan pada data ini (keterpusatan selera aliran dikeluarkan karena berisik); percobaannya tercatat di laporan.
+
+**Yang menjadi basi dan harus dibuat ulang:** `models/klasifikasi_rekomendasi.joblib`, `data/hasil/rekomendasi_kolektor.csv`, `models/LAPORAN_MODEL.md` (Genda), dan — bila belum di-`--reset` — isi tabel Neon.
+**STATUS NEON:** **SUDAH diisi ulang (2026-10-18)** dengan data generator-v2: `kolektor` 200, `transaksi` 1.400, `kolektor_segmen` 200 + `segmen_kamus` 5 (`clustering-v2`); `karya` 2.000 dengan `image_key` R2 terisi. `rekomendasi_kolektor` masih kosong (menunggu Genda).
+
 ## Isi folder
 
 | Path | Isi |
 |---|---|
-| `data/training/klasifikasi_pembelian.csv` | Dataset **klasifikasi** (bagian Thoriq): 7.000 baris = 1.400 grup × (1 positif + 4 negatif), split berdasarkan waktu |
-| `data/training/clustering_kolektor.csv` | Dataset **clustering** (bagian Genda): 200 kolektor × 30 fitur |
+| `data/training/klasifikasi_pembelian.csv` | Dataset **klasifikasi** (dibangun Thoriq, dimodelkan Genda): 7.000 baris × 43 kolom = 1.400 grup × (1 positif + 4 negatif), split berdasarkan waktu; termasuk fitur `kolektor_segmen` dari clustering |
+| `data/training/clustering_kolektor.csv` | Dataset **clustering** (bagian Thoriq): 200 kolektor × 31 kolom; 5 di antaranya fitur klaster, sisanya untuk profil segmen |
 | `data/training/kolektor_label_asli.csv` | Segmen asli generator — **hanya utk validasi clustering**, bukan fitur |
 | `data/training/seniman_metrik_bulanan.csv` | Penjualan per seniman per bulan (bahan dashboard seniman) |
 | `data/training/KAMUS_DATA.md` | **Baca ini dulu**: arti tiap kolom, aturan anti-kebocoran, cara evaluasi |
@@ -22,8 +42,8 @@
 | `src/urutan.py` | Urutan baris **kanonik** (pipeline tidak boleh bergantung pada urutan fisik Postgres — lihat catatan di bawah) |
 | `jalankan_pipeline.py` | Generate → isi Neon → baca ulang → CSV |
 | `scripts/` | `siapkan_pool_gambar.py`, `upload_gambar_r2.py`, `cek_sinyal_data.py`, `latih_clustering.py`, `hitung_segmen.py` |
-| `src/clustering.py` · `notebooks/02_clustering.ipynb` | **Clustering kolektor (Thoriq, SELESAI)**: logika inti + notebook proses |
-| `models/clustering_kolektor.joblib` · `models/LAPORAN_CLUSTERING.md` | Artefak model & laporan (angka dihitung otomatis; membahas keterbatasan) |
+| `src/clustering.py` · `notebooks/02_clustering.ipynb` | **Clustering kolektor (Thoriq, `clustering-v2`, UMAP + HDBSCAN)**: logika inti + notebook proses (sudah dieksekusi) |
+| `models/clustering_kolektor.joblib` · `models/clustering_kolektor_cutoff.joblib` · `models/LAPORAN_CLUSTERING.md` | Model FINAL (dashboard/Neon) · model CUTOFF (fitur klasifikasi tanpa kebocoran) · laporan (angka dihitung otomatis; membahas keterbatasan) |
 | `SERAH_TERIMA_THORIQ.md` | Serah-terima hasil clustering untuk Aulya/Vika/Genda (apa yang siap, cara pakai, batasan) |
 | `data/hasil/segmen_kamus.csv` | Deskripsi tiap segmen (salinan tabel `segmen_kamus`) |
 | `data/hasil/segmen_kolektor.csv` | Segmen tiap kolektor (salinan tabel `kolektor_segmen`) |
@@ -78,11 +98,10 @@ dibatasi lajunya & bukan utk produksi, jadi **utk rilis Play Store wajib custom 
 
 * **Cuma 23 seniman.** Subset v1 (shard 0–4 WikiArt) berasal dari 23 pelukis bernama; sisi penjual terbatas itu.
   Pelukisnya tokoh sungguhan karena gambarnya milik mereka — riwayat penjualannya fiktif.
-* **Sinyal klasifikasi** (audit `cek_sinyal_data.py`, model GBM sederhana): AUC ≈ 0,79–0,80, HitRate@1 ≈ 0,46–0,50
-  (acak 0,20). Artinya bisa dipelajari tapi tidak trivial. Itu cuma bukti generator terbaca model.
-* **Clustering tidak terpisah sempurna**: ARI vs segmen asli ≈ 0,48 pada k=4 (0,31 pada k=5); segmen `premium_selektif`
-  dan `spesialis_aliran` saling tumpang tindih. Pakai `StandardScaler` pada log-harga — `RobustScaler` justru membuat
-  klaster kecil berisi outlier (ARI ≈ 0,18).
+* **Sinyal klasifikasi** (audit `cek_sinyal_data.py`, model GBM sederhana, generator-v2): AUC ≈ 0,89–0,93, HitRate@1 ≈ 0,77–0,78
+  (acak 0,20). Jauh lebih tinggi dari generator lama (0,46–0,50) karena perilaku kolektor kini konsisten — itu bukti generator terbaca model, **bukan** performa nyata.
+* **Clustering (generator-v2) terpisah rapi karena dirancang begitu**: silhouette 0,649, ARI vs segmen asli 0,965. Pakai `StandardScaler` pada log-harga dan hanya 5 fitur perilaku; selera aliran sengaja tidak jadi fitur klaster (berisik).
+  Plafon (silhouette label asli) 0,643 — skor dibatasi kerapatan data, bukan algoritma.
 * Negatif klasifikasi dipilih seragam acak dari karya yang tersedia (asumsi; tak ada data "dilihat tapi tak dibeli").
 * Komisi 10% dan pengali harga per aliran adalah asumsi buatan, bukan keputusan bisnis.
 * Gambar WikiArt berlisensi riset non-komersial — aman utk pengembangan, **bukan** utk katalog rilis Play Store.
@@ -90,10 +109,10 @@ dibatasi lajunya & bukan utk produksi, jadi **utk rilis Play Store wajib custom 
 ## Kontrak antar-bagian (sumber kebenaran — jangan diubah sepihak, kabari Thoriq)
 
 ```
-Thoriq: data dummy + CSV (SELESAI) ──> Thoriq: CLUSTERING kolektor ──> tabel `kolektor_segmen`
-   │                                                                          ├─> Aulya: dashboard seniman (bagian "Siapa Pembelimu")
-   │                                                                          └─> Vika : label segmen (opsional) di rekomendasi
-   └─> Genda: KLASIFIKASI pembelian ──> tabel `rekomendasi_kolektor` ──> Vika: katalog + rekomendasi (backend + Flutter)
+(1) Thoriq: data dummy generator-v2 ──> (2) Thoriq: CLUSTERING (UMAP + HDBSCAN) ──┬─> model FINAL ──> tabel `kolektor_segmen` ──┬─> Aulya: dashboard ("Siapa Pembelimu")
+                                                                                    │                                          └─> Vika : label segmen (opsional)
+                                                                                    └─> model CUTOFF ──> fitur `kolektor_segmen` di CSV klasifikasi
+(3) Genda: KLASIFIKASI pembelian (memakai fitur segmen) ──> tabel `rekomendasi_kolektor` ──> Vika: katalog + rekomendasi (backend + Flutter)
                                         Aulya: dashboard seniman (backend + Flutter) — sebagian besar tidak menunggu model
 ```
 
@@ -108,11 +127,11 @@ dialihkan ke tabel produksi tanpa mengubah kode). Env backend yang dipakai bersa
 | `seniman`, `kolektor`, `karya`, `transaksi`, view `v_seniman_metrik_bulanan` | Thoriq (sudah terisi) | data dasar, lihat `data/training/KAMUS_DATA.md` |
 | `kolektor_label_asli` | Thoriq | segmen buatan generator — **hanya utk validasi clustering, dilarang dipakai di aplikasi/fitur** |
 | `segmen_kamus` | Thoriq (5 baris, dari `hitung_segmen.py`) | `segmen_id, segmen_nama, deskripsi, ukuran, aliran_favorit, profil JSONB, model_version, dihitung_pada` — teks penjelasan segmen untuk UI |
-| `kolektor_segmen` | **Thoriq mengisi — SUDAH TERISI** (200 baris, `clustering-v1`, 5 segmen: Kolektor Premium · Kolektor Menengah Aktif · Spesialis Aliran · Pemburu Karya Terjangkau · Pemula Hemat) | `kolektor_id, segmen_id, segmen_nama, model_version, dihitung_pada` (1 baris per kolektor) |
+| `kolektor_segmen` | **Thoriq mengisi** (200 baris, `clustering-v2`, 5 segmen: Kolektor Premium · Kolektor Aktif Bernilai Tinggi · Pemburu Tren · Kolektor Menengah Rutin · Pemula Hemat; nama dibuat otomatis dari centroid) | `kolektor_id, segmen_id, segmen_nama, model_version, dihitung_pada` (1 baris per kolektor) |
 | `rekomendasi_kolektor` | **Genda mengisi** (klasifikasi) | `kolektor_id, karya_id, peringkat (1..20), skor (0-1), alasan (JSONB list kode), strategi, model_version, dihitung_pada` |
 
 `strategi`: `model` (kolektor punya riwayat beli) atau `cold_start` (belum pernah beli → peringkat berdasarkan keramaian/tren, bukan model personal).
-`model_version`: mis. `klasifikasi-v1`, `clustering-v1` (naik versi tiap training ulang; baris lama diganti, bukan ditumpuk).
+`model_version`: mis. `klasifikasi-v2`, `clustering-v2` (naik versi tiap training ulang; baris lama diganti, bukan ditumpuk). Klasifikasi pada data generator-v2 sebaiknya diberi versi baru (`klasifikasi-v2`).
 
 **Kode `alasan` (kosakata tetap; teks Indonesia dibuat di backend, ambang batas final oleh Genda):**
 
@@ -149,7 +168,7 @@ Bentuk respons rekomendasi (Vika wajib mengikuti persis supaya `Karya.fromJson` 
 {
   "kolektor_id": "uuid", "strategi": "model", "model_version": "klasifikasi-v1",
   "dihitung_pada": "2026-09-30T23:59:59Z",
-  "segmen": {"id": 2, "nama": "Kolektor Menengah Aktif"},
+  "segmen": {"id": 2, "nama": "Kolektor Aktif Bernilai Tinggi"},
   "items": [{
     "peringkat": 1, "skor": 0.8123,
     "alasan": [{"kode": "gaya_favorit", "teks": "Sesuai aliran favoritmu: Impressionism"}],
@@ -192,10 +211,22 @@ Statistik deskriptif atas data dummy; jendela waktu dihitung dari `REKOMENDASI_W
 `perubahan_pct` = periode ini vs periode sama persis sebelumnya (`null` bila periode sebelumnya kosong; data dummy mulai 2024-11, jadi periode 365 hari bisa bernilai ratusan persen). `lonjakan = (n30+1) / ((n90-n30)/2 + 1)` — rumus yang sama dengan fitur model.
 `seniman_ramai` = 10 teratas (urut `n_terjual_30hari`, lalu `lonjakan`). Mobile: `mobile/lib/services/dashboard_service.dart`; seniman demo = seniman pertama dari `demo-seniman` (override `--dart-define=DEMO_SENIMAN_ID=<uuid>`).
 
+## Urutan menjalankan (clustering dulu, lalu klasifikasi)
+```powershell
+pip install -r requirements.txt                  # termasuk umap-learn & hdbscan (clustering-v2)
+python jalankan_pipeline.py --dry-run            # tanpa database: generate -> CLUSTERING (2 model + laporan) -> CSV klasifikasi/clustering
+python scripts/uji_paritas_fitur.py              # fitur_pasangan() == CSV (butuh models/clustering_kolektor_cutoff.joblib)
+python scripts/cek_sinyal_data.py                # audit kebocoran + sanity sinyal klasifikasi + sanity clustering
+python scripts/hitung_segmen.py --dari-csv       # segmen + kamus -> data/hasil/*.csv (tanpa DB); tanpa --dari-csv membaca Neon
+# ke Neon (butuh persetujuan; menimpa isi schema dummy_rekomendasi):
+python jalankan_pipeline.py --reset ; python scripts/hitung_segmen.py ; python scripts/upload_gambar_r2.py
+```
+`jalankan_pipeline.py` memanggil `scripts/latih_clustering.py` (melatih model final + cutoff, menulis `models/` dan `LAPORAN_CLUSTERING.md`) SEBELUM membangun CSV klasifikasi.
+Deterministik: dua kali jalan menghasilkan semua CSV identik (diverifikasi). Model yang dipakai fitur `kolektor_segmen` adalah model **cutoff** (hanya melihat data sampai batas train), bukan model final.
+
 ## Belum dikerjakan
-Unggah ke R2 (berjalan/selesai — lihat bagian R2) · model klasifikasi (`genda.md`, Genda) · katalog + rekomendasi di backend & Flutter (`vika.md`) ·
-dashboard seniman (`aulya.md`) · embedding Visual Search per karya (bisa di-join lewat `image_filename`
-ke `ml-visual-search/data/cache/v1_11class_backup/catalog_embeddings.npz`).
+Isi ulang Neon dengan data generator-v2 (menunggu persetujuan Thoriq) · model klasifikasi pada data baru (`genda.md`, Genda) · katalog + rekomendasi di backend & Flutter (`vika.md`) ·
+dashboard seniman (`aulya.md`; endpoint segmen sudah ada, hanya angka yang berubah) · embedding Visual Search per karya (bisa di-join lewat `image_filename`).
 
 ## Catatan reprodusibilitas (pelajaran 2026-10-05)
 `SELECT *` tanpa `ORDER BY` tidak menjamin urutan baris, dan urutan fisik Postgres **berubah setelah `UPDATE`** (mis. mengisi `image_key`). Pemilihan karya negatif di

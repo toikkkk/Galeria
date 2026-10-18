@@ -17,6 +17,8 @@ import sys
 import uuid
 from pathlib import Path
 
+import importlib.util
+
 import pandas as pd
 from sqlalchemy import text
 
@@ -50,7 +52,7 @@ def tulis_kamus(path: Path, params: dict, kls: pd.DataFrame, clu: pd.DataFrame, 
     md = f"""# Kamus Data -- Sistem Rekomendasi Lukisan GALERIA
 
 > **DATA SINTETIS.** Gambar & aliran lukisan nyata (dataset Visual Search v1: 5.659 gambar, 11 kelas),
-> tetapi kolektor, harga, dan riwayat pembelian dibangkitkan program (`src/generate.py`, seed {params['seed']}).
+> tetapi kolektor, harga, dan riwayat pembelian dibangkitkan program (`src/generate.py` generator-v2, seed {params['seed']}); kolektor sengaja dirancang berkelompok tegas.
 > Model yang dilatih di sini mempelajari aturan buatan kita, **bukan** perilaku pembeli nyata -- jangan
 > mengklaim skornya sebagai performa produksi. File ini dibuat otomatis oleh `jalankan_pipeline.py`.
 
@@ -69,20 +71,23 @@ Aturan penting:
 * **Evaluasi ranking per `grup_id`** (HitRate@K, NDCG@K). 1 grup = 1 positif + {params['neg_per_pos']} negatif, jadi tebakan acak
   HitRate@1 = {100 / (1 + params['neg_per_pos']):.0f}%. Akurasi biasa menyesatkan.
 * Negatif = karya lain yang masih tersedia saat itu, dipilih seragam acak (asumsi; tak ada data "dilihat tapi tak dibeli").
-* Kategorikal: `karya_gaya`, `seniman_level_reputasi`. Kosong (NaN) berarti belum ada riwayat (mis. pembelian pertama kolektor) -- bukan error.
+* Kategorikal: `karya_gaya`, `seniman_level_reputasi`, `kolektor_segmen`. Kosong (NaN) berarti belum ada riwayat (mis. pembelian pertama kolektor) -- bukan error.
+* **`kolektor_segmen` berasal dari CLUSTERING** (urutan kerja: clustering dulu, lalu klasifikasi). Dihitung as-of `waktu` dari riwayat SEBELUM `waktu`, memakai model clustering
+  **"cutoff"** (`models/clustering_kolektor_cutoff.joblib`, dilatih hanya pada data sampai batas train), jadi tidak mengintip val/test. Kolektor dgn < 3 pembelian sebelum `waktu`
+  bernilai `Belum Cukup Riwayat`. **Jangan** mengganti dengan segmen model "final" (`kolektor_segmen` di Neon) atau `kolektor_label_asli` -- keduanya membocorkan masa depan.
 
 {tabel(KAMUS_KLASIFIKASI)}
 
 ## 2. `clustering_kolektor.csv` -- {len(clu)} baris (1 per kolektor)
 
-Tugas: **segmentasi kolektor** (clustering, tanpa label). Snapshot di akhir periode data memakai seluruh riwayat.
-Lakukan scaling yang robust (mis. `RobustScaler`) -- harga sangat condong ke kanan; pertimbangkan `log` utk kolom `*_idr`.
-Tidak ada NaN. `kolektor_id` bukan fitur.
+Tugas: **segmentasi kolektor** (clustering, tanpa label) -- dikerjakan Thoriq dengan **UMAP + HDBSCAN** (`src/clustering.py`, laporan `models/LAPORAN_CLUSTERING.md`).
+Snapshot di akhir periode data memakai seluruh riwayat. Fitur klaster = 5 kolom perilaku (`harga_rata2_idr`, `frekuensi_beli_per_bulan`, `rata2_persentil_tren_saat_beli`,
+`porsi_beli_seniman_mapan`, `porsi_beli_seniman_pemula`; log1p utk dua kolom pertama lalu StandardScaler); kolom lain dipakai utk profil segmen. Tidak ada NaN. `kolektor_id` bukan fitur.
 
 {tabel(KAMUS_CLUSTERING)}
 
 ### `kolektor_label_asli.csv` -- HANYA utk validasi
-Segmen yang dipakai generator (`premium_selektif`, `menengah_aktif`, `pemula_hemat`, `spesialis_aliran`, `pengikut_tren`).
+Segmen yang dipakai generator-v2 (`premium_mapan`, `pemburu_tren`, `kakap_aktif`, `menengah_rutin`, `pemula_hemat`).
 **Jangan dipakai sbg fitur atau target latihan.** Gunakan setelah clustering selesai utk membandingkan (mis. Adjusted Rand Index).
 Di data nyata label ini tidak ada. Segmen ini hasil rancangan kita, jadi cocok/tidaknya dgn cluster hanya menunjukkan
 generator terbaca model, bukan kebenaran tentang kolektor sungguhan.
@@ -141,8 +146,15 @@ async def jalankan(args) -> int:
 
     seniman, kolektor, karya, transaksi = (tabel[k] for k in ("seniman", "kolektor", "karya", "transaksi"))
     print("[4/5] membangun CSV training dari data tsb...")
-    kls = bangun_klasifikasi(seniman, kolektor, karya, transaksi, neg_per_pos=args.neg_per_pos, seed=args.seed)
+    # URUTAN KERJA: CLUSTERING DULU, lalu klasifikasi (fitur kolektor_segmen berasal dari clustering).
     clu = bangun_clustering(seniman, kolektor, karya, transaksi)
+    print("      clustering (UMAP + HDBSCAN): melatih model final + model cutoff, menulis models/ + LAPORAN_CLUSTERING.md ...")
+    spec = importlib.util.spec_from_file_location("latih_clustering", ROOT / "scripts" / "latih_clustering.py")
+    latih_clustering = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(latih_clustering)
+    hasil_klaster = latih_clustering.jalankan(tabel, tabel["kolektor_label_asli"], tulis=True)
+    kls = bangun_klasifikasi(seniman, kolektor, karya, transaksi, neg_per_pos=args.neg_per_pos, seed=args.seed,
+                             bundle_klaster=hasil_klaster["cutoff"])
     met = bangun_metrik_seniman_bulanan(karya, transaksi)
     periksa_kamus(kls, KAMUS_KLASIFIKASI, "klasifikasi")
     periksa_kamus(clu, KAMUS_CLUSTERING, "clustering")
@@ -161,6 +173,10 @@ async def jalankan(args) -> int:
         print("      view SQL v_seniman_metrik_bulanan == hitungan pandas (OK)")
 
     for nama in ("seniman", "kolektor", "karya", "transaksi"):
+        if args.dry_run and nama == "karya" and (EXPORT / "karya.csv").exists():
+            # mode --dry-run membangun dari memori yang tak punya kolom image_key (diisi saat unggah ke R2) -- jangan timpa
+            print("  data/export/karya.csv dilewati (dry-run; mempertahankan kolom image_key dari export database)")
+            continue
         tulis_csv(tabel[nama], EXPORT / f"{nama}.csv")
     tulis_csv(kls, TRAINING / "klasifikasi_pembelian.csv")
     tulis_csv(clu, TRAINING / "clustering_kolektor.csv")

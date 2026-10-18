@@ -1,6 +1,7 @@
 """Tetapkan segmen tiap kolektor dengan model clustering, lalu isi tabel ``kolektor_segmen`` di Neon.
 
-Model dimuat dari ``models/clustering_kolektor.joblib`` (hasil ``scripts/latih_clustering.py``).
+Model dimuat dari ``models/clustering_kolektor.joblib`` = model FINAL clustering-v2 (UMAP + HDBSCAN; hasil
+``scripts/latih_clustering.py``). Memuatnya butuh ``umap-learn`` & ``hdbscan`` (hanya di venv ml-recommender).
 Fitur dibangun dari data yang dibaca ulang dari Neon (``features.bangun_clustering``, snapshot akhir
 periode data), jadi hasilnya selalu mengikuti isi database. Tabel yang ditulis HANYA
 ``dummy_rekomendasi.kolektor_segmen`` (DELETE lalu INSERT dalam satu transaksi -> idempotent).
@@ -81,7 +82,7 @@ def main(dry_run: bool, dari_csv: bool) -> None:
         raise SystemExit(f"{ARTEFAK.relative_to(ROOT)} belum ada -- jalankan dulu: python scripts/latih_clustering.py")
     bundle = joblib.load(ARTEFAK)
     fitur = pd.read_csv(CSV_FITUR) if dari_csv else asyncio.run(_baca_fitur())
-    print(f"{len(fitur)} kolektor ({'CSV' if dari_csv else 'dibaca dari Neon'}) | model {bundle['versi']} (K={bundle['k']})")
+    print(f"{len(fitur)} kolektor ({'CSV' if dari_csv else 'dibaca dari Neon'}) | model {bundle['versi']} ({bundle['algoritma']}, {len(bundle['segmen'])} segmen)")
 
     hasil = C.tetapkan(bundle, fitur)
     CSV_HASIL.parent.mkdir(parents=True, exist_ok=True)
