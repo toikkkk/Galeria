@@ -19,6 +19,14 @@ HitRate@K / NDCG@K -- bukan akurasi.
 
 Split waktu (kolom ``split``): train = 70% pembelian pertama, val = 15%, test = 15%
 terakhir (berdasarkan waktu pembelian). Satu grup tidak pernah terpecah antar split.
+
+SEGMEN KOLEKTOR SEBAGAI FITUR (urutan kerja: clustering DULU, lalu klasifikasi)
+--------------------------------------------------------------------------------
+Fitur ``kolektor_segmen`` = segmen kolektor menurut model clustering, dihitung "as-of t": hanya dari riwayat
+SEBELUM t (``_agregat_klaster``), jadi tidak ada kebocoran per baris. Agar model klasteringnya sendiri juga tidak
+mengintip val/test, model yang dipakai di sini dilatih HANYA pada data sampai batas train (``batas_split``) --
+``models/clustering_kolektor_cutoff.joblib``. (Model "final" utk dashboard/Neon dilatih pada seluruh periode dan
+tidak boleh dipakai sebagai fitur klasifikasi.) Kolektor dgn < 3 pembelian sebelum t diberi segmen "Belum Cukup Riwayat".
 """
 
 from __future__ import annotations
@@ -26,6 +34,7 @@ from __future__ import annotations
 import numpy as np
 import pandas as pd
 
+from . import clustering as C
 from .generate import GAYA, HARI_TOTAL, WINDOW_START
 from .urutan import urutkan
 
@@ -101,6 +110,73 @@ class _Konteks:
         self.kr_luas = (kr["lebar_cm"].astype(float) * kr["tinggi_cm"].astype(float)).to_numpy()
         self.idx_karya = {kid: i for i, kid in enumerate(self.kr_ids)}
 
+        # --- segmen kolektor (model clustering dipasang lewat pasang_klaster) ---
+        self.bundle_klaster = None
+        self._seg_cache: dict = {}
+        self._tx_pasca = None
+        self._tx_kol = None
+
+    # -- segmen kolektor as-of t ------------------------------------------------
+    def pasang_klaster(self, bundle: dict | None) -> "_Konteks":
+        """Pasang model clustering (dipakai utk fitur ``kolektor_segmen``). Mengosongkan cache."""
+        self.bundle_klaster = bundle
+        self._seg_cache = {}
+        return self
+
+    def tx_pasca(self) -> pd.DataFrame:
+        """``tx`` + kolom turunan per pembelian (persentil tren, lonjakan, diskon, level seniman). Dihitung sekali."""
+        if self._tx_pasca is None:
+            tx = self.tx.copy()
+            pers, lonjak = [], []
+            for ev in tx.itertuples(index=False):
+                n30_all = self.n30_semua(float(ev.t))
+                n30 = self.n_jual(ev.penjual_id, float(ev.t), 30)
+                n90 = self.n_jual(ev.penjual_id, float(ev.t), 90)
+                pers.append(self.persentil(n30_all, n30))
+                lonjak.append((n30 + 1.0) / ((n90 - n30) / 2.0 + 1.0))
+            tx["persentil_tren"] = pers
+            tx["lonjakan"] = lonjak
+            tx["diskon"] = 1.0 - tx["harga_final_idr"] / tx["price_idr"]
+            tx["level"] = tx["penjual_id"].map(self.sen_level)
+            self._tx_pasca = tx
+            self._tx_kol = {kid: g.sort_values("t").reset_index(drop=True) for kid, g in tx.groupby("pembeli_id", sort=False)}
+        return self._tx_pasca
+
+    def riwayat_klaster(self, kid: str, T: float):
+        """Pembelian kolektor SEBELUM T (``t < T`` ketat) dgn kolom turunan; None bila tak ada."""
+        self.tx_pasca()
+        g = self._tx_kol.get(kid)
+        if g is None:
+            return None
+        g = g[g["t"] < T]
+        return g if len(g) else None
+
+    def siapkan_segmen(self, pasangan) -> None:
+        """Isi cache segmen utk daftar ``(kolektor_id, t)`` sekaligus (satu panggilan ``umap.transform``)."""
+        if self.bundle_klaster is None:
+            raise RuntimeError("model clustering belum dipasang: panggil cx.pasang_klaster(bundle) dulu")
+        baru = [(k, float(t)) for k, t in pasangan if (k, round(float(t), 9)) not in self._seg_cache]
+        baris, kunci = [], []
+        for k, t in dict.fromkeys(baru):
+            kunci.append((k, round(t, 9)))
+            g = self.riwayat_klaster(k, t)
+            baris.append(None if g is None else _agregat_klaster(self, k, g, t))
+        punya = [i for i, b in enumerate(baris) if b is not None]
+        for i, b in enumerate(baris):
+            if b is None:
+                self._seg_cache[kunci[i]] = C.NAMA_BELUM_ADA
+        if punya:
+            df = pd.DataFrame([baris[i] for i in punya])
+            ass = C.tetapkan(self.bundle_klaster, df)
+            for i, nama in zip(punya, ass["segmen_nama"]):
+                self._seg_cache[kunci[i]] = nama
+
+    def segmen_asof(self, kid: str, t: float) -> str:
+        key = (kid, round(float(t), 9))
+        if key not in self._seg_cache:
+            self.siapkan_segmen([(kid, t)])
+        return self._seg_cache[key]
+
     def karya_tersedia(self, t: float) -> np.ndarray:
         """Indeks (ke dalam kr_ids/kr_sen/dst) karya yang SUDAH terpasang (``t_list <= t``)
         dan BELUM terjual (``t_jual > t``) pada waktu ``t``. Dipakai training (kandidat
@@ -160,7 +236,7 @@ KOLOM_IDENTITAS = ["grup_id", "split", "waktu", "transaksi_id", "kolektor_id", "
 # notebooks/01_klasifikasi.ipynb bagian 10, FITUR = FITUR_NUMERIK + FITUR_KATEGORIKAL).
 # fitur_pasangan() mengembalikan dict dgn key-key ini -- urutan di sini dipakai
 # src/inference.py utk membangun DataFrame fitur yg kolomnya PERSIS sama dgn training.
-FITUR_KATEGORIKAL = ["karya_gaya", "seniman_level_reputasi"]
+FITUR_KATEGORIKAL = ["karya_gaya", "seniman_level_reputasi", "kolektor_segmen"]
 FITUR_NUMERIK = [
     "kolektor_n_beli_sebelumnya", "kolektor_hari_sejak_bergabung", "kolektor_hari_sejak_beli_terakhir",
     "kolektor_n_beli_90hari", "kolektor_harga_rata2_idr", "kolektor_harga_median_idr",
@@ -213,6 +289,7 @@ def fitur_pasangan(cx: "_Konteks", kolektor_id: str, idx_karya: int, t: float, n
 
     return {
         **kol,
+        "kolektor_segmen": cx.segmen_asof(kolektor_id, t),
         "karya_gaya": GAYA[gi],
         "karya_harga_listing_idr": price,
         "karya_log_harga": float(np.log(price)),
@@ -229,12 +306,24 @@ def fitur_pasangan(cx: "_Konteks", kolektor_id: str, idx_karya: int, t: float, n
     }
 
 
-def bangun_klasifikasi(seniman, kolektor, karya, transaksi, neg_per_pos: int = 4, seed: int = 42) -> pd.DataFrame:
-    rng = np.random.default_rng(seed)
-    cx = _Konteks(seniman, kolektor, karya, transaksi)
-    tx = cx.tx
+def batas_split(cx: "_Konteks") -> tuple[float, float]:
+    """Batas waktu (hari sejak WINDOW_START) train|val dan val|test: kuantil 70% dan 85% waktu pembelian.
+    Dipakai bersama oleh pembuatan CSV klasifikasi DAN pelatihan model clustering 'cutoff' (tanpa kebocoran)."""
+    b1, b2 = np.quantile(cx.tx["t"].to_numpy(), [0.70, 0.85])
+    return float(b1), float(b2)
 
-    b1, b2 = np.quantile(tx["t"].to_numpy(), [0.70, 0.85])
+
+def bangun_klasifikasi(seniman, kolektor, karya, transaksi, neg_per_pos: int = 4, seed: int = 42,
+                       bundle_klaster: dict | None = None) -> pd.DataFrame:
+    """``bundle_klaster`` WAJIB: model clustering 'cutoff' (dilatih hanya pada data sampai ``batas_split``)."""
+    if bundle_klaster is None:
+        raise ValueError("bundle_klaster wajib (urutan kerja: clustering dulu, lalu klasifikasi)")
+    rng = np.random.default_rng(seed)
+    cx = _Konteks(seniman, kolektor, karya, transaksi).pasang_klaster(bundle_klaster)
+    tx = cx.tx
+    cx.siapkan_segmen([(ev.pembeli_id, ev.t) for ev in tx.itertuples(index=False)])   # satu batch utk semua grup
+
+    b1, b2 = batas_split(cx)
     baris = []
     for grup, ev in enumerate(tx.itertuples(index=False), start=1):
         t = float(ev.t)
@@ -265,59 +354,60 @@ def bangun_klasifikasi(seniman, kolektor, karya, transaksi, neg_per_pos: int = 4
 
 
 # --------------------------------------------------------------- clustering
-def bangun_clustering(seniman, kolektor, karya, transaksi) -> pd.DataFrame:
-    """1 baris per kolektor, snapshot di akhir periode data (memakai SELURUH riwayat)."""
-    cx = _Konteks(seniman, kolektor, karya, transaksi)
-    T = HARI_TOTAL
-    tx = cx.tx.copy()
-    # persentil tren seniman pada saat beli (skala 0-1, bebas dari ukuran pasar)
-    pers, lonjak = [], []
-    for ev in tx.itertuples(index=False):
-        n30_all = cx.n30_semua(float(ev.t))
-        n30 = cx.n_jual(ev.penjual_id, float(ev.t), 30)
-        n90 = cx.n_jual(ev.penjual_id, float(ev.t), 90)
-        pers.append(cx.persentil(n30_all, n30))
-        lonjak.append((n30 + 1.0) / ((n90 - n30) / 2.0 + 1.0))
-    tx["persentil_tren"] = pers
-    tx["lonjakan"] = lonjak
-    tx["diskon"] = 1.0 - tx["harga_final_idr"] / tx["price_idr"]
-    tx["level"] = tx["penjual_id"].map(cx.sen_level)
+def _agregat_klaster(cx: "_Konteks", kid: str, g: pd.DataFrame, T: float) -> dict:
+    """Satu baris fitur clustering utk kolektor ``kid`` dari pembelian ``g`` (semua SEBELUM T), snapshot pada T."""
+    hg = g["harga_final_idr"].to_numpy(float)
+    n = len(g)
+    porsi = np.bincount(g["gaya_idx"].to_numpy(), minlength=N_GAYA) / n
+    nz = porsi[porsi > 0]
+    bulan_aktif = max((T - cx.kol_join[kid]) / 30.4375, 1.0)
+    return {
+        "kolektor_id": kid,
+        "n_pembelian": n,
+        "total_belanja_idr": hg.sum(),
+        "harga_rata2_idr": hg.mean(),
+        "harga_median_idr": np.median(hg),
+        "harga_min_idr": hg.min(),
+        "harga_maks_idr": hg.max(),
+        "harga_std_log": float(np.log(hg).std()),
+        "hari_sejak_bergabung": T - cx.kol_join[kid],
+        "hari_sejak_beli_terakhir": T - g["t"].max(),
+        "frekuensi_beli_per_bulan": n / bulan_aktif,
+        "n_gaya_unik": int((porsi > 0).sum()),
+        "porsi_gaya_teratas": float(porsi.max()),
+        "entropi_gaya_norm": float(-(nz * np.log(nz)).sum() / np.log(N_GAYA)),
+        "porsi_beli_seniman_mapan": float((g["level"] == "mapan").mean()),
+        "porsi_beli_seniman_menengah": float((g["level"] == "menengah").mean()),
+        "porsi_beli_seniman_pemula": float((g["level"] == "pemula").mean()),
+        "rata2_persentil_tren_saat_beli": float(g["persentil_tren"].mean()),
+        "rata2_lonjakan_saat_beli": float(g["lonjakan"].mean()),
+        "rata2_diskon_negosiasi": float(g["diskon"].mean()),
+        **{f"porsi_gaya_{nama}": float(p) for nama, p in zip(GAYA, porsi)},
+    }
 
+
+def bangun_clustering(seniman, kolektor, karya, transaksi, t_asof: float | None = None,
+                      cx: "_Konteks | None" = None) -> pd.DataFrame:
+    """1 baris per kolektor. Default (``t_asof=None``): snapshot di akhir periode data memakai SELURUH riwayat.
+    ``t_asof`` (hari sejak WINDOW_START): snapshot pada waktu itu, HANYA dari pembelian sebelumnya -- dipakai utk melatih
+    model clustering 'cutoff' (tanpa kebocoran ke val/test). Kolektor tanpa pembelian sebelum ``t_asof`` tidak muncul."""
+    cx = cx or _Konteks(seniman, kolektor, karya, transaksi)
+    T = HARI_TOTAL if t_asof is None else float(t_asof)
+    cx.tx_pasca()
     baris = []
-    for kid, g in tx.groupby("pembeli_id", sort=False):
-        hg = g["harga_final_idr"].to_numpy(float)
-        n = len(g)
-        porsi = np.bincount(g["gaya_idx"].to_numpy(), minlength=N_GAYA) / n
-        nz = porsi[porsi > 0]
-        bulan_aktif = max((T - cx.kol_join[kid]) / 30.4375, 1.0)
-        baris.append({
-            "kolektor_id": kid,
-            "n_pembelian": n,
-            "total_belanja_idr": hg.sum(),
-            "harga_rata2_idr": hg.mean(),
-            "harga_median_idr": np.median(hg),
-            "harga_min_idr": hg.min(),
-            "harga_maks_idr": hg.max(),
-            "harga_std_log": float(np.log(hg).std()),
-            "hari_sejak_bergabung": T - cx.kol_join[kid],
-            "hari_sejak_beli_terakhir": T - g["t"].max(),
-            "frekuensi_beli_per_bulan": n / bulan_aktif,
-            "n_gaya_unik": int((porsi > 0).sum()),
-            "porsi_gaya_teratas": float(porsi.max()),
-            "entropi_gaya_norm": float(-(nz * np.log(nz)).sum() / np.log(N_GAYA)),
-            "porsi_beli_seniman_mapan": float((g["level"] == "mapan").mean()),
-            "porsi_beli_seniman_menengah": float((g["level"] == "menengah").mean()),
-            "porsi_beli_seniman_pemula": float((g["level"] == "pemula").mean()),
-            "rata2_persentil_tren_saat_beli": float(g["persentil_tren"].mean()),
-            "rata2_lonjakan_saat_beli": float(g["lonjakan"].mean()),
-            "rata2_diskon_negosiasi": float(g["diskon"].mean()),
-            **{f"porsi_gaya_{nama}": float(p) for nama, p in zip(GAYA, porsi)},
-        })
+    for kid in cx.k["id"]:
+        g = cx._tx_kol.get(kid)
+        if g is not None and t_asof is not None:
+            g = g[g["t"] < T]
+        if g is None or not len(g):
+            continue
+        baris.append(_agregat_klaster(cx, kid, g, T))
     df = pd.DataFrame(baris)
-    # kolektor tanpa pembelian tidak muncul di groupby -- generator menjamin >=1, tapi data nyata bisa 0
-    tanpa = set(cx.k["id"]) - set(df["kolektor_id"])
-    if tanpa:
-        raise ValueError(f"{len(tanpa)} kolektor tanpa pembelian -- fitur clustering tidak terdefinisi")
+    if t_asof is None:
+        # kolektor tanpa pembelian tidak muncul -- generator menjamin >=3, tapi data nyata bisa 0
+        tanpa = set(cx.k["id"]) - set(df["kolektor_id"])
+        if tanpa:
+            raise ValueError(f"{len(tanpa)} kolektor tanpa pembelian -- fitur clustering tidak terdefinisi")
     for c in [c for c in df.columns if c.endswith("_idr")]:
         df[c] = df[c].round().astype("Int64")
     for c in df.select_dtypes("float").columns:
@@ -379,6 +469,7 @@ KAMUS_KLASIFIKASI = {
     "kolektor_harga_std_log": "Simpangan baku ln(harga) pembelian sebelumnya = seberapa lebar rentang harga yang biasa dibeli. 0 kalau baru 1 pembelian.",
     "kolektor_n_gaya_unik": "Jumlah aliran berbeda yang pernah dibeli.",
     "kolektor_porsi_gaya_teratas": "Porsi aliran favorit dari seluruh pembelian sebelumnya (1.0 = selalu aliran yang sama).",
+    "kolektor_segmen": "Segmen kolektor dari model clustering (UMAP + HDBSCAN, model 'cutoff'), dihitung as-of t dari riwayat SEBELUM t: Kolektor Premium / Kolektor Aktif Bernilai Tinggi / Pemburu Tren / Kolektor Menengah Rutin / Pemula Hemat, atau 'Belum Cukup Riwayat' (< 3 pembelian sebelum t). Kategorikal.",
     "karya_gaya": f"Aliran (style) karya, 1 dari {N_GAYA} kelas model Visual Search v1. Kategorikal.",
     "karya_harga_listing_idr": "Harga pasang karya (Rp).",
     "karya_log_harga": "ln(harga pasang).",

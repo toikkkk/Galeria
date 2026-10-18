@@ -7,10 +7,14 @@
 Mengaktifkan **dashboard seniman** (`mobile/lib/screens/dashboard/dashboard_screen.dart`, 763 baris, **semuanya hardcode sekarang**) dengan data nyata dari backend:
 informasi yang seharusnya didapat setiap seniman — penjualan, harga, aliran terlaris, siapa pembelinya, dan **pelukis/aliran yang sedang ramai di pasar**.
 
+> **PERUBAHAN 2026-10-18:** data dummy dirombak (generator-v2): `kolektor` dan `transaksi` dibangun ulang (seniman, karya, gambar **identik**), jadi **angka dashboard akan berubah** setelah Neon diisi ulang — tidak ada kode
+> yang perlu diubah selama kamu tidak menulis angka/nama segmen secara hardcode. Segmen kini hasil **UMAP + HDBSCAN** dengan nama baru: Kolektor Premium · Kolektor Aktif Bernilai Tinggi · Pemburu Tren ·
+> Kolektor Menengah Rutin · Pemula Hemat. Endpoint `segmen-pembeli` membaca nama dari tabel, jadi tetap sama. Perbarui tes/mock yang memakai nama lama (mis. "Kolektor Menengah Aktif" di `mobile/test/dashboard_screen_test.dart`).
+
 Pembagian: **Genda** = model klasifikasi; **Thoriq** = clustering (mengisi `kolektor_segmen`); **Vika** = katalog + rekomendasi kolektor; **kamu** = dashboard seniman. Jangan mengerjakan katalog/rekomendasi.
 
 ### Kamu bisa mulai SEKARANG
-Hampir semua dashboard hanya butuh **data dasar Thoriq** yang sudah ada di Neon (`transaksi`, `karya`, `seniman`, view `v_seniman_metrik_bulanan`). Bagian **"Segmen pembeli"** memakai tabel `kolektor_segmen` yang **sudah terisi** (200 kolektor; `clustering-v1`, 5 segmen: Kolektor Premium · Kolektor Menengah Aktif · Spesialis Aliran · Pemburu Karya Terjangkau · Pemula Hemat). Tetap tangani `tersedia: false` (tabel kosong, mis. setelah `--reset`) dengan menyembunyikan bagiannya.
+Hampir semua dashboard hanya butuh **data dasar Thoriq** yang sudah ada di Neon (`transaksi`, `karya`, `seniman`, view `v_seniman_metrik_bulanan`). Bagian **"Segmen pembeli"** memakai tabel `kolektor_segmen` yang **sudah terisi** (200 kolektor; `clustering-v2`, 5 segmen: Kolektor Premium · Kolektor Aktif Bernilai Tinggi · Pemburu Tren · Kolektor Menengah Rutin · Pemula Hemat). Tetap tangani `tersedia: false` (tabel kosong, mis. setelah `--reset`) dengan menyembunyikan bagiannya.
 
 ### Kejujuran & batas scope
 * Data **sintetis**. Beri label kecil "Data contoh" di dashboard. Pelukis = tokoh sungguhan, tetapi penjualan/harganya fiktif.

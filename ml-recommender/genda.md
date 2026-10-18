@@ -9,16 +9,38 @@ digabung dengan **tren seniman** (siapa yang sedang ramai), plus **segmentasi ko
 mereka menunggu dua tabel Neon yang kamu isi.
 
 **Pembagian modeling (final):** **kamu = klasifikasi** (siapa-membeli-karya-mana) → mengisi tabel `rekomendasi_kolektor`.
-**Thoriq = clustering kolektor** → mengisi tabel `kolektor_segmen` (`kolektor_id`, `segmen_id`, `segmen_nama`). Kamu **tidak** mengerjakan clustering.
-**Jangan memakai segmen hasil clustering sebagai fitur klasifikasi**: segmen dihitung dari *seluruh* riwayat sampai akhir periode, jadi memasukkannya ke model
-**membocorkan masa depan** (pembelian setelah waktu prediksi ikut menentukan fiturnya).
+**Thoriq = clustering kolektor** (UMAP + HDBSCAN) → mengisi tabel `kolektor_segmen` dan menyediakan fitur `kolektor_segmen` di CSV klasifikasi. Kamu **tidak** mengerjakan clustering.
+**Urutan kerja: clustering dulu, lalu klasifikasi.** Pakai kolom `kolektor_segmen` yang sudah ada di CSV (dari model *cutoff*, as-of `t`). **Jangan** memakai segmen dari Neon atau dari model final:
+itu dihitung dari *seluruh* riwayat, jadi **membocorkan masa depan**. Lihat bagian 0b.
 
 ### Yang WAJIB dipahami (kejujuran)
 * **Seluruh data SINTETIS.** Gambar & aliran lukisan nyata (dataset Visual Search v1, 11 kelas), tetapi kolektor, harga, dan riwayat beli dibangkitkan program
   (`src/generate.py`). Model hanya mempelajari aturan buatan kita. **Jangan mengklaim skor sebagai performa nyata** — di laporan tulis "pada data sintetis".
-* **Hanya 23 seniman** (subset v1 berasal dari 23 pelukis) dan 200 kolektor — kecil. Hati-hati overfit.
+* **Hanya 23 seniman** (subset v1 berasal dari 23 pelukis) dan 200 kolektor — kecil. Hati-hati overfit. Kolektor kini ≥ 3 pembelian dan berkelompok tegas (generator-v2).
 * Fitur "Estimasi Harga Jual" sudah **di-drop** dari scope. Jangan membuat model prediksi harga.
 * `kolektor_label_asli` (segmen buatan generator) **dilarang** jadi fitur. Hanya untuk analisis kesalahan model; jangan jadi fitur.
+
+
+## 0b. PERUBAHAN 2026-10-18 — baca ini dulu (data & fitur berubah)
+Atas arahan dosen, urutan kerja proyek sekarang **clustering dulu, lalu klasifikasi**, dan data dummy dirombak (`generator-v2`). Untukmu:
+
+1. **Data berubah.** `kolektor`, `transaksi`, dan CSV turunannya dibangun ulang (seniman/karya/gambar **identik**). Konsekuensinya **`models/klasifikasi_rekomendasi.joblib`, `models/LAPORAN_MODEL.md`,
+   dan `data/hasil/rekomendasi_kolektor.csv` milikmu sekarang BASI** (dilatih di data lama) — latih ulang dan hitung ulang. `scripts/hitung_rekomendasi.py` tidak akan cocok dengan model lama (kolom fitur beda).
+2. **Ada fitur baru `kolektor_segmen`** (kategorikal) — segmen kolektor dari clustering **UMAP + HDBSCAN**, dihitung as-of waktu `t` dari riwayat SEBELUM `t`. Nilainya: `Kolektor Aktif Bernilai Tinggi`, `Pemburu Tren`,
+   `Kolektor Menengah Rutin`, `Pemula Hemat`, atau `Belum Cukup Riwayat` (< 3 pembelian sebelum t). **Ini mengubah aturan lama**: segmen *boleh* jadi fitur, tetapi **hanya yang dari model "cutoff"**
+   (`models/clustering_kolektor_cutoff.joblib`, dilatih hanya pada data sampai batas train) — sudah ada di kolom CSV. **Tetap DILARANG**: memakai `kolektor_segmen` dari Neon (model final, melihat seluruh periode)
+   atau `kolektor_label_asli` sebagai fitur — itu membocorkan masa depan.
+3. **`FITUR_KATEGORIKAL` kini 3 kolom**: `karya_gaya`, `seniman_level_reputasi`, `kolektor_segmen` (`src/features.py`). Notebook `01_klasifikasi.ipynb` menulis daftar itu manual (bagian 6/10) — perbarui. Dataset kini 43 kolom (35 fitur).
+4. **Skor sanity naik tajam** (GBM default: AUC ≈ 0,89–0,93, HitRate@1 ≈ 0,77–0,78 pada val/test; sebelumnya 0,79–0,80 dan 0,46–0,50). **Jangan dibaca sebagai model lebih pintar**: perilaku kolektor di generator-v2
+   jauh lebih konsisten. Baseline "aturan sederhana" kemungkinan ikut kuat — laporkan apa adanya. Di `LAPORAN_MODEL.md` tulis jelas bahwa data dirancang terstruktur.
+5. **Yang diharapkan darimu terkait segmen (analisis, bukan klaim):**
+   * **Ablasi** `kolektor_segmen` (dengan vs tanpa, beberapa seed). Hasil sementara Thoriq: **tidak menambah akurasi berarti** (selisih < 0,02, dalam derau) karena fitur riwayat sudah memuat informasinya. Laporkan hasilmu sendiri, jujur.
+   * **Analisis kesalahan per segmen** (HitRate@1 per `kolektor_segmen`; segmen `Belum Cukup Riwayat` = cold-start). `kolektor_label_asli` tetap hanya untuk analisis.
+6. **Inferensi:** simpan model klasteringnya di bundle: `bundle["klaster_cutoff"] = joblib.load("models/clustering_kolektor_cutoff.joblib")`. `src/inference.py` sudah memakainya (atau memuat file itu otomatis) lewat
+   `cx.pasang_klaster(...)` dan memakai ulang satu `_Konteks` per tabel supaya tidak lambat. Memuatnya butuh `umap-learn` dan `hdbscan` (`pip install -r requirements.txt`, hanya di venv ml-recommender; backend tidak memuat model ini).
+7. **Uji ulang:** `python scripts/uji_paritas_fitur.py` (kini memuat model cutoff) harus 0 selisih; `python scripts/cek_sinyal_data.py` harus "ketidakcocokan: 0". Patokan md5 baru = CSV yang sekarang ada di repo
+   (hasil `python jalankan_pipeline.py --dry-run`, deterministik).
+8. Beri `model_version` baru (`klasifikasi-v2`) karena datanya berbeda.
 
 ## 1. Setup (±10 menit)
 ```powershell
@@ -48,7 +70,7 @@ python scripts/cek_sinyal_data.py             # harus: "[audit kebocoran] ketida
 5. Pilih hyperparameter dengan **val**; sentuh **test hanya sekali** di akhir.
 
 **Metrik utama (per grup):** HitRate@1, HitRate@3, MRR, NDCG@3. AUC boleh sebagai pelengkap. **Acak: HitRate@1 = 0,20; HitRate@3 = 0,60.**
-Patokan sanity (`scripts/cek_sinyal_data.py`, GBM default): AUC ≈ 0,79–0,80, HitRate@1 ≈ 0,46–0,50. Itu **patokan, bukan target** — modelmu harus **mengalahkan baseline**.
+Patokan sanity (`scripts/cek_sinyal_data.py`, GBM default, data generator-v2): AUC ≈ 0,89–0,93, HitRate@1 ≈ 0,77–0,78. Itu **patokan, bukan target**, dan tinggi karena datanya terstruktur — modelmu harus **mengalahkan baseline**, dan angkanya jangan diklaim sebagai performa nyata.
 
 **Baseline wajib dibandingkan:** (a) acak, (b) "populer" = urut `gaya_n_terjual_30hari`/`seniman_n_terjual_30hari`, (c) aturan sederhana (mis. `match_porsi_gaya_ini` + `match_harga_dalam_rentang`),
 (d) Logistic Regression (di-scale), (e) `HistGradientBoostingClassifier`. Boleh LightGBM/XGBoost **hanya jika** ditambahkan ke `requirements.txt` ml-recommender dan tidak perlu dipasang di backend.
@@ -151,7 +173,8 @@ Periksa manual 3 kolektor (beda tingkat belanja): apakah alasan yang tercetak ma
 
 ## 6. Definition of Done
 - [ ] `notebooks/01_klasifikasi.ipynb` rapi dan bisa dijalankan ulang dari awal
-- [ ] Model klasifikasi **mengalahkan baseline "populer" dan aturan sederhana** pada val dan test (tabel di `LAPORAN_MODEL.md`)
+- [ ] Model klasifikasi **mengalahkan baseline "populer" dan aturan sederhana** pada val dan test (tabel di `LAPORAN_MODEL.md`); bila tidak, laporkan apa adanya
+- [ ] Ablasi `kolektor_segmen` + analisis kesalahan per segmen ada di laporan; `bundle["klaster_cutoff"]` tersimpan di joblib; `model_version = klasifikasi-v2`
 - [ ] `models/*.joblib` + `LAPORAN_MODEL.md` (termasuk keterbatasan sintetis) ter-commit, ukuran kecil
 - [ ] Uji md5 refactor lolos; uji paritas fitur inferensi vs CSV lolos
 - [ ] `scripts/hitung_rekomendasi.py` dijalankan; query kriteria bagian 4 lolos; tabel Neon terisi

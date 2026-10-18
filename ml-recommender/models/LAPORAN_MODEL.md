@@ -1,3 +1,6 @@
+> **[2026-10-18] LAPORAN INI BASI.** Dihitung pada dataset LAMA (generator-v1). Data dirombak (generator-v2) dan klasifikasi punya fitur baru `kolektor_segmen`;
+> model dan angka di bawah harus dilatih/dihitung ulang (lihat `genda.md` bagian 0b). Jangan dikutip ke presentasi sebagai hasil terbaru.
+
 # Laporan Model — Klasifikasi Pembelian (`klasifikasi-v1`)
 
 > **Data SINTETIS** (`src/generate.py`, seed 42). Angka di laporan ini menunjukkan
