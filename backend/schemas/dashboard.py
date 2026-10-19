@@ -60,11 +60,24 @@ class AliranSeniman(BaseModel):
 
 
 class SegmenPembeli(BaseModel):
+    """Satu segmen kolektor (hasil clustering UMAP + HDBSCAN) dan perannya bagi seniman ini.
+
+    Semua angka bersifat DESKRIPTIF (statistik atas transaksi seniman ini), bukan prediksi/saran harga.
+    Segmen yang belum pernah membeli dari seniman ini tetap dikembalikan dengan ``n_pembeli = 0``.
+    """
+
     segmen_id: int
     segmen_nama: str
-    n_pembeli: int
-    porsi_pct: float | None
-    deskripsi: str | None = None
+    n_pembeli: int                          # kolektor segmen ini yang pernah membeli dari seniman
+    porsi_pct: float | None                 # porsi n_pembeli terhadap seluruh pembeli seniman
+    deskripsi: str | None = None            # dari segmen_kamus
+    n_transaksi: int = 0                    # jumlah pembelian dari seniman ini oleh segmen
+    omzet_idr: int = 0                      # total harga final dari segmen ke seniman ini
+    harga_rata2_idr: int | None = None      # rata-rata harga final yang dibayar segmen ke seniman ini
+    porsi_omzet_pct: float | None = None    # porsi omzet seniman yang berasal dari segmen ini
+    n_kolektor_segmen: int | None = None    # jumlah kolektor di segmen (seluruh pasar)
+    jangkauan_pct: float | None = None      # % kolektor segmen yang sudah membeli dari seniman ini
+    aliran_favorit: str | None = None       # aliran terbanyak dibeli segmen (profil segmen)
 
 
 class SegmenPembeliResponse(BaseModel):

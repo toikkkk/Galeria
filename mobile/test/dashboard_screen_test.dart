@@ -58,7 +58,22 @@ class _FakeService extends DashboardService {
   Future<SegmenPembeliHasil> fetchSegmenPembeli(String senimanId) async => segmenTersedia
       ? const SegmenPembeliHasil(
           tersedia: true,
-          items: [SegmenPembeli(segmenId: 2, segmenNama: 'Kolektor Menengah Aktif', nPembeli: 7, porsiPct: 46.7)],
+          items: [
+            SegmenPembeli(
+              segmenId: 2,
+              segmenNama: 'Kolektor Aktif Bernilai Tinggi',
+              nPembeli: 7,
+              porsiPct: 46.7,
+              nTransaksi: 9,
+              omzetIdr: 900000000,
+              hargaRata2Idr: 100000000,
+              porsiOmzetPct: 71.3,
+              nKolektorSegmen: 50,
+              jangkauanPct: 14.0,
+              aliranFavorit: 'Impressionism',
+            ),
+            SegmenPembeli(segmenId: 5, segmenNama: 'Pemula Hemat', nPembeli: 0, nKolektorSegmen: 40, aliranFavorit: 'Realism'),
+          ],
         )
       : const SegmenPembeliHasil(tersedia: false, items: []);
 
@@ -110,6 +125,18 @@ void main() {
     await tester.pumpAndSettle();
     expect(find.text('Vincent Van Gogh'), findsOneWidget);
     expect(find.text('PELUKIS RAMAI'), findsOneWidget);
+  });
+
+  testWidgets('tab Pembeli menampilkan peran segmen hasil clustering', (tester) async {
+    await _pump(tester, _FakeService());
+    await tester.ensureVisible(find.text('Pembeli'));
+    await tester.tap(find.text('Pembeli'));
+    await tester.pumpAndSettle();
+    expect(find.textContaining('Kolektor Aktif Bernilai Tinggi'), findsWidgets);
+    expect(find.textContaining('71,3'), findsWidgets); // porsi omzet segmen
+    expect(find.textContaining('Menjangkau'), findsOneWidget);
+    expect(find.text('BELUM PERNAH MEMBELI DARIMU'), findsOneWidget);
+    expect(find.textContaining('Pemula Hemat'), findsOneWidget);
   });
 
   testWidgets('tidak overflow di layar sempit (360 dp, mis. Infinix)', (tester) async {
