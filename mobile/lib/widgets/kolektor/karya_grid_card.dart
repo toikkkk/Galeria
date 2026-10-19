@@ -3,6 +3,7 @@ import 'package:share_plus/share_plus.dart';
 
 import '../../models/karya.dart';
 import '../../theme/app_theme.dart';
+import '../karya_image.dart';
 
 /// Kartu karya 2-kolom yang dipakai berulang (Beranda, Koleksi Saya, Profil
 /// Toko, Karya Serupa) -- disatukan di sini alih-alih ditulis ulang per
@@ -15,6 +16,7 @@ class KaryaGridCard extends StatelessWidget {
     this.priceLabel = 'Harga Koleksi',
     this.verified = true,
     this.onTap,
+    this.alasan,
   });
 
   final Karya karya;
@@ -24,6 +26,9 @@ class KaryaGridCard extends StatelessWidget {
   final String priceLabel;
   final bool verified;
   final VoidCallback? onTap;
+
+  /// Alasan rekomendasi (1 teratas) -- chip kecil di bawah artis. `null` = tidak tampil.
+  final String? alasan;
 
   @override
   Widget build(BuildContext context) {
@@ -50,7 +55,7 @@ class KaryaGridCard extends StatelessWidget {
               child: Stack(
                 fit: StackFit.expand,
                 children: [
-                  Image.asset(karya.assetPath, fit: BoxFit.cover),
+                  KaryaImage(karya: karya),
                   if (verified)
                     Positioned(
                       top: 8,
@@ -109,6 +114,28 @@ class KaryaGridCard extends StatelessWidget {
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                   ),
+                  if (alasan != null) ...[
+                    const SizedBox(height: 4),
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 6,
+                        vertical: 2,
+                      ),
+                      decoration: BoxDecoration(
+                        color: AppColors.accentSoft.withValues(alpha: 0.5),
+                        borderRadius: BorderRadius.circular(AppRadius.full),
+                      ),
+                      child: Text(
+                        alasan!,
+                        style: AppTextStyles.overline.copyWith(
+                          fontSize: 8.5,
+                          color: AppColors.accent,
+                        ),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
+                  ],
                   const SizedBox(height: 6),
                   Text(
                     priceLabel.toUpperCase(),

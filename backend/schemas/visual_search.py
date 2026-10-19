@@ -28,6 +28,8 @@ class CatalogMatch(BaseModel):
     # mobile/assets/images/catalog/ (belum ada hosting gambar/R2, lihat
     # CLAUDE.md "Di Luar Scope Fase Ini").
     image_filename: str
+    lebar_cm: float | None = None   # ukuran fisik utk AR (None = belum diisi)
+    tinggi_cm: float | None = None
 
 
 class VisualSearchResponse(BaseModel):
@@ -38,6 +40,8 @@ class VisualSearchResponse(BaseModel):
     # tambahan kalau nanti field ini mau diisi. Field tetap dipertahankan
     # di schema supaya tidak breaking change buat mobile begitu diisi nanti.
     style_predictions: list[StylePrediction]
+    # False bila keyakinan gaya teratas < VS_STYLE_ABSTAIN_T -> UI tampilkan "gaya belum pasti"
+    style_confident: bool = True
     catalog_matches: list[CatalogMatch]
     verdict: str    # "confirmed" | "ambiguous" | "not_found" -- lihat
                     # ml-visual-search/src/embedding.py::confidence_verdict

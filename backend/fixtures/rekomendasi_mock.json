@@ -1,0 +1,316 @@
+{
+  "kolektor": {
+    "id": "1796add4-4e28-52d8-8d47-236c91bfbb59",
+    "display_name": "Alya Firmansyah",
+    "segmen": "Kolektor Menengah Aktif",
+    "n_pembelian": 7
+  },
+  "rekomendasi": {
+    "kolektor_id": "1796add4-4e28-52d8-8d47-236c91bfbb59",
+    "strategi": "model",
+    "model_version": "klasifikasi-v1",
+    "dihitung_pada": "2026-10-05T15:16:10Z",
+    "segmen": {
+      "id": 2,
+      "nama": "Kolektor Menengah Aktif"
+    },
+    "items": [
+      {
+        "peringkat": 1,
+        "skor": 0.8296,
+        "alasan": [
+          {
+            "kode": "seniman_naik_daun",
+            "teks": "Penjualan seniman ini sedang naik"
+          },
+          {
+            "kode": "pernah_beli_seniman",
+            "teks": "Kamu pernah membeli dari seniman ini"
+          },
+          {
+            "kode": "karya_baru",
+            "teks": "Baru terpasang"
+          }
+        ],
+        "karya": {
+          "id": "88258c73-bb7b-51e8-824e-bc2ca0b939b8",
+          "title": "Tanpa Judul (Naive Art Primitivism)",
+          "artist_name": "Marc Chagall",
+          "style_name": "Naive_Art_Primitivism",
+          "gallery_name": "Studio Marc Chagall",
+          "price_idr": 11000000,
+          "is_promoted": false,
+          "image_filename": "wikiart_04111.jpg",
+          "image_url": "https://pub-25fc11d282cf4037bdcb2f24a6c9d1ff.r2.dev/katalog-dummy/wikiart_04111.jpg",
+          "seniman_id": "c868fe01-5c24-57bf-8ffb-fdc6d3ae09a2",
+          "lebar_cm": 55.8,
+          "tinggi_cm": 76.8
+        }
+      },
+      {
+        "peringkat": 2,
+        "skor": 0.7224,
+        "alasan": [
+          {
+            "kode": "harga_sesuai",
+            "teks": "Harga sesuai kebiasaan belanjamu"
+          },
+          {
+            "kode": "seniman_naik_daun",
+            "teks": "Penjualan seniman ini sedang naik"
+          },
+          {
+            "kode": "pernah_beli_seniman",
+            "teks": "Kamu pernah membeli dari seniman ini"
+          }
+        ],
+        "karya": {
+          "id": "b82ffac4-9b18-5129-bb4f-76d6267ef825",
+          "title": "Tanpa Judul (Naive Art Primitivism)",
+          "artist_name": "Marc Chagall",
+          "style_name": "Naive_Art_Primitivism",
+          "gallery_name": "Studio Marc Chagall",
+          "price_idr": 36000000,
+          "is_promoted": false,
+          "image_filename": "wikiart_01597.jpg",
+          "image_url": "https://pub-25fc11d282cf4037bdcb2f24a6c9d1ff.r2.dev/katalog-dummy/wikiart_01597.jpg",
+          "seniman_id": "c868fe01-5c24-57bf-8ffb-fdc6d3ae09a2",
+          "lebar_cm": 72.2,
+          "tinggi_cm": 95.6
+        }
+      },
+      {
+        "peringkat": 3,
+        "skor": 0.7114,
+        "alasan": [
+          {
+            "kode": "seniman_naik_daun",
+            "teks": "Penjualan seniman ini sedang naik"
+          },
+          {
+            "kode": "pernah_beli_seniman",
+            "teks": "Kamu pernah membeli dari seniman ini"
+          },
+          {
+            "kode": "karya_baru",
+            "teks": "Baru terpasang"
+          }
+        ],
+        "karya": {
+          "id": "79e25e0d-2c04-5f90-9130-3f1d94125223",
+          "title": "Tanpa Judul (Naive Art Primitivism)",
+          "artist_name": "Marc Chagall",
+          "style_name": "Naive_Art_Primitivism",
+          "gallery_name": "Studio Marc Chagall",
+          "price_idr": 7600000,
+          "is_promoted": false,
+          "image_filename": "wikiart_01264.jpg",
+          "image_url": "https://pub-25fc11d282cf4037bdcb2f24a6c9d1ff.r2.dev/katalog-dummy/wikiart_01264.jpg",
+          "seniman_id": "c868fe01-5c24-57bf-8ffb-fdc6d3ae09a2",
+          "lebar_cm": 52.9,
+          "tinggi_cm": 64.4
+        }
+      },
+      {
+        "peringkat": 4,
+        "skor": 0.7042,
+        "alasan": [
+          {
+            "kode": "seniman_naik_daun",
+            "teks": "Penjualan seniman ini sedang naik"
+          },
+          {
+            "kode": "pernah_beli_seniman",
+            "teks": "Kamu pernah membeli dari seniman ini"
+          }
+        ],
+        "karya": {
+          "id": "df002552-8f03-5997-b452-e24a915621dd",
+          "title": "Tanpa Judul (Naive Art Primitivism)",
+          "artist_name": "Marc Chagall",
+          "style_name": "Naive_Art_Primitivism",
+          "gallery_name": "Studio Marc Chagall",
+          "price_idr": 9700000,
+          "is_promoted": false,
+          "image_filename": "wikiart_03806.jpg",
+          "image_url": "https://pub-25fc11d282cf4037bdcb2f24a6c9d1ff.r2.dev/katalog-dummy/wikiart_03806.jpg",
+          "seniman_id": "c868fe01-5c24-57bf-8ffb-fdc6d3ae09a2",
+          "lebar_cm": 59.2,
+          "tinggi_cm": 77.2
+        }
+      },
+      {
+        "peringkat": 5,
+        "skor": 0.7036,
+        "alasan": [
+          {
+            "kode": "seniman_naik_daun",
+            "teks": "Penjualan seniman ini sedang naik"
+          },
+          {
+            "kode": "pernah_beli_seniman",
+            "teks": "Kamu pernah membeli dari seniman ini"
+          }
+        ],
+        "karya": {
+          "id": "0bc9d34a-7f95-5dee-beb4-55f3af9b97c9",
+          "title": "Tanpa Judul (Naive Art Primitivism)",
+          "artist_name": "Marc Chagall",
+          "style_name": "Naive_Art_Primitivism",
+          "gallery_name": "Studio Marc Chagall",
+          "price_idr": 15000000,
+          "is_promoted": false,
+          "image_filename": "wikiart_03958.jpg",
+          "image_url": "https://pub-25fc11d282cf4037bdcb2f24a6c9d1ff.r2.dev/katalog-dummy/wikiart_03958.jpg",
+          "seniman_id": "c868fe01-5c24-57bf-8ffb-fdc6d3ae09a2",
+          "lebar_cm": 94.2,
+          "tinggi_cm": 131.8
+        }
+      },
+      {
+        "peringkat": 6,
+        "skor": 0.6881,
+        "alasan": [
+          {
+            "kode": "seniman_naik_daun",
+            "teks": "Penjualan seniman ini sedang naik"
+          },
+          {
+            "kode": "pernah_beli_seniman",
+            "teks": "Kamu pernah membeli dari seniman ini"
+          }
+        ],
+        "karya": {
+          "id": "1af0200c-a8bf-593f-8cb6-4f759b5f5ac1",
+          "title": "Tanpa Judul (Naive Art Primitivism)",
+          "artist_name": "Marc Chagall",
+          "style_name": "Naive_Art_Primitivism",
+          "gallery_name": "Studio Marc Chagall",
+          "price_idr": 17000000,
+          "is_promoted": false,
+          "image_filename": "wikiart_04851.jpg",
+          "image_url": "https://pub-25fc11d282cf4037bdcb2f24a6c9d1ff.r2.dev/katalog-dummy/wikiart_04851.jpg",
+          "seniman_id": "c868fe01-5c24-57bf-8ffb-fdc6d3ae09a2",
+          "lebar_cm": 65.5,
+          "tinggi_cm": 82.3
+        }
+      },
+      {
+        "peringkat": 7,
+        "skor": 0.6635,
+        "alasan": [
+          {
+            "kode": "harga_sesuai",
+            "teks": "Harga sesuai kebiasaan belanjamu"
+          },
+          {
+            "kode": "seniman_naik_daun",
+            "teks": "Penjualan seniman ini sedang naik"
+          },
+          {
+            "kode": "pernah_beli_seniman",
+            "teks": "Kamu pernah membeli dari seniman ini"
+          }
+        ],
+        "karya": {
+          "id": "e4e1ce05-e95f-55ae-95fd-b46c0e364e4d",
+          "title": "Tanpa Judul (Naive Art Primitivism)",
+          "artist_name": "Marc Chagall",
+          "style_name": "Naive_Art_Primitivism",
+          "gallery_name": "Studio Marc Chagall",
+          "price_idr": 20000000,
+          "is_promoted": false,
+          "image_filename": "wikiart_03225.jpg",
+          "image_url": "https://pub-25fc11d282cf4037bdcb2f24a6c9d1ff.r2.dev/katalog-dummy/wikiart_03225.jpg",
+          "seniman_id": "c868fe01-5c24-57bf-8ffb-fdc6d3ae09a2",
+          "lebar_cm": 91.0,
+          "tinggi_cm": 101.6
+        }
+      },
+      {
+        "peringkat": 8,
+        "skor": 0.6587,
+        "alasan": [
+          {
+            "kode": "seniman_naik_daun",
+            "teks": "Penjualan seniman ini sedang naik"
+          },
+          {
+            "kode": "pernah_beli_seniman",
+            "teks": "Kamu pernah membeli dari seniman ini"
+          }
+        ],
+        "karya": {
+          "id": "231b14d2-2e75-5193-9c40-949b484944ca",
+          "title": "Tanpa Judul (Naive Art Primitivism)",
+          "artist_name": "Marc Chagall",
+          "style_name": "Naive_Art_Primitivism",
+          "gallery_name": "Studio Marc Chagall",
+          "price_idr": 17000000,
+          "is_promoted": false,
+          "image_filename": "wikiart_05296.jpg",
+          "image_url": "https://pub-25fc11d282cf4037bdcb2f24a6c9d1ff.r2.dev/katalog-dummy/wikiart_05296.jpg",
+          "seniman_id": "c868fe01-5c24-57bf-8ffb-fdc6d3ae09a2",
+          "lebar_cm": 78.3,
+          "tinggi_cm": 100.3
+        }
+      },
+      {
+        "peringkat": 9,
+        "skor": 0.6394,
+        "alasan": [
+          {
+            "kode": "seniman_naik_daun",
+            "teks": "Penjualan seniman ini sedang naik"
+          },
+          {
+            "kode": "pernah_beli_seniman",
+            "teks": "Kamu pernah membeli dari seniman ini"
+          }
+        ],
+        "karya": {
+          "id": "8856b1b5-28c4-536b-9a51-9ff06bfdbd80",
+          "title": "Tanpa Judul (Naive Art Primitivism)",
+          "artist_name": "Marc Chagall",
+          "style_name": "Naive_Art_Primitivism",
+          "gallery_name": "Studio Marc Chagall",
+          "price_idr": 11000000,
+          "is_promoted": false,
+          "image_filename": "wikiart_02791.jpg",
+          "image_url": "https://pub-25fc11d282cf4037bdcb2f24a6c9d1ff.r2.dev/katalog-dummy/wikiart_02791.jpg",
+          "seniman_id": "c868fe01-5c24-57bf-8ffb-fdc6d3ae09a2",
+          "lebar_cm": 88.0,
+          "tinggi_cm": 66.0
+        }
+      },
+      {
+        "peringkat": 10,
+        "skor": 0.6355,
+        "alasan": [
+          {
+            "kode": "seniman_naik_daun",
+            "teks": "Penjualan seniman ini sedang naik"
+          },
+          {
+            "kode": "pernah_beli_seniman",
+            "teks": "Kamu pernah membeli dari seniman ini"
+          }
+        ],
+        "karya": {
+          "id": "0931aca3-ffbb-57aa-b84e-284c01f774f1",
+          "title": "Tanpa Judul (Naive Art Primitivism)",
+          "artist_name": "Marc Chagall",
+          "style_name": "Naive_Art_Primitivism",
+          "gallery_name": "Studio Marc Chagall",
+          "price_idr": 9300000,
+          "is_promoted": false,
+          "image_filename": "wikiart_00663.jpg",
+          "image_url": "https://pub-25fc11d282cf4037bdcb2f24a6c9d1ff.r2.dev/katalog-dummy/wikiart_00663.jpg",
+          "seniman_id": "c868fe01-5c24-57bf-8ffb-fdc6d3ae09a2",
+          "lebar_cm": 39.7,
+          "tinggi_cm": 52.1
+        }
+      }
+    ]
+  }
+}

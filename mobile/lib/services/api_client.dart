@@ -1,5 +1,6 @@
 import 'dart:convert';
 import 'dart:io';
+import 'dart:typed_data';
 
 import 'package:http/http.dart' as http;
 import 'package:http_parser/http_parser.dart';
@@ -11,7 +12,19 @@ import 'package:http_parser/http_parser.dart';
 /// -- ini paling robust dibanding IP WiFi yang bisa berubah-ubah, dan cocok
 /// dgn alur kerja tim yang sejauh ini selalu pakai HP fisik via USB (lihat
 /// mobile/docs/SETUP_ANDROID.md).
-const kApiBaseUrl = 'http://127.0.0.1:8000';
+///
+/// Tanpa USB/`adb reverse`: jalankan dgn
+/// `flutter run --dart-define=API_BASE_URL=http://<IP-laptop>:8000` (HP & laptop satu WiFi,
+/// backend dijalankan dgn `--host 0.0.0.0`).
+const kApiBaseUrl = String.fromEnvironment(
+  'API_BASE_URL',
+  defaultValue: 'http://127.0.0.1:8000',
+);
+
+/// `true` = katalog & rekomendasi dari data dummy (`GET /api/katalog-dummy`,
+/// 2.000 karya, gambar R2). `false` = katalog lama (`GET /api/katalog`, 8
+/// karya Visual Search). Ganti: `--dart-define=DATA_DUMMY=false`.
+const kPakaiDataDummy = bool.fromEnvironment('DATA_DUMMY', defaultValue: true);
 
 /// Dilempar kalau request ke backend gagal (network error ATAU response
 /// bukan 2xx) -- caller (services/screens) tangkap ini utk fallback data
@@ -45,19 +58,29 @@ class ApiClient {
 
   Future<dynamic> postMultipart(
     String path, {
-    required File file,
+    File? file,
+    Uint8List? bytes,
+    String filename = 'upload.jpg',
     Map<String, String>? fields,
     MediaType? contentType,
   }) async {
+    assert(file != null || bytes != null, 'butuh file atau bytes');
     final Uri uri = Uri.parse('$kApiBaseUrl$path').replace(
       queryParameters: fields,
     );
     try {
       final request = http.MultipartRequest('POST', uri)
         ..files.add(
-          await http.MultipartFile.fromPath(
+          bytes != null
+              ? http.MultipartFile.fromBytes(
+                  'file',
+                  bytes,
+                  filename: filename,
+                  contentType: contentType,
+                )
+              : await http.MultipartFile.fromPath(
             'file',
-            file.path,
+            file!.path,
             // Tanpa ini, http.MultipartFile.fromPath NEBAK content-type dari
             // ekstensi file -- file temp dari CameraController.takePicture()
             // kadang tidak punya ekstensi yang dikenali, jadi fallback ke

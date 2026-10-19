@@ -1,14 +1,25 @@
 import 'package:flutter/material.dart';
 
 import '../../models/karya.dart';
+import '../../state/studio_store.dart';
 import '../../theme/app_theme.dart';
+import '../../widgets/karya_image.dart';
+import '../../widgets/karya_picker.dart';
 
 /// Konversi dari
 /// docs/design/role_seniman_2/.../galeria_promosikan_karya/code.html
 class PromosikanKaryaScreen extends StatefulWidget {
-  const PromosikanKaryaScreen({super.key, required this.karya, required this.onBack, required this.onLanjut});
+  const PromosikanKaryaScreen({
+    super.key,
+    this.karya,
+    required this.onBack,
+    required this.onLanjut,
+    this.onUnggahKarya,
+  });
 
-  final Karya karya;
+  /// Karya awal (opsional) -- seniman bisa memilih/mengganti dari katalog.
+  final Karya? karya;
+  final VoidCallback? onUnggahKarya;
   final VoidCallback onBack;
   final VoidCallback onLanjut;
 
@@ -23,9 +34,44 @@ class _PromosikanKaryaScreenState extends State<PromosikanKaryaScreen> {
     (hari: '30 Hari', dilihat: 'Perkiraan 5.800 dilihat', harga: 170000, badge: 'Maksimal'),
   ];
 
+  static const _durasi = [7, 14, 30];
+
+  late Karya? _karya = widget.karya;
   int _selected = 1;
   bool _tampilLelang = true;
   bool _tampilBeranda = true;
+
+  Future<void> _pilihKarya() async {
+    final hasil = await showKaryaPicker(context, onUnggahBaru: widget.onUnggahKarya);
+    if (hasil != null && hasil.isNotEmpty) setState(() => _karya = hasil.first);
+  }
+
+  void _aktifkan() {
+    final k = _karya;
+    if (k == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Pilih karya yang akan dipromosikan dulu.')),
+      );
+      return;
+    }
+    if (!_tampilLelang && !_tampilBeranda) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Pilih minimal satu ruang kurasi.')),
+      );
+      return;
+    }
+    StudioStore.instance.tambahPromosi(
+      PromosiKarya(
+        karya: k,
+        durasiHari: _durasi[_selected],
+        biayaIdr: _packages[_selected].harga,
+        diLelang: _tampilLelang,
+        diBeranda: _tampilBeranda,
+        mulai: DateTime.now(),
+      ),
+    );
+    widget.onLanjut();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -42,42 +88,68 @@ class _PromosikanKaryaScreenState extends State<PromosikanKaryaScreen> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            // Artwork preview
-            Container(
-              padding: const EdgeInsets.all(AppSpacing.sm),
-              decoration: BoxDecoration(
-                color: AppColors.surfaceContainerLowest,
-                borderRadius: BorderRadius.circular(AppRadius.lg),
-                boxShadow: const [BoxShadow(color: Colors.black12, blurRadius: 6)],
-              ),
-              child: Row(
-                children: [
-                  ClipRRect(
-                    borderRadius: BorderRadius.circular(AppRadius.md),
-                    child: Image.asset(widget.karya.assetPath, width: 64, height: 76, fit: BoxFit.cover),
-                  ),
-                  const SizedBox(width: AppSpacing.sm),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                          decoration: BoxDecoration(
-                              color: AppColors.accentSoft,
-                              borderRadius: BorderRadius.circular(AppRadius.full)),
-                          child: Text('Terverifikasi Asli · Aktif',
-                              style: AppTextStyles.labelSm.copyWith(color: AppColors.accent, fontSize: 9)),
-                        ),
-                        const SizedBox(height: 4),
-                        Text(widget.karya.title,
-                            style: AppTextStyles.headlineSm, overflow: TextOverflow.ellipsis),
-                        Text('Harga Katalog: ${_rupiah(widget.karya.priceIdr)}',
-                            style: AppTextStyles.bodySm.copyWith(color: AppColors.muted)),
-                      ],
-                    ),
-                  ),
-                ],
+            // Karya yang dipromosikan
+            InkWell(
+              onTap: _pilihKarya,
+              borderRadius: BorderRadius.circular(AppRadius.lg),
+              child: Container(
+                padding: const EdgeInsets.all(AppSpacing.sm),
+                decoration: BoxDecoration(
+                  color: AppColors.surfaceContainerLowest,
+                  borderRadius: BorderRadius.circular(AppRadius.lg),
+                  boxShadow: const [BoxShadow(color: Colors.black12, blurRadius: 6)],
+                ),
+                child: _karya == null
+                    ? Row(
+                        children: [
+                          const Icon(Icons.add_photo_alternate_outlined, color: AppColors.accent),
+                          const SizedBox(width: AppSpacing.sm),
+                          Expanded(
+                            child: Text('Pilih karya yang akan dipromosikan',
+                                style: AppTextStyles.bodyMd),
+                          ),
+                          const Icon(Icons.chevron_right),
+                        ],
+                      )
+                    : Row(
+                        children: [
+                          ClipRRect(
+                            borderRadius: BorderRadius.circular(AppRadius.md),
+                            child: SizedBox(
+                              width: 64,
+                              height: 76,
+                              child: KaryaImage(karya: _karya!),
+                            ),
+                          ),
+                          const SizedBox(width: AppSpacing.sm),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Container(
+                                  padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                                  decoration: BoxDecoration(
+                                    color: AppColors.accentSoft,
+                                    borderRadius: BorderRadius.circular(AppRadius.full),
+                                  ),
+                                  child: Text(
+                                    'Terverifikasi Asli',
+                                    style: AppTextStyles.labelSm
+                                        .copyWith(color: AppColors.accent, fontSize: 9),
+                                  ),
+                                ),
+                                const SizedBox(height: 4),
+                                Text(_karya!.title,
+                                    style: AppTextStyles.headlineSm,
+                                    overflow: TextOverflow.ellipsis),
+                                Text('Harga Katalog: ${_rupiah(_karya!.priceIdr)}',
+                                    style: AppTextStyles.bodySm.copyWith(color: AppColors.muted)),
+                              ],
+                            ),
+                          ),
+                          TextButton(onPressed: _pilihKarya, child: const Text('Ganti')),
+                        ],
+                      ),
               ),
             ),
             const SizedBox(height: AppSpacing.lg),
@@ -116,7 +188,7 @@ class _PromosikanKaryaScreenState extends State<PromosikanKaryaScreen> {
                   const SizedBox(width: AppSpacing.xs),
                   Expanded(
                     child: Text(
-                        'Promosi akan aktif dalam waktu 15 menit setelah pembayaran terkonfirmasi.',
+                        'Mode demo: label promosi langsung aktif tanpa pembayaran. Alur pembayaran promosi belum tersedia.',
                         style: AppTextStyles.bodySm),
                   ),
                 ],
@@ -144,7 +216,7 @@ class _PromosikanKaryaScreenState extends State<PromosikanKaryaScreen> {
               ),
               const Spacer(),
               ElevatedButton(
-                onPressed: widget.onLanjut,
+                onPressed: _aktifkan,
                 // Tema global ElevatedButton pakai minimumSize lebar tak
                 // terhingga (utk tombol full-width) -- di sini tombolnya
                 // jadi anak Row (bukan Expanded), jadi lebarnya harus
@@ -154,7 +226,7 @@ class _PromosikanKaryaScreenState extends State<PromosikanKaryaScreen> {
                 child: Row(
                   mainAxisSize: MainAxisSize.min,
                   children: const [
-                    Text('Lanjut ke Pembayaran'),
+                    Text('Aktifkan Promosi'),
                     SizedBox(width: AppSpacing.xs),
                     Icon(Icons.arrow_forward, size: 16, color: AppColors.accentSoft),
                   ],
