@@ -1,0 +1,11 @@
+# dashboard-admin -- environment TERPISAH:
+#   python -m venv .venv --system-site-packages ; .venv\Scripts\activate ; pip install -r requirements.txt
+numpy>=1.26
+pandas>=2.2
+sqlalchemy[asyncio]>=2.0
+asyncpg>=0.29
+python-dotenv>=1.0       # baca DATABASE_URL dari ../backend/.env
+statsmodels>=0.14        # ETS, Theta
+lightgbm>=4.0            # pembanding ML
+torch>=2.2               # dibutuhkan Chronos-2 (CPU cukup)
+chronos-forecasting>=2.0 # Amazon Chronos-2 (foundation model deret waktu)
