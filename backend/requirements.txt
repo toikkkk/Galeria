@@ -17,3 +17,5 @@ sqlalchemy[asyncio]>=2.0
 asyncpg>=0.29                # driver async utk SQLAlchemy + Postgres
 alembic>=1.13                # migration schema
 pgvector>=0.2.5              # tipe kolom Vector(768) + operator cosine distance
+pyjwt>=2.8
+bcrypt>=4.1                  # hash password login admin dashboard (services/admin_auth.py)
