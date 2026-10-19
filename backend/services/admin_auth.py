@@ -11,10 +11,8 @@ import os
 import time
 from datetime import datetime, timedelta, timezone
 
-import bcrypt
-import jwt
-
 ALGO = "HS256"
+AUDIENCE = "galeria-admin"   # token pengguna biasa (kelak) tidak boleh lolos sebagai admin
 TTL_MENIT = 60
 TTL_INGAT_MENIT = 7 * 24 * 60   # 'Ingat saya' = 7 hari
 BATAS_GAGAL = 5       # percobaan gagal per IP ...
@@ -22,8 +20,19 @@ JEDA_DETIK = 300      # ... lalu dikunci selama ini
 
 _gagal: dict[str, list[float]] = {}
 
-# hash dummy: bcrypt tetap dihitung saat email salah, supaya waktu respons tidak membocorkan email mana yang valid
-_HASH_DUMMY = bcrypt.hashpw(b"dummy", bcrypt.gensalt(12))
+# bcrypt & pyjwt diimpor MALAS (di dalam fungsi): kalau paketnya belum terpasang, hanya login admin yang gagal --
+# bukan seluruh backend (visual search, katalog, dll.) yang tidak bisa start.
+_hash_dummy_cache: bytes | None = None
+
+
+def _hash_dummy() -> bytes:
+    """Hash dummy: bcrypt tetap dihitung saat email salah, supaya waktu respons tidak membocorkan email mana yang valid."""
+    global _hash_dummy_cache
+    if _hash_dummy_cache is None:
+        import bcrypt
+
+        _hash_dummy_cache = bcrypt.hashpw(b"dummy", bcrypt.gensalt(12))
+    return _hash_dummy_cache
 
 
 def terkonfigurasi() -> bool:
@@ -31,7 +40,8 @@ def terkonfigurasi() -> bool:
 
 
 def _secret() -> str:
-    return os.environ.get("ADMIN_JWT_SECRET") or os.environ.get("JWT_SECRET") or ""
+    # sengaja TIDAK jatuh ke JWT_SECRET: secret token admin harus terpisah dari secret auth pengguna
+    return os.environ.get("ADMIN_JWT_SECRET") or ""
 
 
 def terkunci(ip: str) -> int:
@@ -53,27 +63,34 @@ def reset_gagal(ip: str) -> None:
 
 
 def cek_kredensial(email: str, password: str) -> bool:
+    import bcrypt
+
     email_ok = hmac.compare_digest(email.strip().lower().encode(), os.environ["ADMIN_EMAIL"].strip().lower().encode())
     try:
         hash_asli = os.environ["ADMIN_PASSWORD_HASH"].encode()
-        pw_ok = bcrypt.checkpw(password.encode()[:72], hash_asli if email_ok else _HASH_DUMMY)
+        pw_ok = bcrypt.checkpw(password.encode()[:72], hash_asli if email_ok else _hash_dummy())
     except ValueError:  # hash di .env rusak
         return False
     return email_ok and pw_ok
 
 
 def buat_token(ingat: bool = False) -> tuple[str, int]:
+    import jwt
+
     ttl = TTL_INGAT_MENIT if ingat else TTL_MENIT
     exp = datetime.now(timezone.utc) + timedelta(minutes=ttl)
     token = jwt.encode(
-        {"sub": "admin", "role": "admin", "exp": exp}, _secret(), algorithm=ALGO
+        {"sub": "admin", "role": "admin", "aud": AUDIENCE, "exp": exp}, _secret(), algorithm=ALGO
     )
     return token, ttl * 60
 
 
 def token_valid(token: str) -> bool:
+    import jwt
+
     try:
-        d = jwt.decode(token, _secret(), algorithms=[ALGO], options={"require": ["exp", "sub"]})
+        d = jwt.decode(token, _secret(), algorithms=[ALGO], audience=AUDIENCE,
+                       options={"require": ["exp", "sub", "aud"]})
     except jwt.PyJWTError:
         return False
     return d.get("role") == "admin"

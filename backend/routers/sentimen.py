@@ -12,6 +12,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from database import get_db
 from schemas.sentimen import SentimenSeniman
 from services import dashboard_repo, sentimen_repo as repo
+from services.db_errors import tabel_belum_ada
 
 router = APIRouter(prefix="/api/dashboard", tags=["dashboard-seniman", "sentimen"])
 
@@ -24,7 +25,9 @@ async def sentimen_seniman(seniman_id: str, db: AsyncSession = Depends(get_db)):
         raise HTTPException(404, "Seniman tidak ditemukan")
     try:
         return await repo.sentimen_seniman(db, sid)
-    except ProgrammingError:
+    except ProgrammingError as exc:
         # tabel hasil belum dimuat ke Neon (ml-sentiment/scripts/muat_neon.py belum dijalankan)
         await db.rollback()
+        if not tabel_belum_ada(exc):
+            raise
         raise HTTPException(503, "Analisis sentimen belum dihitung")
