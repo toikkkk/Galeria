@@ -79,3 +79,7 @@ Thumbs.db
 # --- ml-visual-search/notebooks: model & hasil besar di dalam folder versi (JANGAN di-commit) ---
 ml-visual-search/notebooks/**/checkpoints/*
 ml-visual-search/notebooks/**/export/*
+
+# --- ml-sentiment/ -- bobot IndoBERT (~440MB, jangan di-commit) -------------
+ml-sentiment/models/indobert_sentimen/
+ml-sentiment/.venv/
