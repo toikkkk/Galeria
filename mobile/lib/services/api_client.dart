@@ -56,6 +56,23 @@ class ApiClient {
     }
   }
 
+  Future<dynamic> postJson(String path, Map<String, dynamic> body) async {
+    final Uri uri = Uri.parse('$kApiBaseUrl$path');
+    try {
+      final response = await http
+          .post(uri, headers: {'Content-Type': 'application/json'}, body: jsonEncode(body))
+          .timeout(const Duration(seconds: 15));
+      if (response.statusCode < 200 || response.statusCode >= 300) {
+        throw ApiException('Server error ${response.statusCode}: ${response.body}');
+      }
+      return jsonDecode(response.body);
+    } on ApiException {
+      rethrow;
+    } catch (e) {
+      throw ApiException('Gagal terhubung ke backend ($path): $e');
+    }
+  }
+
   Future<dynamic> postMultipart(
     String path, {
     File? file,
