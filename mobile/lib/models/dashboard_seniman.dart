@@ -111,13 +111,29 @@ class AliranSeniman {
       );
 }
 
+/// Satu segmen kolektor (hasil clustering) dan perannya bagi seniman. Semua angka deskriptif (bukan prediksi).
+/// Segmen yang belum pernah membeli dari seniman ini tetap ada dengan [nPembeli] = 0.
 class SegmenPembeli {
-  const SegmenPembeli({required this.segmenId, required this.segmenNama, required this.nPembeli, this.porsiPct, this.deskripsi});
+  const SegmenPembeli({
+    required this.segmenId,
+    required this.segmenNama,
+    required this.nPembeli,
+    this.porsiPct,
+    this.deskripsi,
+    this.nTransaksi = 0,
+    this.omzetIdr = 0,
+    this.hargaRata2Idr,
+    this.porsiOmzetPct,
+    this.nKolektorSegmen,
+    this.jangkauanPct,
+    this.aliranFavorit,
+  });
 
-  final int segmenId, nPembeli;
+  final int segmenId, nPembeli, nTransaksi, omzetIdr;
   final String segmenNama;
-  final double? porsiPct;
-  final String? deskripsi;
+  final double? porsiPct, porsiOmzetPct, jangkauanPct;
+  final String? deskripsi, aliranFavorit;
+  final int? hargaRata2Idr, nKolektorSegmen;
 
   factory SegmenPembeli.fromJson(Map<String, dynamic> j) => SegmenPembeli(
         segmenId: _i(j['segmen_id']),
@@ -125,6 +141,13 @@ class SegmenPembeli {
         nPembeli: _i(j['n_pembeli']),
         porsiPct: _d(j['porsi_pct']),
         deskripsi: j['deskripsi'] as String?,
+        nTransaksi: j['n_transaksi'] == null ? 0 : _i(j['n_transaksi']),
+        omzetIdr: j['omzet_idr'] == null ? 0 : _i(j['omzet_idr']),
+        hargaRata2Idr: j['harga_rata2_idr'] == null ? null : _i(j['harga_rata2_idr']),
+        porsiOmzetPct: _d(j['porsi_omzet_pct']),
+        nKolektorSegmen: j['n_kolektor_segmen'] == null ? null : _i(j['n_kolektor_segmen']),
+        jangkauanPct: _d(j['jangkauan_pct']),
+        aliranFavorit: j['aliran_favorit'] as String?,
       );
 }
 
