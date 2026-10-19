@@ -24,6 +24,7 @@ from fastapi.staticfiles import StaticFiles
 
 import models  # noqa: F401 -- registrasi SEMUA model ke Base.metadata, lihat models/__init__.py
 from routers import (
+    admin_dashboard,
     dashboard_seniman,
     gambar,
     karya_upload,
@@ -118,6 +119,7 @@ app.include_router(visual_search.router)
 app.include_router(katalog.router)
 app.include_router(verification.router)
 app.include_router(dashboard_seniman.router)
+app.include_router(admin_dashboard.router)
 app.include_router(katalog_dummy.router)
 app.include_router(karya_upload.router)
 app.include_router(gambar.router)
