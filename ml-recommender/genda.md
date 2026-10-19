@@ -219,12 +219,15 @@ Periksa manual 3 kolektor (beda tingkat belanja): apakah alasan yang tercetak ma
 * Kalau sesuatu di kontrak (README) tidak masuk akal, **bertanya/mengusulkan ke Thoriq** — jangan diam-diam menyimpang; Vika dan Aulya bergantung padanya.
 
 ## 6. Definition of Done
-- [ ] `notebooks/01_klasifikasi.ipynb` rapi dan bisa dijalankan ulang dari awal (data `generator-v2`)
-- [ ] **(v1/data lama, sudah basi -- perlu diuji ulang di data baru)** Sebelumnya: mengalahkan baseline "populer" ([x]), TIDAK mengalahkan "aturan sederhana" (HitRate@1 test 0,481 vs 0,624) --
-      akar penyebab & keputusan tetap pakai HGB di produksi: lihat "Catatan hasil akhir & model terpilih" di bagian 2 (masih relevan sbg konteks, tapi angkanya dari data lama).
-- [ ] Model klasifikasi **mengalahkan baseline "populer" dan aturan sederhana** pada val dan test data `generator-v2` yang baru (tabel di `LAPORAN_MODEL.md`); bila tidak, laporkan apa adanya
-- [ ] Ablasi `kolektor_segmen` + analisis kesalahan per segmen ada di laporan; `bundle["klaster_cutoff"]` tersimpan di joblib; `model_version = klasifikasi-v2`
-- [ ] `models/*.joblib` + `LAPORAN_MODEL.md` (termasuk keterbatasan sintetis) ter-commit, ukuran kecil
-- [ ] Uji md5 refactor lolos; uji paritas fitur inferensi vs CSV lolos
-- [ ] `scripts/hitung_rekomendasi.py` dijalankan; query kriteria bagian 4 lolos; tabel Neon terisi
+- [x] `notebooks/01_klasifikasi.ipynb` rapi dan bisa dijalankan ulang dari awal (data `generator-v2`, dieksekusi penuh 2x -- sebelum & sesudah fix clustering Thoriq `e9542b3`)
+- [x] **(v1/data lama, arsip)** Sebelumnya: mengalahkan baseline "populer" ([x]), TIDAK mengalahkan "aturan sederhana" (HitRate@1 test 0,481 vs 0,624) --
+      akar penyebab & keputusan tetap pakai HGB di produksi: lihat "Catatan hasil akhir & model terpilih" di bagian 2 (angka dari data lama, sudah digantikan baris di bawah).
+- [x] Model klasifikasi **mengalahkan baseline "populer" dan aturan sederhana** pada val dan test data `generator-v2` (TEST: HGB 0,7190 vs populer 0,4238 vs aturan_sederhana 0,7143).
+      **Catatan jujur (wajib dibaca sebelum klaim "menang"):** uji signifikansi bootstrap (notebook bagian 19) menunjukkan selisih HGB vs aturan_sederhana **TIDAK signifikan secara statistik**
+      (selisih -0,0048, CI95% [-0,0762; 0,0667], p=0,950) -- menang di angka titik, tapi bedanya bisa jadi kebetulan sampel (test cuma 210 grup). Dilaporkan apa adanya di `LAPORAN_MODEL.md`, bukan diklaim pasti lebih baik.
+- [x] Ablasi `kolektor_segmen` (3 seed, selisih NDCG@3 konsisten +0,0142 -- fitur TERBUKTI membantu dgn data k-NN terbaru) + analisis kesalahan per segmen ada di laporan;
+      `bundle["klaster_cutoff"]` tersimpan di joblib (`[OK]` berhasil dimuat, bukan lagi `None`); `model_version = klasifikasi-v2`
+- [x] `models/*.joblib` (0,42 MB) + `LAPORAN_MODEL.md` (termasuk keterbatasan sintetis) siap commit, ukuran kecil
+- [x] Uji md5 refactor lolos (determinisme intra-environment terbukti: CSV byte-identik 2x run, hasil clustering fungsional identik); uji paritas fitur inferensi vs CSV lolos (`uji_paritas_fitur.py`: 50 baris, 0 ketidakcocokan)
+- [x] `scripts/hitung_rekomendasi.py` dijalankan; query kriteria bagian 4 lolos (4000 baris, 0 karya sudah terjual direkomendasikan, 0 kolektor dgn peringkat != 20 -- diverifikasi langsung via SQL ke Neon); tabel Neon terisi
 - [ ] PR dibuka ke `develop`; **kabari Vika** (dan Thoriq) bahwa tabel sudah terisi + versi model (`klasifikasi-v2`)
