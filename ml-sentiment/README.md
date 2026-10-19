@@ -52,6 +52,17 @@ Bobot model (`models/indobert_sentimen/`, ±440 MB) di-gitignore; `models/metric
 Untuk menguji kemampuan sebenarnya dibutuhkan ulasan nyata berlabel manusia (mis. ulasan beta-tester), atau setidaknya generator yang lebih sulit
 (lebih banyak ambiguitas dan sarkasme).
 
+## Ulasan yang ditulis kolektor di aplikasi
+Di halaman detail karya, tombol **Tulis ulasan** (rating 1–5 + alasan 10–500 karakter) mengirim `POST /api/ulasan`. Satu kolektor, satu ulasan per karya (409 bila ganda).
+Sentimen **tidak dihitung saat request** (tidak ada torch di server): ulasan tersimpan dengan `sumber='app'` dan `sentimen_prediksi = NULL` (*menunggu analisis*),
+belum ikut hitungan dashboard (endpoint sentimen menyertakan `n_menunggu`). Jalankan secara berkala:
+```powershell
+python scripts/analisis_ulasan_baru.py [--dry-run]    # IndoBERT mengisi sentimen_prediksi untuk yang masih NULL
+```
+`scripts/muat_neon.py` hanya menimpa baris `sumber='dummy'`, jadi ulasan dari aplikasi tidak ikut terhapus.
+Belum ada Auth: penulis ulasan = kolektor contoh (`GET /api/ulasan/kolektor-demo`, atau `--dart-define=DEMO_KOLEKTOR_ID=<uuid>`); belum ada
+moderasi isi ulasan dan belum ada syarat "harus sudah membeli". Untuk sentimen **instan** saat kirim, model perlu diekspor ke ONNX (onnxruntime, tanpa torch).
+
 ## Yang dipakai aplikasi
 Aplikasi membaca `sentimen_prediksi` (keluaran model), **bukan** `sentimen_label` (label generator, disimpan hanya untuk evaluasi).
 `prob_*` = probabilitas softmax, hanya untuk analisis — jangan ditampilkan sebagai "tingkat keyakinan" ke pengguna tanpa kalibrasi.

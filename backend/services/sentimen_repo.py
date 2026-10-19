@@ -33,7 +33,7 @@ async def sentimen_seniman(db: AsyncSession, sid: uuid.UUID, n_bulan: int = 6, n
     agregat = (
         await db.execute(
             text(f"""SELECT sentimen_prediksi AS s, count(*) AS n, avg(rating) AS r, max(model_version) AS mv
-                     FROM {S}.ulasan WHERE seniman_id = :sid GROUP BY 1"""),
+                     FROM {S}.ulasan WHERE seniman_id = :sid AND sentimen_prediksi IS NOT NULL GROUP BY 1"""),
             p,
         )
     ).mappings().all()
@@ -50,7 +50,7 @@ async def sentimen_seniman(db: AsyncSession, sid: uuid.UUID, n_bulan: int = 6, n
         await db.execute(
             text(f"""SELECT to_char(date_trunc('month', created_at AT TIME ZONE 'UTC'), 'YYYY-MM-01') AS b,
                             sentimen_prediksi AS s, count(*) AS n
-                     FROM {S}.ulasan WHERE seniman_id = :sid GROUP BY 1, 2"""),
+                     FROM {S}.ulasan WHERE seniman_id = :sid AND sentimen_prediksi IS NOT NULL GROUP BY 1, 2"""),
             p,
         )
     ).mappings().all()
@@ -61,15 +61,21 @@ async def sentimen_seniman(db: AsyncSession, sid: uuid.UUID, n_bulan: int = 6, n
         await db.execute(
             text(f"""SELECT u.teks, u.sentimen_prediksi AS sentimen, u.rating, u.created_at, k.title AS judul_karya
                      FROM {S}.ulasan u LEFT JOIN {SR}.karya k ON k.id = u.karya_id
-                     WHERE u.seniman_id = :sid ORDER BY u.created_at DESC LIMIT :n"""),
+                     WHERE u.seniman_id = :sid AND u.sentimen_prediksi IS NOT NULL ORDER BY u.created_at DESC LIMIT :n"""),
             {**p, "n": n_contoh},
         )
     ).mappings().all()
 
+    menunggu = (
+        await db.execute(
+            text(f"SELECT count(*) FROM {S}.ulasan WHERE seniman_id = :sid AND sentimen_prediksi IS NULL"), p
+        )
+    ).scalar_one()
     mv = next((r["mv"] for r in agregat), None)
     return {
         "seniman_id": str(sid),
         "n_ulasan": total,
+        "n_menunggu": int(menunggu),
         "model_version": mv,
         "hitung": hitung,
         "indeks_sentimen": round(100 * (jumlah.get("positif", 0) - jumlah.get("negatif", 0)) / total, 1) if total else None,

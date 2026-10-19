@@ -29,6 +29,7 @@ class UlasanContoh(BaseModel):
 class SentimenSeniman(BaseModel):
     seniman_id: str
     n_ulasan: int
+    n_menunggu: int = 0                 # ulasan baru dari app yang belum dianalisis model
     model_version: str | None = None
     hitung: list[SentimenHitung]        # selalu 3 elemen, urut positif/netral/negatif
     indeks_sentimen: float | None = None  # (positif - negatif) / total * 100, rentang -100..100
