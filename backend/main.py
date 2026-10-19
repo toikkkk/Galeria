@@ -94,7 +94,17 @@ async def lifespan(app: FastAPI):
         ai_probability_threshold=float(os.environ.get("DAI_AI_PROBABILITY_THRESHOLD", "0.5")),
         phash_hamming_threshold=int(os.environ.get("DAI_PHASH_HAMMING_THRESHOLD", "5")),
     )
-    app.state.digital_art_identity_service.load()
+    try:
+        app.state.digital_art_identity_service.load()
+    except Exception as exc:
+        # Graceful degrade, pola SAMA dgn Visual Search di atas: file ONNX tidak
+        # di-commit (gitignore), jadi di mesin yang belum punya model, app tetap
+        # harus bisa start (mis. utk dashboard admin / katalog).
+        logger.warning(
+            "DigitalArtIdentityService gagal di-load (%s) -- endpoint verifikasi "
+            "karya TIDAK akan berfungsi, fitur lain tetap jalan normal.",
+            exc,
+        )
 
     yield
     # shutdown: (belum ada resource yang perlu ditutup eksplisit)
