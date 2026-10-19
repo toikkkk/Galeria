@@ -11,7 +11,7 @@ Atas arahan dosen (silhouette > 0,5 dianggap valid, 0,3 cukup valid; K-Means dia
 
 1. **Urutan kerja sekarang: CLUSTERING DULU, lalu KLASIFIKASI.** Segmen kolektor menjadi fitur klasifikasi (`kolektor_segmen`).
 2. **Clustering = UMAP + HDBSCAN** (`src/clustering.py`, laporan `models/LAPORAN_CLUSTERING.md`), bukan K-Means. Jumlah segmen ditemukan sendiri (K = 5), kolektor baru ditetapkan lewat
-   `umap.transform` + `hdbscan.approximate_predict`. Hasil: **silhouette 0,649** (ruang fitur asli, kategori "wajar" > 0,50), ARI 0,965 terhadap label asli, stabilitas bootstrap 0,99, noise 0%.
+   k-NN pada fitur terstandarisasi (artefak `.joblib` portabel: hanya scikit-learn, tanpa objek UMAP/HDBSCAN). Hasil: **silhouette 0,649** (ruang fitur asli, kategori "wajar" > 0,50), ARI 0,965 terhadap label asli, stabilitas bootstrap 0,99, noise 0%.
 3. **Data dummy dirombak (`generator-v2`).** Lima arketipe kolektor yang berbeda tegas (anggaran, frekuensi, keikutan tren, level seniman), tiap kolektor ≥ 3 pembelian.
    **Tabel `seniman`, `karya`, gambar, dan harga IDENTIK dengan sebelumnya** (diverifikasi) — jadi R2, filter karya vulgar, dan katalog tidak perlu dibuat ulang. Yang berubah: `kolektor`, `transaksi`, dan semua turunannya.
 4. **Klasifikasi dibangun ulang** dengan fitur tambahan `kolektor_segmen` (43 kolom). Skor sanity naik (HitRate@1 ≈ 0,77, AUC ≈ 0,89–0,93), **tetapi itu karena data kini jauh lebih terstruktur, bukan karena model lebih pintar.**
@@ -210,6 +210,12 @@ Statistik deskriptif atas data dummy; jendela waktu dihitung dari `REKOMENDASI_W
 ```
 `perubahan_pct` = periode ini vs periode sama persis sebelumnya (`null` bila periode sebelumnya kosong; data dummy mulai 2024-11, jadi periode 365 hari bisa bernilai ratusan persen). `lonjakan = (n30+1) / ((n90-n30)/2 + 1)` — rumus yang sama dengan fitur model.
 `seniman_ramai` = 10 teratas (urut `n_terjual_30hari`, lalu `lonjakan`). Mobile: `mobile/lib/services/dashboard_service.dart`; seniman demo = seniman pertama dari `demo-seniman` (override `--dart-define=DEMO_SENIMAN_ID=<uuid>`).
+
+## Versi lingkungan & portabilitas artefak
+Artefak `models/clustering_kolektor*.joblib` hanya berisi scaler + `KNeighborsClassifier` (scikit-learn) dan tipe bawaan -- **tanpa objek UMAP/HDBSCAN/numba**, jadi bisa dimuat di environment lain
+(versi awal memuat objek numba dan gagal: `TypeError: code expected at most 16 arguments`). `umap-learn`/`hdbscan` hanya dibutuhkan untuk **melatih ulang**.
+Lingkungan tempat artefak dibuat (kunci lengkap di `requirements-lock.txt`): Python 3.11.8 · scikit-learn 1.9.1 · numpy 2.4.6 · pandas 3.0.6 · umap-learn 0.5.12 · numba 0.68.0.
+Untuk reproduksi persis: `pip install -r requirements-lock.txt`. Bila memakai versi scikit-learn lain dan `joblib.load` mengeluh, jalankan ulang `python jalankan_pipeline.py --dry-run` (deterministik).
 
 ## Urutan menjalankan (clustering dulu, lalu klasifikasi)
 ```powershell

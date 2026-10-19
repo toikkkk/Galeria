@@ -81,7 +81,7 @@ def bandingkan_algoritma(z: np.ndarray, y: np.ndarray) -> pd.DataFrame:
         catat("Gaussian Mixture K=5", GaussianMixture(5, covariance_type="full", n_init=10, random_state=0).fit(z).predict(z), "ya", "K harus ditebak")
         catat("Agglomerative (Ward) K=5", AgglomerativeClustering(5).fit_predict(z), "tidak", "tak punya fungsi predict")
         catat("Spectral K=5", SpectralClustering(5, affinity="nearest_neighbors", n_neighbors=12, random_state=0).fit_predict(z), "tidak", "tak punya fungsi predict")
-        catat("HDBSCAN (fitur asli)", hdbscan.HDBSCAN(min_cluster_size=10, min_samples=C.MIN_SAMPLES).fit_predict(z), "ya (approximate_predict)", "tanpa reduksi dimensi")
+        catat("HDBSCAN (fitur asli)", hdbscan.HDBSCAN(min_cluster_size=10, min_samples=C.MIN_SAMPLES).fit_predict(z), "ya (k-NN)", "tanpa reduksi dimensi")
     return pd.DataFrame(baris)
 
 
@@ -156,8 +156,8 @@ def _tulis_laporan(b, bc, df, df_cut, ev, ev_cut, stab, stab_sd, algo, sil_seler
         ("Calinski-Harabasz", f"{ev['calinski_harabasz']:.1f}", "tak punya skala absolut"),
         ("Stabilitas bootstrap (ARI, 80% subsampel)", f"{stab:.3f} ± {stab_sd:.3f}", f"ambang baik >= {C.STABIL_BAIK:.2f}"),
         ("Noise HDBSCAN saat pelatihan", f"{ev['noise_latih_pct']:.1f}%", "titik noise ditetapkan ke klaster terdekat"),
-        ("Kesesuaian label latih vs penugasan out-of-sample", f"{ev['kesesuaian_latih']:.3f}", "1 = identik"),
-        ("Kepastian keanggotaan (median)", f"{ev['kepastian_median']:.2f}", f"{ev['pct_kepastian_nol']:.0f}% bernilai 0 (noise)"),
+        ("Konsistensi penugasan k-NN (5-fold CV)", f"{ev['kesesuaian_latih']:.3f}", "kolektor baru ditetapkan dgn k-NN; 1 = identik dgn label klaster"),
+        ("Kepastian penugasan (median)", f"{ev['kepastian_median']:.2f}", "proporsi suara tetangga k-NN"),
         ("ARI vs label asli*", f"{ex['ari']:.3f}", "0 = acak, 1 = identik"),
         ("NMI*", f"{ex['nmi']:.3f}", ""),
         ("Homogenitas*", f"{ex['homogenitas']:.3f}", ""),
@@ -171,7 +171,7 @@ def _tulis_laporan(b, bc, df, df_cut, ev, ev_cut, stab, stab_sd, algo, sil_seler
     algo_t = algo.copy()
     algo_t = pd.concat([algo_t, pd.DataFrame([{"algoritma": "**UMAP + HDBSCAN (dipakai)**", "K": ev["k"], "noise": f"{ev['noise_latih_pct']:.0f}%",
                                               "silhouette": ev["silhouette"], "ARI vs label asli*": ex["ari"],
-                                              "bisa menetapkan kolektor baru": "ya (transform + approximate_predict)", "catatan": "K ditemukan sendiri; model dilatih satu kali"}])], ignore_index=True)
+                                              "bisa menetapkan kolektor baru": "ya (k-NN pada fitur terstandarisasi)", "catatan": "K ditemukan sendiri; model dilatih satu kali"}])], ignore_index=True)
 
     md = f"""# Laporan Clustering Kolektor — `{C.VERSI}` ({C.ALGORITMA})
 
@@ -188,7 +188,7 @@ def _tulis_laporan(b, bc, df, df_cut, ev, ev_cut, stab, stab_sd, algo, sil_seler
 
 ## 1. Mengapa bukan K-Means, dan perbandingan algoritma
 K-Means (1957) memaksa jumlah klaster ditebak di awal dan mengasumsikan klaster berbentuk bola berukuran serupa. Dipilih **UMAP + HDBSCAN** karena: (a) K ditemukan dari kepadatan data,
-(b) bentuk klaster bebas dan outlier ditandai noise, (c) kolektor baru bisa ditetapkan tanpa melatih ulang (`umap.transform` + `hdbscan.approximate_predict`).
+(b) bentuk klaster bebas dan outlier ditandai noise, (c) kolektor baru bisa ditetapkan tanpa melatih ulang (k-NN pada fitur terstandarisasi yang dilatih dari label klaster; artefak tanpa objek numba, jadi portabel).
 
 Perbandingan pada fitur yang sama (silhouette di ruang fitur asli):
 
@@ -242,7 +242,7 @@ segmen yang ditemukan: {', '.join(f"{s['nama']} ({s['ukuran']})" for _, s in sor
 * **Fitur dipilih berdasarkan kebersihan sinyal** (lihat bagian 2) setelah percobaan pada data ini; ini disclosure, bukan klaim bahwa fitur lain "salah".
 * Nama & deskripsi segmen adalah **ringkasan statistik**, bukan kategori pasti. Jangan menampilkannya di UI sebagai fakta tentang orang tertentu.
 * Melatih ulang pada data lain dapat mengubah jumlah, nama, dan isi segmen; naikkan `VERSI` dan jalankan ulang `scripts/hitung_segmen.py`.
-* Model memuat objek UMAP/HDBSCAN: butuh `umap-learn` dan `hdbscan` terpasang utk memuatnya. Backend tidak memuatnya (hanya membaca tabel).
+* Artefak `.joblib` hanya memuat scaler + k-NN (scikit-learn), **tanpa objek UMAP/HDBSCAN**, jadi bisa dimuat lintas environment. `umap-learn`/`hdbscan` hanya dibutuhkan untuk melatih ulang. Backend tidak memuat model ini.
 """
     LAPORAN.write_text(md, encoding="utf-8")
     print(f"laporan -> {LAPORAN.relative_to(ROOT)}")

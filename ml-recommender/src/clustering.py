@@ -4,7 +4,8 @@ ALGORITMA: **UMAP + HDBSCAN** (menggantikan K-Means pada ``clustering-v1``).
   * UMAP (2018) memetakan fitur perilaku ke ruang rendah-dimensi yang mempertahankan struktur tetangga.
   * HDBSCAN (2013/2015) adalah clustering berbasis kepadatan: jumlah klaster DITEMUKAN sendiri (tanpa menebak K),
     bentuk klaster bebas, dan titik yang tak masuk klaster mana pun ditandai noise (``-1``).
-  * Kolektor BARU ditetapkan lewat ``umap.transform`` + ``hdbscan.approximate_predict`` (bukan melatih ulang).
+  * Kolektor BARU ditetapkan lewat k-NN pada fitur terstandarisasi yang dilatih dari label klaster (bukan melatih ulang).
+    UMAP/HDBSCAN hanya dipakai saat PELATIHAN utk menemukan segmen; artefak TIDAK memuatnya (lihat catatan portabilitas).
 
 KEPUTUSAN METODOLOGI (dan alasannya)
 ------------------------------------
@@ -22,8 +23,11 @@ KEPUTUSAN METODOLOGI (dan alasannya)
 5. **Noise** tidak dibuang diam-diam: dilaporkan, lalu ditetapkan ke klaster terdekat (kepastian = 0).
 6. **Nama segmen berasal dari karakteristik centroid**, bukan dari label generator.
 
-Artefak ``models/clustering_kolektor.joblib`` memuat objek UMAP/HDBSCAN/scikit-learn (butuh ``umap-learn`` &
-``hdbscan`` terpasang utk memuatnya). Backend TIDAK memuatnya -- backend hanya membaca tabel hasil di Neon.
+PORTABILITAS ARTEFAK: ``models/clustering_kolektor*.joblib`` hanya berisi tipe bawaan Python, numpy, dan objek scikit-learn
+(``StandardScaler``, ``KNeighborsClassifier``) -- TANPA objek UMAP/HDBSCAN. Sebelumnya artefak memuat UMAP/HDBSCAN yang berisi fungsi
+ber-JIT numba; serialisasinya sangat sensitif terhadap versi exact numba/Python dan gagal dimuat di environment lain
+(``TypeError: code expected at most 16 arguments``). ``umap-learn``/``hdbscan`` kini HANYA dibutuhkan utk MELATIH ulang.
+Backend tidak memuat model ini; backend hanya membaca tabel hasil di Neon.
 """
 
 from __future__ import annotations
@@ -33,6 +37,8 @@ from datetime import datetime, timezone
 
 import numpy as np
 import pandas as pd
+from sklearn.model_selection import StratifiedKFold, cross_val_predict
+from sklearn.neighbors import KNeighborsClassifier
 from sklearn.metrics import (adjusted_rand_score, calinski_harabasz_score, completeness_score, davies_bouldin_score,
                              homogeneity_score, normalized_mutual_info_score, silhouette_samples, silhouette_score,
                              v_measure_score)
@@ -50,6 +56,7 @@ GRID_NN = (10, 15, 25)            # n_neighbors UMAP
 GRID_MCS = (5, 8, 10, 15)         # min_cluster_size HDBSCAN (kecil dibutuhkan: segmen langka mis. premium bisa < 15 orang)
 UMAP_DIM = 5
 MIN_SAMPLES = 5
+K_PENUGAS = 7                    # k-NN penugas kolektor baru (pelatihan: label klaster; bobot = 1/jarak)
 TOL_TREN = 0.03                  # toleransi penamaan "Pemburu Tren": persentil tren tidak lebih dari ini di bawah median populasi
 
 KOLOM_FITUR = ["harga_rata2_idr", "frekuensi_beli_per_bulan", "rata2_persentil_tren_saat_beli",
@@ -227,41 +234,41 @@ def latih(df: pd.DataFrame, seed: int = SEED, konfigurasi: dict | None = None, t
         segmen[sid] = {"nama": nama[raw], "deskripsi": _deskripsi(profil.loc[raw], len(sub), len(df), aliran),
                        "ukuran": int(len(sub)), "aliran_favorit": aliran,
                        "profil": {c: float(profil.loc[raw, c]) for c in KOLOM_PROFIL}}
+    # penugas portabel: k-NN pada fitur terstandarisasi, dilatih dari label klaster (noise sudah ditetapkan)
+    knn = KNeighborsClassifier(n_neighbors=min(K_PENUGAS, len(z)), weights="distance").fit(z, lab)
+    min_kelas = int(pd.Series(lab).value_counts().min())
+    cv = min(5, min_kelas)
+    konsistensi = float("nan")
+    if cv >= 2:
+        pred_cv = cross_val_predict(KNeighborsClassifier(n_neighbors=min(K_PENUGAS, len(z) - 1), weights="distance"), z, lab,
+                                    cv=StratifiedKFold(cv, shuffle=True, random_state=seed))
+        konsistensi = float((pred_cv == lab).mean())
     bundle = {
         "versi": VERSI, "algoritma": ALGORITMA, "dilatih_pada": datetime.now(timezone.utc).isoformat(timespec="seconds"),
         "t_data": t_data, "n_latih": int(len(df)), "seed": int(seed), "konfigurasi": konfigurasi,
         "fitur": list(KOLOM_FITUR), "kolom_log": list(KOLOM_LOG),
-        "scaler": scaler, "umap": um, "hdbscan": hd, "pusat_embedding": pusat, "peta_label": peta, "segmen": segmen,
+        "scaler": scaler, "penugas": knn, "peta_label": peta, "segmen": segmen,
         "noise_latih_pct": float(100 * (lab_mentah < 0).mean()),
         "populasi_median": {c: float(populasi[c]) for c in KOLOM_PROFIL},
         "grid": None if tabel_grid is None else tabel_grid.to_dict("records"),
     }
-    # kesesuaian label latih dgn penugasan out-of-sample (tetapkan) -- harus ~1
-    ass = tetapkan(bundle, df)
-    sid_latih = np.array([peta[int(r)] for r in lab])
-    bundle["kesesuaian_latih"] = float((ass["segmen_id"].to_numpy() == sid_latih).mean())
+    # konsistensi penugasan out-of-sample: akurasi k-NN pada data yang tidak dilihatnya (cross-validation), 1 = identik dgn label klaster
+    bundle["kesesuaian_latih"] = konsistensi
     return bundle
 
 
 def tetapkan(bundle: dict, df: pd.DataFrame) -> pd.DataFrame:
     """Tetapkan segmen utk kolektor di ``df`` (kolom sama dgn ``clustering_kolektor.csv``).
     Kolektor dgn ``n_pembelian < MIN_PEMBELIAN_SEGMEN`` -> ``segmen_id = 0`` & nama ``NAMA_BELUM_ADA``.
-    Kolom ``kepastian`` (0-1) = kekuatan keanggotaan HDBSCAN; 0 utk titik noise yang ditetapkan ke klaster terdekat."""
+    Kolom ``kepastian`` (0-1) = proporsi suara tetangga (k-NN, berbobot 1/jarak) utk segmen terpilih; 0 utk kolektor yg riwayatnya kurang."""
     hilang = [c for c in bundle["fitur"] if c not in df.columns]
     if hilang:
         raise ValueError(f"kolom fitur hilang: {hilang}")
-    _, hdbscan = _impor()
     z = bundle["scaler"].transform(matriks(df, bundle["fitur"], bundle["kolom_log"]))
-    with warnings.catch_warnings():
-        warnings.simplefilter("ignore")
-        emb = bundle["umap"].transform(z)
-        lab, kuat = hdbscan.approximate_predict(bundle["hdbscan"], emb)
-    lab = np.asarray(lab).copy()
-    kuat = np.asarray(kuat, dtype=float).copy()
-    bad = lab < 0
-    if bad.any():
-        lab[bad] = _isi_noise(emb, lab, bundle["pusat_embedding"])[bad]
-        kuat[bad] = 0.0
+    knn = bundle["penugas"]
+    proba = knn.predict_proba(z)
+    lab = knn.classes_[proba.argmax(axis=1)]
+    kuat = proba.max(axis=1).astype(float)
     sid = np.array([bundle["peta_label"][int(r)] for r in lab])
     if "n_pembelian" in df.columns:
         kurang = df["n_pembelian"].to_numpy() < MIN_PEMBELIAN_SEGMEN
