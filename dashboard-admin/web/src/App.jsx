@@ -64,7 +64,6 @@ function Headline({ d }) {
       <p>
         GALERIA memperoleh pendapatan <b>{rupiahRingkas(d.pendapatan_total_idr)}</b>
         {p != null && <>, <b className={p >= 0 ? "delta-up" : "delta-down"}>{arah(p)} {persen(Math.abs(p))}</b> dibanding {d.periode_hari} hari sebelumnya</>}.
-        {" "}Sebagian besar berasal dari komisi karya yang terjual.
       </p>
     </div>
   );
@@ -82,38 +81,6 @@ function Kpis({ d }) {
       <Kpi label="Pengguna yang sudah Pro" value={angka(d.pro.kolektor.n_pro + d.pro.seniman.n_pro)}
         sub={<>{angka(d.pro.kolektor.n_pro)} kolektor ({persen(d.pro.kolektor.pro_share_pct)}) · {angka(d.pro.seniman.n_pro)} seniman ({persen(d.pro.seniman.pro_share_pct)})</>} />
     </div>
-  );
-}
-
-function DariMana({ d }) {
-  const baris = [
-    { nama: "Komisi dari karya terjual", nilai: d.komisi_idr, ket: "2,5% dari harga karya" },
-    { nama: "Langganan Pro kolektor", nilai: d.langganan_kolektor_idr, ket: "Rp50.000 per bulan" },
-    { nama: "Langganan Pro seniman", nilai: d.langganan_seniman_idr, ket: "Rp150.000 per bulan" },
-  ];
-  const total = d.pendapatan_total_idr || 1;
-  return (
-    <section className="card" aria-labelledby="h-asal">
-      <h2 id="h-asal">Dari mana pendapatan GALERIA?</h2>
-      <p className="desc">Pembagian pendapatan {d.periode_hari} hari terakhir menurut sumbernya.</p>
-      <div className="bagi">
-        {baris.map((b) => {
-          const p = (b.nilai / total) * 100;
-          return (
-            <div className="bagi-baris" key={b.nama}>
-              <div className="bagi-teks">
-                <span className="bagi-nama">{b.nama}</span>
-                <span className="bagi-ket">{b.ket}</span>
-              </div>
-              <div className="bagi-bar" role="img" aria-label={`${b.nama}: ${persen(p, 0)}`}>
-                <span style={{ width: `${Math.max(p, 1.5)}%` }} />
-              </div>
-              <div className="bagi-nilai"><b>{rupiahRingkas(b.nilai)}</b> <span>{persen(p, 0)}</span></div>
-            </div>
-          );
-        })}
-      </div>
-    </section>
   );
 }
 
@@ -156,7 +123,7 @@ function Forecast() {
     <section className="card" aria-labelledby="h-fc">
       <div className="card-head">
         <div>
-          <h2 id="h-fc">Perkiraan pendapatan 6 bulan ke depan</h2>
+          <h2 id="h-fc">Perkiraan pendapatan</h2>
           <p className="desc">{info.ket}</p>
         </div>
         <button className="link" onClick={() => setTabel(!tabel)}>{tabel ? "Lihat grafik" : "Lihat angka per bulan"}</button>
@@ -302,16 +269,45 @@ function TipPro({ active, payload }) {
   );
 }
 
-/** Label persen Pro di atas tiap batang; jarang-jarang bila batangnya banyak. */
-function labelPersen(langkah) {
+/** Angka jumlah di atas tiap batang; jarang-jarang bila batangnya banyak. */
+function labelAngka(langkah) {
   return function Label({ x, y, width, index, value }) {
     if (index % langkah !== 0 || value == null) return null;
     return (
-      <text x={x + width / 2} y={y - 6} textAnchor="middle" fontSize={11} fontWeight={600} fill="var(--text-primary)">
-        {persen(value)}
+      <text x={x + width / 2} y={y - 6} textAnchor="middle" fontSize={10.5} fontWeight={600} fill="var(--text-primary)">
+        {angka(value)}
       </text>
     );
   };
+}
+
+/** SATU grafik: dua batang berdampingan per bulan (emas = sudah Pro, biru = belum upgrade), jumlah tertulis di batang. */
+function BatangGabungan({ data, info, langkah }) {
+  return (
+    <>
+      <div className="legend">
+        <span><i style={{ background: "var(--series-1)" }} />Sudah Pro</span>
+        <span><i style={{ background: "var(--series-2)" }} />Belum upgrade</span>
+      </div>
+      <div className="chart" role="img"
+        aria-label={`Diagram batang jumlah ${info.sebutan} yang sudah Pro dan yang belum upgrade, per bulan`}>
+        <ResponsiveContainer>
+          <BarChart data={data} margin={{ top: 26, right: 8, bottom: 0, left: 0 }} barGap={3} barCategoryGap="14%">
+            <CartesianGrid stroke="var(--grid)" vertical={false} />
+            <XAxis dataKey="label" tick={AXIS} tickLine={false} axisLine={{ stroke: "var(--grid)" }} interval="preserveStartEnd" minTickGap={14} />
+            <YAxis tick={AXIS} tickLine={false} axisLine={false} width={48} tickFormatter={angka} domain={[0, "auto"]} />
+            <Tooltip content={<TipPro />} cursor={{ fill: "var(--grid)", opacity: 0.6 }} />
+            <Bar dataKey="n_pro" fill="var(--series-1)" radius={[4, 4, 0, 0]} maxBarSize={30} isAnimationActive={false}>
+              <LabelList dataKey="n_pro" content={labelAngka(langkah)} />
+            </Bar>
+            <Bar dataKey="n_non_pro" fill="var(--series-2)" radius={[4, 4, 0, 0]} maxBarSize={30} isAnimationActive={false}>
+              <LabelList dataKey="n_non_pro" content={labelAngka(langkah)} />
+            </Bar>
+          </BarChart>
+        </ResponsiveContainer>
+      </div>
+    </>
+  );
 }
 
 function PanelRole({ role, n }) {
@@ -351,9 +347,12 @@ function PanelRole({ role, n }) {
               </div>
 
               <div className="card-head" style={{ marginBottom: 6 }}>
-                <p className="cap" style={{ margin: 0 }}>
-                  Satu batang = seluruh {info.sebutan} pada akhir bulan. Bagian emas sudah Pro, bagian biru belum. Angka di atas batang = persen yang sudah Pro.
-                </p>
+                <div>
+                  <h3 className="judul-grafik">Sudah Naik Kelas atau Belum? {info.label} Bulan demi Bulan</h3>
+                  <p className="cap" style={{ margin: 0 }}>
+                    Emas = sudah Pro, biru = belum upgrade. Angka di atas batang = jumlah {info.sebutan} pada akhir bulan.
+                  </p>
+                </div>
                 <button className="link" onClick={() => setTabel(!tabel)}>{tabel ? "Lihat grafik" : "Lihat angka per bulan"}</button>
               </div>
 
@@ -370,27 +369,7 @@ function PanelRole({ role, n }) {
                 />
               ) : (
                 <>
-                  <div className="legend">
-                    <span><i style={{ background: "var(--series-1)" }} />Sudah Pro</span>
-                    <span><i style={{ background: "var(--series-2)" }} />Belum upgrade</span>
-                  </div>
-                  <div className="chart" role="img"
-                    aria-label={`Diagram batang jumlah ${info.sebutan} yang sudah Pro dan belum upgrade tiap bulan`}>
-                    <ResponsiveContainer>
-                      <BarChart data={data} margin={{ top: 22, right: 8, bottom: 0, left: 0 }} barCategoryGap="24%">
-                        <CartesianGrid stroke="var(--grid)" vertical={false} />
-                        <XAxis dataKey="label" tick={AXIS} tickLine={false} axisLine={{ stroke: "var(--grid)" }} interval="preserveStartEnd" minTickGap={14} />
-                        <YAxis tick={AXIS} tickLine={false} axisLine={false} width={48} tickFormatter={angka} />
-                        <Tooltip content={<TipPro />} cursor={{ fill: "var(--grid)", opacity: 0.6 }} />
-                        <Bar dataKey="n_pro" stackId="u" fill="var(--series-1)" stroke="var(--surface-1)" strokeWidth={2}
-                          maxBarSize={44} isAnimationActive={false} />
-                        <Bar dataKey="n_non_pro" stackId="u" fill="var(--series-2)" stroke="var(--surface-1)" strokeWidth={2}
-                          radius={[4, 4, 0, 0]} maxBarSize={44} isAnimationActive={false}>
-                          <LabelList dataKey="pro_share_pct" content={labelPersen(langkah)} />
-                        </Bar>
-                      </BarChart>
-                    </ResponsiveContainer>
-                  </div>
+                  <BatangGabungan data={data} info={info} langkah={langkah} />
                 </>
               )}
             </>
@@ -443,7 +422,6 @@ export default function App() {
           <>
             <Headline d={d} />
             <Kpis d={d} />
-            <DariMana d={d} />
           </>
         )}
       </Muat>
@@ -452,13 +430,6 @@ export default function App() {
         <Forecast />
         <NaikKelas />
       </div>
-
-      <ul className="note">
-        <li>Angka di halaman ini adalah data simulasi untuk pengembangan dan uji coba, bukan transaksi nyata.</li>
-        <li>Pendapatan GALERIA = komisi 2,5% dari harga karya yang terjual + biaya langganan Pro.</li>
-        <li>Pro kolektor (Rp50.000 per bulan): fitur AR dan bergabung ke Komunitas. Pro seniman (Rp150.000 per bulan): promosi karya di halaman utama kolektor, membuat event, dan membuat komunitas.</li>
-        <li>Perkiraan hanyalah proyeksi dari pola data sebelumnya dan bukan jaminan pendapatan.</li>
-      </ul>
     </main>
   );
 }
