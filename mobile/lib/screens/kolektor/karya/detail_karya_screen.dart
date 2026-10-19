@@ -7,6 +7,7 @@ import '../../../theme/app_theme.dart';
 import '../../../widgets/karya_image.dart';
 import '../../../widgets/kolektor/karya_grid_card.dart';
 import '../../../utils/coming_soon.dart';
+import '../../../widgets/dashboard/sentimen_card.dart';
 
 /// Konversi dari
 /// docs/KOLEKTOR FITUR PEMBELIAN PEMBAYARAN/.../galeria_detail_karya_seni/code.html
@@ -268,6 +269,10 @@ class DetailKaryaScreen extends StatelessWidget {
                     ),
                   ),
                 ),
+                if (karya.senimanId != null) ...[
+                  const SizedBox(height: AppSpacing.md),
+                  SentimenCard(senimanId: karya.senimanId!, ringkas: true),
+                ],
                 const SizedBox(height: AppSpacing.md),
                 Text('Cerita Karya', style: AppTextStyles.headlineMd),
                 const SizedBox(height: 4),
