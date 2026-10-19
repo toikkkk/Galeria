@@ -1,3 +1,4 @@
+import '../../state/upload_preview.dart';
 import '../../models/picked_image.dart';
 
 import 'package:flutter/material.dart';
@@ -46,7 +47,7 @@ class _UnggahKaryaScreenState extends State<UnggahKaryaScreen> {
   bool _submitting = false;
   PickedImage? _mainPhoto;
 
-  final _titleCtrl = TextEditingController(text: 'Sang Putri Mahkota Renaisans');
+  final _titleCtrl = TextEditingController();
   // UI pakai label "Panjang"/"Lebar" (desain Stitch asli), skema backend
   // `karya.tinggi_cm`/`karya.lebar_cm` (lihat CLAUDE.md) -- dipetakan
   // "Panjang" -> tinggi_cm, "Lebar" -> lebar_cm, lihat pemanggilan
@@ -100,6 +101,12 @@ class _UnggahKaryaScreenState extends State<UnggahKaryaScreen> {
         lebarCm: lebar,
       );
       if (!mounted) return;
+      UploadPreview.last = UploadPreview(
+        image: _mainPhoto!,
+        title: _titleCtrl.text.trim(),
+        artist: 'Sanggar Rupa Nusantara',
+        style: _genre,
+      );
       widget.onSubmitted((image: _mainPhoto!, karyaId: karyaId));
     } catch (e) {
       if (!mounted) return;

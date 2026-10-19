@@ -1,27 +1,25 @@
+
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
+import 'package:http/http.dart' as http;
+import 'package:permission_handler/permission_handler.dart';
+import 'package:share_plus/share_plus.dart';
 
 import '../../../models/karya.dart';
+import '../../../services/api_client.dart';
 import '../../../theme/app_theme.dart';
-import '../../../widgets/kolektor/camera_preview_layer.dart';
+import '../../../widgets/kolektor/ar_artwork_view.dart';
+import 'ar_simulasi_manual.dart';
 
-/// Konversi dari
-/// docs/KOLEKTOR FITUR AR VISUAL SEARCH/.../galeria_coba_di_ruangan_ar/code.html
+/// "Coba di Ruangan": menempelkan lukisan pada DINDING sungguhan lewat ARCore
+/// (deteksi bidang vertikal), dengan ukuran fisik asli karya (cm).
 ///
-/// PENTING: latar belakangnya kamera live sungguhan (CameraPreviewLayer) dan
-/// karya bisa digeser/dicubit(scale)/diputar bebas dengan jari di atasnya --
-/// tapi ini TETAP simulasi penempatan manual, BUKAN AR sungguhan berbasis
-/// plane detection. CLAUDE.md: AR Simulation seharusnya pakai SDK ARCore
-/// (Android) / ARKit (iOS) dengan deteksi bidang dinding & estimasi skala
-/// otomatis dari ukuran fisik karya (cm) -- itu BELUM diimplementasikan
-/// (lihat status proyek: "Belum dikerjakan: implementasi AR"). Di sini
-/// posisi/ukuran/rotasi murni dikendalikan gestur pengguna, tidak ada
-/// penjangkaran ke bidang dunia nyata, jadi "Skala 1:1" TIDAK diklaim di
-/// label (lihat catatan di bawah).
+/// Bila HP tidak mendukung ARCore / izin kamera ditolak, jatuh ke
+/// [ArSimulasiManual] (geser-cubit manual, tanpa klaim skala).
 ///
-/// TODO(mobile): ganti dengan integrasi ARCore/ARKit nyata (mis. paket
-/// `ar_flutter_plugin` atau native platform channel) + plane detection +
-/// scale estimation otomatis dari ukuran fisik karya (cm) dari form upload,
-/// begitu tersedia.
+/// Kejujuran: ARCore memperkirakan skala dunia dari kamera + sensor (akurasi umumnya
+/// beberapa persen, bukan alat ukur); dinding polos tanpa tekstur sulit terdeteksi.
+/// Bila ukuran karya belum diisi seniman, dipakai ukuran perkiraan dan dilabeli begitu.
 class ArRuanganScreen extends StatefulWidget {
   const ArRuanganScreen({super.key, required this.onClose, this.karya});
 
@@ -32,189 +30,279 @@ class ArRuanganScreen extends StatefulWidget {
   State<ArRuanganScreen> createState() => _ArRuanganScreenState();
 }
 
+enum _Mode { memuat, ar, simulasi, gambarGagal }
+
 class _ArRuanganScreenState extends State<ArRuanganScreen> {
-  double _scale = 1.0;
-  double _rotation = 0.0;
-  Offset _offset = Offset.zero;
+  static const _lebarDefaultCm = 60.0;
+  static const _tinggiDefaultCm = 80.0;
 
-  double _startScale = 1.0;
-  double _startRotation = 0.0;
+  _Mode _mode = _Mode.memuat;
+  Uint8List? _image;
+  String _status = 'mencari';
+  ArArtworkController? _controller;
+  bool _memotret = false;
 
-  void _onScaleStart(ScaleStartDetails details) {
-    _startScale = _scale;
-    _startRotation = _rotation;
+  Karya get _karya => widget.karya ?? sampleKarya[3];
+  bool get _ukuranPerkiraan => _karya.lebarCm == null || _karya.tinggiCm == null;
+  double get _lebarCm => _karya.lebarCm ?? _lebarDefaultCm;
+  double get _tinggiCm => _karya.tinggiCm ?? _tinggiDefaultCm;
+
+  @override
+  void initState() {
+    super.initState();
+    _siapkan();
   }
 
-  void _onScaleUpdate(ScaleUpdateDetails details) {
+  Future<void> _siapkan() async {
+    if (_mode != _Mode.memuat) setState(() => _mode = _Mode.memuat);
+    final izin = await Permission.camera.request();
+    final dukungan = izin.isGranted ? await cekDukunganAr() : 'unsupported';
+    Uint8List? bytes;
+    if (dukungan == 'supported') {
+      bytes = await _muatGambar();
+    }
+    if (!mounted) return;
     setState(() {
-      _scale = (_startScale * details.scale).clamp(0.4, 3.0);
-      _rotation = _startRotation + details.rotation;
-      _offset += details.focalPointDelta;
+      _image = bytes;
+      _mode = dukungan != 'supported'
+          ? _Mode.simulasi
+          : (bytes != null ? _Mode.ar : _Mode.gambarGagal);
     });
   }
 
-  void _reset() {
-    setState(() {
-      _scale = 1.0;
-      _rotation = 0.0;
-      _offset = Offset.zero;
-    });
+  Future<Uint8List?> _muatGambar() async {
+    try {
+      final url = _karya.imageUrl;
+      if (url != null) {
+        // sama dgn KaryaImage: image_url relatif (`/uploads/...`) diprefix alamat backend
+        final resolved = url.startsWith('http') ? url : '$kApiBaseUrl$url';
+        final r = await http.get(Uri.parse(resolved)).timeout(const Duration(seconds: 20));
+        if (r.statusCode == 200 && r.bodyBytes.isNotEmpty) return r.bodyBytes;
+        debugPrint('AR: gambar $resolved -> HTTP ${r.statusCode}');
+      }
+      final data = await rootBundle.load(_karya.assetPath);
+      return data.buffer.asUint8List();
+    } catch (_) {
+      try {
+        final data = await rootBundle.load(_karya.assetPath);
+        return data.buffer.asUint8List();
+      } catch (_) {
+        return null;
+      }
+    }
+  }
+
+  void _onStatus(String s) {
+    if (!mounted) return;
+    if (s == 'tidak_didukung' || s == 'izin') {
+      setState(() => _mode = _Mode.simulasi);
+      return;
+    }
+    setState(() => _status = s);
+  }
+
+  String get _petunjuk => switch (_status) {
+    'dinding' => 'Dinding terdeteksi (area biru). Ketuk untuk menempelkan karya.',
+    'siap_instan' =>
+      'Pelacakan siap. Ketuk layar untuk menempel (tanpa deteksi dinding), atau cari dinding bertekstur.',
+    'terpasang' => 'Terpasang di dinding. Ketuk titik lain untuk memindahkan; mundur untuk melihat utuh.',
+    'terpasang_instan' =>
+      'Terpasang (perkiraan jarak). Ketuk titik lain untuk memindahkan; gerakkan HP agar jarak makin akurat.',
+    'tak_kena' => 'Belum bisa menempel di titik itu. Gerakkan HP pelan-pelan lalu ketuk lagi.',
+    'kurang_fitur' => 'Permukaan terlalu polos. Arahkan ke area bertekstur (poster, tepi pintu, rak).',
+    'terlalu_cepat' => 'Gerakan terlalu cepat. Gerakkan HP lebih pelan.',
+    'kurang_cahaya' => 'Terlalu gelap. Cari tempat yang lebih terang.',
+    'kamera_gagal' => 'Kamera tidak bisa dibuka. Tutup aplikasi kamera lain lalu coba lagi.',
+    _ => 'Menginisialisasi pelacakan. Gerakkan HP pelan ke kiri-kanan sambil menghadap dinding.',
+  };
+
+  Future<void> _ambilFoto() async {
+    final c = _controller;
+    if (c == null || _memotret) return;
+    setState(() => _memotret = true);
+    try {
+      final path = await c.ambilFoto();
+      if (path != null) {
+        await SharePlus.instance.share(
+          ShareParams(files: [XFile(path)], text: '${_karya.title} di ruanganku — GALERIA'),
+        );
+      }
+    } catch (_) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Foto gagal diambil. Coba lagi.')),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _memotret = false);
+    }
   }
 
   @override
   Widget build(BuildContext context) {
-    final karya = widget.karya ?? sampleKarya[3];
-    return Scaffold(
-      backgroundColor: Colors.black,
-      body: CameraPreviewLayer(
-        overlay: Stack(
-          children: [
-            // Karya yang bisa digeser (1 jari), diperbesar/perkecil & diputar
-            // (2 jari) bebas ke posisi mana pun di atas kamera live.
-            Center(
-              child: GestureDetector(
-                onScaleStart: _onScaleStart,
-                onScaleUpdate: _onScaleUpdate,
-                child: Transform.translate(
-                  offset: _offset,
-                  child: Transform.rotate(
-                    angle: _rotation,
-                    child: Transform.scale(
-                      scale: _scale,
-                      child: _FramedArtwork(karya: karya),
+    switch (_mode) {
+      case _Mode.memuat:
+        return const Scaffold(
+          backgroundColor: Colors.black,
+          body: Center(child: CircularProgressIndicator(color: Colors.white)),
+        );
+      case _Mode.simulasi:
+        return ArSimulasiManual(onClose: widget.onClose, karya: widget.karya);
+      case _Mode.gambarGagal:
+        return Scaffold(
+          backgroundColor: Colors.black,
+          body: SafeArea(
+            child: Center(
+              child: Padding(
+                padding: const EdgeInsets.all(AppSpacing.screenGutter),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    const Icon(Icons.broken_image_outlined, color: Colors.white70, size: 48),
+                    const SizedBox(height: AppSpacing.sm),
+                    Text(
+                      'Gambar karya tidak bisa dimuat.\nPeriksa koneksi ke server lalu coba lagi.',
+                      textAlign: TextAlign.center,
+                      style: AppTextStyles.bodySm.copyWith(color: Colors.white),
                     ),
-                  ),
+                    const SizedBox(height: AppSpacing.md),
+                    FilledButton(onPressed: _siapkan, child: const Text('Coba lagi')),
+                    TextButton(
+                      onPressed: widget.onClose,
+                      child: const Text('Kembali', style: TextStyle(color: Colors.white70)),
+                    ),
+                  ],
                 ),
               ),
             ),
-            SafeArea(
-              child: Column(
-                children: [
-                  Padding(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: AppSpacing.screenGutter,
-                      vertical: AppSpacing.xs,
-                    ),
-                    child: Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        InkWell(
-                          onTap: widget.onClose,
-                          customBorder: const CircleBorder(),
-                          child: Container(
-                            width: 40,
-                            height: 40,
-                            decoration: BoxDecoration(
-                              color: Colors.black.withValues(alpha: 0.4),
-                              shape: BoxShape.circle,
-                            ),
-                            child: const Icon(
-                              Icons.arrow_back,
-                              color: Colors.white,
-                              size: 18,
-                            ),
-                          ),
-                        ),
-                        Container(
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: AppSpacing.sm,
-                            vertical: 6,
-                          ),
-                          decoration: BoxDecoration(
-                            color: Colors.black.withValues(alpha: 0.4),
-                            borderRadius: BorderRadius.circular(AppRadius.full),
-                          ),
-                          child: Text(
-                            'COBA DI RUANGAN (AR)',
-                            style: AppTextStyles.overline.copyWith(
-                              color: Colors.white,
-                              fontSize: 9,
-                            ),
-                          ),
-                        ),
-                        Container(
+          ),
+        );
+      case _Mode.ar:
+        break;
+    }
+    return Scaffold(
+      backgroundColor: Colors.black,
+      body: Stack(
+        children: [
+          Positioned.fill(
+            child: ArArtworkView(
+              image: _image!,
+              lebarCm: _lebarCm,
+              tinggiCm: _tinggiCm,
+              onStatus: _onStatus,
+              onCreated: (c) => _controller = c,
+            ),
+          ),
+          SafeArea(
+            child: Column(
+              children: [
+                Padding(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: AppSpacing.screenGutter,
+                    vertical: AppSpacing.xs,
+                  ),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      InkWell(
+                        onTap: widget.onClose,
+                        customBorder: const CircleBorder(),
+                        child: Container(
                           width: 40,
                           height: 40,
                           decoration: BoxDecoration(
                             color: Colors.black.withValues(alpha: 0.4),
                             shape: BoxShape.circle,
                           ),
-                          child: const Icon(
-                            Icons.help_outline,
-                            color: Colors.white,
-                            size: 18,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                  // Petunjuk singkat -- hanya tampil selagi belum digeser sama
-                  // sekali, supaya tidak menutupi pandangan setelah dipakai.
-                  if (_offset == Offset.zero &&
-                      _scale == 1.0 &&
-                      _rotation == 0.0)
-                    Padding(
-                      padding: const EdgeInsets.only(top: AppSpacing.sm),
-                      child: Container(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: AppSpacing.sm,
-                          vertical: 6,
-                        ),
-                        decoration: BoxDecoration(
-                          color: Colors.black.withValues(alpha: 0.5),
-                          borderRadius: BorderRadius.circular(AppRadius.full),
-                        ),
-                        child: Text(
-                          'Geser 1 jari, cubit 2 jari utk ubah ukuran & putar',
-                          style: AppTextStyles.bodySm.copyWith(
-                            color: Colors.white70,
-                            fontSize: 11,
-                          ),
+                          child: const Icon(Icons.arrow_back, color: Colors.white, size: 18),
                         ),
                       ),
-                    ),
-                  const Spacer(),
-                  Container(
-                    padding: const EdgeInsets.fromLTRB(
-                      AppSpacing.screenGutter,
-                      AppSpacing.sm,
-                      AppSpacing.screenGutter,
-                      AppSpacing.lg,
-                    ),
-                    decoration: BoxDecoration(
-                      color: Colors.black.withValues(alpha: 0.55),
-                      borderRadius: const BorderRadius.vertical(
-                        top: Radius.circular(20),
+                      _pill(
+                        Text(
+                          'COBA DI RUANGAN (AR)',
+                          style: AppTextStyles.overline.copyWith(color: Colors.white, fontSize: 9),
+                        ),
                       ),
-                    ),
-                    child: Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                      children: [
-                        _tool(
-                          Icons.zoom_in,
-                          'Perbesar',
-                          onTap: () => setState(
-                            () => _scale = (_scale + 0.15).clamp(0.4, 3.0),
-                          ),
-                        ),
-                        _tool(
-                          Icons.photo_camera,
-                          'Ambil Foto',
-                          primary: true,
-                          onTap: () {},
-                        ),
-                        _tool(Icons.restart_alt, 'Reset', onTap: _reset),
-                      ],
-                    ),
+                      const SizedBox(width: 40),
+                    ],
                   ),
-                ],
-              ),
+                ),
+                Padding(
+                  padding: const EdgeInsets.only(top: AppSpacing.sm),
+                  child: _pill(
+                    Text(
+                      _petunjuk,
+                      textAlign: TextAlign.center,
+                      style: AppTextStyles.bodySm.copyWith(color: Colors.white, fontSize: 12),
+                    ),
+                    maxWidth: 320,
+                  ),
+                ),
+                const Spacer(),
+                Container(
+                  padding: const EdgeInsets.fromLTRB(
+                    AppSpacing.screenGutter,
+                    AppSpacing.sm,
+                    AppSpacing.screenGutter,
+                    AppSpacing.lg,
+                  ),
+                  decoration: BoxDecoration(
+                    color: Colors.black.withValues(alpha: 0.55),
+                    borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
+                  ),
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          const Icon(Icons.straighten, size: 14, color: AppColors.accent),
+                          const SizedBox(width: 6),
+                          Flexible(
+                            child: Text(
+                              '${_fmt(_lebarCm)} × ${_fmt(_tinggiCm)} cm'
+                              '${_ukuranPerkiraan ? '  (ukuran perkiraan)' : ''}',
+                              style: AppTextStyles.labelSm.copyWith(color: Colors.white),
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: AppSpacing.sm),
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                        children: [
+                          _tool(Icons.restart_alt, 'Lepas', onTap: () => _controller?.reset()),
+                          _tool(
+                            _memotret ? Icons.hourglass_top : Icons.photo_camera,
+                            'Ambil Foto',
+                            primary: true,
+                            onTap: _ambilFoto,
+                          ),
+                          _tool(Icons.close, 'Tutup', onTap: widget.onClose),
+                        ],
+                      ),
+                    ],
+                  ),
+                ),
+              ],
             ),
-          ],
-        ),
+          ),
+        ],
       ),
     );
   }
+
+  static String _fmt(double v) => v == v.roundToDouble() ? v.toInt().toString() : v.toStringAsFixed(1);
+
+  Widget _pill(Widget child, {double? maxWidth}) => Container(
+    constraints: BoxConstraints(maxWidth: maxWidth ?? double.infinity),
+    padding: const EdgeInsets.symmetric(horizontal: AppSpacing.sm, vertical: 6),
+    decoration: BoxDecoration(
+      color: Colors.black.withValues(alpha: 0.5),
+      borderRadius: BorderRadius.circular(AppRadius.full),
+    ),
+    child: child,
+  );
 
   Widget _tool(
     IconData icon,
@@ -231,90 +319,13 @@ class _ArRuanganScreenState extends State<ArRuanganScreen> {
           height: primary ? 56 : 44,
           decoration: BoxDecoration(
             shape: BoxShape.circle,
-            color: primary
-                ? Colors.white
-                : Colors.white.withValues(alpha: 0.15),
+            color: primary ? Colors.white : Colors.white.withValues(alpha: 0.15),
           ),
-          child: Icon(
-            icon,
-            color: primary ? Colors.black : Colors.white,
-            size: primary ? 24 : 18,
-          ),
+          child: Icon(icon, color: primary ? Colors.black : Colors.white, size: primary ? 24 : 18),
         ),
         const SizedBox(height: 4),
-        Text(
-          label,
-          style: AppTextStyles.labelSm.copyWith(
-            color: Colors.white70,
-            fontSize: 10,
-          ),
-        ),
+        Text(label, style: AppTextStyles.labelSm.copyWith(color: Colors.white70, fontSize: 10)),
       ],
     ),
   );
-}
-
-class _FramedArtwork extends StatelessWidget {
-  const _FramedArtwork({required this.karya});
-
-  final Karya karya;
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.all(10),
-      decoration: BoxDecoration(
-        color: const Color(0xFF3E2A1A),
-        borderRadius: BorderRadius.circular(6),
-        boxShadow: const [
-          BoxShadow(
-            color: Colors.black45,
-            blurRadius: 20,
-            offset: Offset(0, 10),
-          ),
-        ],
-      ),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          ClipRRect(
-            child: Image.asset(
-              karya.assetPath,
-              width: 180,
-              height: 220,
-              fit: BoxFit.cover,
-            ),
-          ),
-          Padding(
-            padding: const EdgeInsets.only(top: 6),
-            child: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-              decoration: BoxDecoration(
-                color: Colors.black.withValues(alpha: 0.6),
-                borderRadius: BorderRadius.circular(AppRadius.full),
-              ),
-              child: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  const Icon(
-                    Icons.straighten,
-                    size: 11,
-                    color: AppColors.accent,
-                  ),
-                  const SizedBox(width: 4),
-                  Text(
-                    '120 × 90 cm',
-                    style: AppTextStyles.overline.copyWith(
-                      color: Colors.white,
-                      fontSize: 8,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
 }

@@ -122,6 +122,50 @@ void _goSenimanTab(BuildContext context, int index) {
   }
 }
 
+// ---------------------------------------------------------------------------
+// Navigasi "kembali" yang aman + perilaku tombol back Android
+// ---------------------------------------------------------------------------
+
+const _berandaKolektor = '/beranda-kolektor';
+const _dasborSeniman = '/dashboard';
+
+const _prefixSeniman = [
+  '/dashboard', '/notifikasi-seniman', '/riwayat-penarikan', '/profil', '/karya-saya', '/komunitas',
+  '/buat-lelang', '/unggah-karya', '/memverifikasi-keaslian', '/karya-terverifikasi', '/karya-ditolak',
+  '/karya-perlu-ditinjau', '/pesanan-seniman', '/promosikan-karya', '/buat-event', '/event-berhasil',
+  '/daftar-seniman', '/verifikasi-identitas',
+];
+const _prefixKolektor = [
+  '/beranda-kolektor', '/notifikasi', '/karya/', '/lelang', '/koleksi-saya', '/event', '/toko', '/pesanan',
+  '/pindai', '/profil-kolektor', '/preferensi-genre', '/daftar-kolektor',
+];
+
+/// Halaman "beranda" sesuai peran pengguna di [path]; `/welcome` untuk layar masuk/onboarding.
+String _berandaUntuk(String path) {
+  bool cocok(List<String> daftar) => daftar.any(
+    (p) => path == p || path.startsWith(p.endsWith('/') ? p : '$p/') || (p == '/profil' && path == '/profil'),
+  );
+  if (path == '/profil-kolektor' || cocok(_prefixKolektor)) return _berandaKolektor;
+  if (cocok(_prefixSeniman)) return _dasborSeniman;
+  return '/welcome';
+}
+
+String _lokasiSekarang() => _router.routeInformationProvider.value.uri.path;
+
+/// Tombol kembali di dalam layar: kembali satu langkah bila ada riwayat; bila layar dibuka lewat
+/// `go()` (tanpa riwayat) -- yang membuat `pop()` biasa tidak berbuat apa-apa -- pindah ke beranda
+/// peran yang sama, kecuali sudah di beranda.
+void _kembali(BuildContext context) {
+  if (context.canPop()) {
+    context.pop();
+    return;
+  }
+  final tujuan = _berandaUntuk(_lokasiSekarang());
+  if (tujuan != _lokasiSekarang()) context.go(tujuan);
+}
+
+final _messengerKey = GlobalKey<ScaffoldMessengerState>();
+
 final _router = GoRouter(
   initialLocation: '/splash',
   routes: [
@@ -147,7 +191,7 @@ final _router = GoRouter(
     GoRoute(
       path: '/role-selection',
       builder: (context, state) => RoleSelectionScreen(
-        onBack: () => context.pop(),
+        onBack: () => _kembali(context),
         onContinue: (role) {
           // push -- sama alasannya, /daftar-seniman & /daftar-kolektor
           // pakai context.pop() utk tombol kembali.
@@ -162,7 +206,7 @@ final _router = GoRouter(
     GoRoute(
       path: '/login',
       builder: (context, state) => LoginScreen(
-        onBack: () => context.pop(),
+        onBack: () => _kembali(context),
         onLoginSuccess: (role) {
           if (role == UserRole.seniman) {
             context.go('/dashboard');
@@ -179,7 +223,7 @@ final _router = GoRouter(
     GoRoute(
       path: '/daftar-seniman',
       builder: (context, state) => DaftarSenimanScreen(
-        onBack: () => context.pop(),
+        onBack: () => _kembali(context),
         // push -- /verifikasi-identitas pakai context.pop() (BUKAN cuma
         // dipanggil dari sini, lihat juga onDataDiri di /profil di bawah,
         // yang sudah push -- kalau dua entry point beda (go vs push), pop()
@@ -191,7 +235,7 @@ final _router = GoRouter(
     GoRoute(
       path: '/verifikasi-identitas',
       builder: (context, state) => VerifikasiIdentitasScreen(
-        onBack: () => context.pop(),
+        onBack: () => _kembali(context),
         onContinue: () => context.go('/dashboard'),
         onSkip: () => context.go('/dashboard'),
       ),
@@ -226,12 +270,12 @@ final _router = GoRouter(
     GoRoute(
       path: '/notifikasi-seniman',
       builder: (context, state) =>
-          NotifikasiSenimanScreen(onBack: () => context.pop()),
+          NotifikasiSenimanScreen(onBack: () => _kembali(context)),
     ),
     GoRoute(
       path: '/riwayat-penarikan',
       builder: (context, state) =>
-          RiwayatPenarikanScreen(onBack: () => context.pop()),
+          RiwayatPenarikanScreen(onBack: () => _kembali(context)),
     ),
     GoRoute(
       path: '/profil',
@@ -253,7 +297,7 @@ final _router = GoRouter(
     GoRoute(
       path: '/komunitas',
       builder: (context, state) => KomunitasSenimanScreen(
-        onBack: () => context.pop(),
+        onBack: () => _kembali(context),
         onLihatKomunitas: () => context.push('/komunitas/detail'),
         onBuatEvent: () async {
           if (await ensurePro(context, fitur: 'Membuat event pameran')) {
@@ -268,19 +312,19 @@ final _router = GoRouter(
     GoRoute(
       path: '/komunitas/detail',
       builder: (context, state) =>
-          CommunityDetailScreen(onBack: () => context.pop()),
+          CommunityDetailScreen(onBack: () => _kembali(context)),
     ),
     GoRoute(
       path: '/buat-lelang',
       builder: (context, state) => BuatLelangScreen(
-        onBack: () => context.pop(),
+        onBack: () => _kembali(context),
         onUnggahKarya: () => context.push('/unggah-karya'),
       ),
     ),
     GoRoute(
       path: '/unggah-karya',
       builder: (context, state) => UnggahKaryaScreen(
-        onBack: () => context.pop(),
+        onBack: () => _kembali(context),
         onSubmitted: (data) => context.go('/memverifikasi-keaslian', extra: data),
       ),
     ),
@@ -340,20 +384,20 @@ final _router = GoRouter(
       path: '/promosikan-karya',
       builder: (context, state) => PromosikanKaryaScreen(
         karya: state.extra as Karya?,
-        onBack: () => context.pop(),
+        onBack: () => _kembali(context),
         onUnggahKarya: () => context.push('/unggah-karya'),
         onLanjut: () {
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(content: Text('Label promosi aktif pada karya kamu.')),
           );
-          context.pop();
+          _kembali(context);
         },
       ),
     ),
     GoRoute(
       path: '/buat-event/1',
       builder: (context, state) => BuatEventStep1Screen(
-        onClose: () => context.pop(),
+        onClose: () => _kembali(context),
         onLanjut: () => context.push('/buat-event/2'),
         onUnggahKarya: () => context.push('/unggah-karya'),
       ),
@@ -361,14 +405,14 @@ final _router = GoRouter(
     GoRoute(
       path: '/buat-event/2',
       builder: (context, state) => BuatEventStep2Screen(
-        onKembali: () => context.pop(),
+        onKembali: () => _kembali(context),
         onLanjut: () => context.push('/buat-event/3'),
       ),
     ),
     GoRoute(
       path: '/buat-event/3',
       builder: (context, state) => BuatEventStep3Screen(
-        onKembali: () => context.pop(),
+        onKembali: () => _kembali(context),
         onTerbitkan: () => context.go('/event-berhasil'),
       ),
     ),
@@ -384,7 +428,7 @@ final _router = GoRouter(
     GoRoute(
       path: '/daftar-kolektor',
       builder: (context, state) => DaftarKolektorScreen(
-        onBack: () => context.pop(),
+        onBack: () => _kembali(context),
         // push -- /preferensi-genre pakai context.pop() utk tombol kembali.
         onContinue: () => context.push('/preferensi-genre'),
         onLoginTap: () => context.push('/login'),
@@ -393,7 +437,7 @@ final _router = GoRouter(
     GoRoute(
       path: '/preferensi-genre',
       builder: (context, state) => PreferensiGenreScreen(
-        onBack: () => context.pop(),
+        onBack: () => _kembali(context),
         onContinue: () => context.go('/beranda-kolektor'),
         onSkip: () => context.go('/beranda-kolektor'),
       ),
@@ -415,7 +459,7 @@ final _router = GoRouter(
     GoRoute(
       path: '/notifikasi',
       builder: (context, state) => NotifikasiScreen(
-        onBack: () => context.pop(),
+        onBack: () => _kembali(context),
         onPesananTap: () => context.push('/pesanan'),
         onLelangTap: () => context.push('/lelang'),
         onEventTap: () => context.push('/event'),
@@ -426,14 +470,14 @@ final _router = GoRouter(
     GoRoute(
       path: '/karya/semua',
       builder: (context, state) => SemuaKaryaScreen(
-        onBack: () => context.pop(),
+        onBack: () => _kembali(context),
         onKaryaTap: (karya) => context.push('/karya/detail', extra: karya),
       ),
     ),
     GoRoute(
       path: '/lelang',
       builder: (context, state) => LelangScreen(
-        onBack: () => context.pop(),
+        onBack: () => _kembali(context),
         onNavTap: (i) => _goKolektorTab(context, i),
         onPindai: () => context.push('/pindai'),
         onDetailTap: (lot) => context.push('/lelang/detail', extra: lot),
@@ -443,7 +487,7 @@ final _router = GoRouter(
       path: '/lelang/detail',
       builder: (context, state) => DetailLelangScreen(
         lot: (state.extra as LelangLot?) ?? sampleLelang.first,
-        onBack: () => context.pop(),
+        onBack: () => _kembali(context),
       ),
     ),
     GoRoute(
@@ -456,14 +500,14 @@ final _router = GoRouter(
     GoRoute(
       path: '/event',
       builder: (context, state) => EventScreen(
-        onBack: () => context.pop(),
+        onBack: () => _kembali(context),
         onDaftarTap: () => context.push('/event/tiket'),
       ),
     ),
     GoRoute(
       path: '/event/tiket',
       builder: (context, state) => TiketCheckoutScreen(
-        onBack: () => context.pop(),
+        onBack: () => _kembali(context),
         onPaid: () => context.push('/event/e-tiket'),
       ),
     ),
@@ -478,7 +522,7 @@ final _router = GoRouter(
         final karya = (state.extra as Karya?) ?? sampleKarya.first;
         return DetailKaryaScreen(
           karya: karya,
-          onBack: () => context.pop(),
+          onBack: () => _kembali(context),
           onArTap: () => context.push('/pindai/ar', extra: karya),
           onBeliTap: () => context.push('/pesanan/konfirmasi', extra: karya),
           onTokoTap: () => context.push('/toko'),
@@ -488,7 +532,7 @@ final _router = GoRouter(
     GoRoute(
       path: '/toko',
       builder: (context, state) => ProfilTokoScreen(
-        onBack: () => context.pop(),
+        onBack: () => _kembali(context),
         onKaryaTap: (karya) => context.push('/karya/detail', extra: karya),
       ),
     ),
@@ -508,7 +552,7 @@ final _router = GoRouter(
         final karya = (state.extra as Karya?) ?? sampleKarya.first;
         return KonfirmasiPesananScreen(
           karya: karya,
-          onBack: () => context.pop(),
+          onBack: () => _kembali(context),
           // Estimasi total (kurir seni + asuransi + biaya layanan default) --
           // demo lokal, belum ada state pembayaran nyata lintas layar.
           onLanjut: () => context.push(
@@ -522,7 +566,7 @@ final _router = GoRouter(
       path: '/pesanan/pembayaran',
       builder: (context, state) => SelesaikanPembayaranScreen(
         totalIdr: (state.extra as int?) ?? 147625000,
-        onBack: () => context.pop(),
+        onBack: () => _kembali(context),
         onSudahBayar: () =>
             context.push('/pesanan/selesai', extra: sampleKarya.first),
       ),
@@ -537,15 +581,17 @@ final _router = GoRouter(
     GoRoute(
       path: '/pindai',
       builder: (context, state) => VisualSearchCameraScreen(
-        onBack: () => context.pop(),
-        onArTap: () => context.push('/pindai/ar'),
+        onBack: () => _kembali(context),
+        // pushReplacement: layar Scan ditutup agar kameranya dilepas -- ARCore tidak bisa berbagi
+        // kamera dgn plugin `camera` (rebutan kamera => preview patah-patah lalu mati).
+        onArTap: () => context.pushReplacement('/pindai/ar'),
         onKaryaTap: (karya) => context.push('/karya/detail', extra: karya),
       ),
     ),
     GoRoute(
       path: '/pindai/ar',
       builder: (context, state) => ArRuanganScreen(
-        onClose: () => context.pop(),
+        onClose: () => _kembali(context),
         karya: state.extra as Karya?,
       ),
     ),
@@ -561,15 +607,72 @@ final _router = GoRouter(
   ],
 );
 
-class GaleriaApp extends StatelessWidget {
+class GaleriaApp extends StatefulWidget {
   const GaleriaApp({super.key});
+
+  @override
+  State<GaleriaApp> createState() => _GaleriaAppState();
+}
+
+/// Menangani tombol back Android SETELAH router (didaftarkan di post-frame, jadi dipanggil hanya
+/// kalau router sudah tidak bisa pop lagi): dari layar tingkat atas pindah ke beranda dulu, dan
+/// baru keluar app dengan dua kali tekan di beranda -- bukan langsung keluar.
+class _GaleriaAppState extends State<GaleriaApp> with WidgetsBindingObserver {
+  DateTime? _backTerakhir;
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) WidgetsBinding.instance.addObserver(this);
+    });
+  }
+
+  @override
+  void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    super.dispose();
+  }
+
+  @override
+  Future<bool> didPopRoute() async {
+    final path = _lokasiSekarang();
+    final beranda = _berandaUntuk(path);
+    if (path != beranda && beranda != '/welcome') {
+      _router.go(beranda); // dari tab/layar tingkat atas: ke beranda dulu, jangan keluar app
+      return true;
+    }
+    if (beranda == '/welcome' && path != '/welcome' && path != '/splash') {
+      _router.go('/welcome');
+      return true;
+    }
+    // Sudah di beranda/welcome: keluar hanya bila ditekan dua kali dalam 2 detik.
+    final sekarang = DateTime.now();
+    if (_backTerakhir != null && sekarang.difference(_backTerakhir!) < const Duration(seconds: 2)) {
+      return false; // biarkan sistem menutup app
+    }
+    _backTerakhir = sekarang;
+    _messengerKey.currentState
+      ?..clearSnackBars()
+      ..showSnackBar(const SnackBar(content: Text('Tekan sekali lagi untuk keluar'), duration: Duration(seconds: 2)));
+    return true;
+  }
 
   @override
   Widget build(BuildContext context) {
     return MaterialApp.router(
       title: 'GALERIA',
       debugShowCheckedModeBanner: false,
-      theme: AppTheme.light,
+      scaffoldMessengerKey: _messengerKey,
+      // Animasi perpindahan halaman yang halus (fade + geser) di semua layar, termasuk pindah tab.
+      theme: AppTheme.light.copyWith(
+        pageTransitionsTheme: const PageTransitionsTheme(
+          builders: {
+            TargetPlatform.android: FadeForwardsPageTransitionsBuilder(),
+            TargetPlatform.iOS: CupertinoPageTransitionsBuilder(),
+          },
+        ),
+      ),
       routerConfig: _router,
     );
   }

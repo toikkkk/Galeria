@@ -14,6 +14,7 @@ import '../../../widgets/galeria_logo.dart';
 import '../../../widgets/kolektor/karya_grid_card.dart';
 import '../../../widgets/kolektor/kolektor_bottom_nav.dart';
 import '../../../widgets/karya_image.dart';
+import '../../../utils/coming_soon.dart';
 
 /// Konversi dari
 /// docs/KOLEKTOR FITUR UTAMA/.../galeria_beranda_kolektor/code.html
@@ -289,7 +290,9 @@ class _BerandaKolektorScreenState extends State<BerandaKolektorScreen> {
                         borderRadius: BorderRadius.circular(AppRadius.lg),
                         child: AspectRatio(
                           aspectRatio: 16 / 9,
-                          child: KaryaImage(karya: _karya[0]),
+                          // Gambar banner TETAP (karya contoh Pasca-Impresionisme, aman utk semua umur) -- bukan
+                          // _karya[0], karena katalog dummy dari dataset WikiArt bisa berisi lukisan nudis.
+                          child: KaryaImage(karya: sampleKarya[1]),
                         ),
                       ),
                       Positioned.fill(
@@ -584,7 +587,7 @@ class _BerandaKolektorScreenState extends State<BerandaKolektorScreen> {
                         ),
                       ),
                       TextButton(
-                        onPressed: () {},
+                        onPressed: () => showComingSoon(context, 'Hubungi'),
                         style: TextButton.styleFrom(
                           backgroundColor: AppColors.primary,
                           foregroundColor: Colors.white,

@@ -8,6 +8,9 @@ Menyambungkan hasil pemodelan ke **bagian katalog kolektor**:
 1. **Katalog 2.000 karya dummy** tampil di app (daftar, filter, pencarian) lengkap dengan **gambar dari Cloudflare R2**.
 2. Bagian **"Rekomendasi untukmu"** di beranda kolektor menampilkan karya yang direkomendasikan model, lengkap dengan **alasan** ("Sesuai aliran favoritmu: Impressionism").
 
+> **PERUBAHAN 2026-10-18:** data dummy dirombak (generator-v2) dan segmen kolektor kini hasil **UMAP + HDBSCAN** dengan nama baru (lihat di bawah). Karya, gambar, dan harga **tidak berubah** — pekerjaan katalog + gambar R2 tetap berlaku.
+> `rekomendasi_kolektor` perlu dihitung ulang oleh Genda pada data baru; sampai itu selesai pakai mock (bagian 5). Jangan menulis nama segmen secara hardcode — baca dari `kolektor_segmen`/`segmen_kamus`.
+
 Pembagian: **Genda** = model klasifikasi (mengisi `rekomendasi_kolektor`); **Thoriq** = clustering (mengisi `kolektor_segmen`); **Aulya** = dashboard seniman; **kamu** = katalog + rekomendasi. Jangan mengerjakan dashboard.
 
 ### Yang bisa dikerjakan kapan
@@ -51,7 +54,7 @@ Respons = bentuk `KatalogPage` yang sudah ada, ditambah `image_url` dan `seniman
 
 **`GET /api/rekomendasi/{kolektor_id}?top_k=10`** — baca `rekomendasi_kolektor` JOIN `karya` JOIN `seniman` JOIN `kolektor_segmen`, urut `peringkat`, `LIMIT top_k` (maks 20).
 Bentuk JSON **persis** seperti di README (kontrak). `alasan`: ubah kode → teks Indonesia dengan satu dict di backend (7 kode di README; `gaya_favorit` memuat nama aliran).
-`segmen` berasal dari `kolektor_segmen` (**sudah terisi**, `clustering-v1`, 5 segmen: Kolektor Premium · Kolektor Menengah Aktif · Spesialis Aliran · Pemburu Karya Terjangkau · Pemula Hemat); tetap boleh `null` bila tabel kosong — jangan error, cukup sembunyikan label segmen di UI.
+`segmen` berasal dari `kolektor_segmen` (diisi Thoriq, `clustering-v2` UMAP + HDBSCAN, 5 segmen: Kolektor Premium · Kolektor Aktif Bernilai Tinggi · Pemburu Tren · Kolektor Menengah Rutin · Pemula Hemat; nama dibuat otomatis dan bisa berubah bila model dilatih ulang); tetap boleh `null` bila tabel kosong — jangan error, cukup sembunyikan label segmen di UI.
 Perilaku: `kolektor_id` bukan UUID / tidak ada → 404; tabel hasil belum terisi untuk kolektor itu → **503** dengan pesan "Rekomendasi belum dihitung" (Flutter akan diam-diam jatuh ke katalog biasa); jangan 500.
 
 Daftarkan router baru di `main.py`. Tambahkan skema di `backend/schemas/rekomendasi.py`.

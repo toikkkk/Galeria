@@ -1,7 +1,7 @@
 # Kamus Data -- Sistem Rekomendasi Lukisan GALERIA
 
 > **DATA SINTETIS.** Gambar & aliran lukisan nyata (dataset Visual Search v1: 5.659 gambar, 11 kelas),
-> tetapi kolektor, harga, dan riwayat pembelian dibangkitkan program (`src/generate.py`, seed 42).
+> tetapi kolektor, harga, dan riwayat pembelian dibangkitkan program (`src/generate.py` generator-v2, seed 42); kolektor sengaja dirancang berkelompok tegas.
 > Model yang dilatih di sini mempelajari aturan buatan kita, **bukan** perilaku pembeli nyata -- jangan
 > mengklaim skornya sebagai performa produksi. File ini dibuat otomatis oleh `jalankan_pipeline.py`.
 
@@ -20,7 +20,10 @@ Aturan penting:
 * **Evaluasi ranking per `grup_id`** (HitRate@K, NDCG@K). 1 grup = 1 positif + 4 negatif, jadi tebakan acak
   HitRate@1 = 20%. Akurasi biasa menyesatkan.
 * Negatif = karya lain yang masih tersedia saat itu, dipilih seragam acak (asumsi; tak ada data "dilihat tapi tak dibeli").
-* Kategorikal: `karya_gaya`, `seniman_level_reputasi`. Kosong (NaN) berarti belum ada riwayat (mis. pembelian pertama kolektor) -- bukan error.
+* Kategorikal: `karya_gaya`, `seniman_level_reputasi`, `kolektor_segmen`. Kosong (NaN) berarti belum ada riwayat (mis. pembelian pertama kolektor) -- bukan error.
+* **`kolektor_segmen` berasal dari CLUSTERING** (urutan kerja: clustering dulu, lalu klasifikasi). Dihitung as-of `waktu` dari riwayat SEBELUM `waktu`, memakai model clustering
+  **"cutoff"** (`models/clustering_kolektor_cutoff.joblib`, dilatih hanya pada data sampai batas train), jadi tidak mengintip val/test. Kolektor dgn < 3 pembelian sebelum `waktu`
+  bernilai `Belum Cukup Riwayat`. **Jangan** mengganti dengan segmen model "final" (`kolektor_segmen` di Neon) atau `kolektor_label_asli` -- keduanya membocorkan masa depan.
 
 | Kolom | Arti |
 |---|---|
@@ -43,6 +46,7 @@ Aturan penting:
 | `kolektor_harga_std_log` | Simpangan baku ln(harga) pembelian sebelumnya = seberapa lebar rentang harga yang biasa dibeli. 0 kalau baru 1 pembelian. |
 | `kolektor_n_gaya_unik` | Jumlah aliran berbeda yang pernah dibeli. |
 | `kolektor_porsi_gaya_teratas` | Porsi aliran favorit dari seluruh pembelian sebelumnya (1.0 = selalu aliran yang sama). |
+| `kolektor_segmen` | Segmen kolektor dari model clustering (UMAP + HDBSCAN, model 'cutoff'), dihitung as-of t dari riwayat SEBELUM t: Kolektor Premium / Kolektor Aktif Bernilai Tinggi / Pemburu Tren / Kolektor Menengah Rutin / Pemula Hemat, atau 'Belum Cukup Riwayat' (< 3 pembelian sebelum t). Kategorikal. |
 | `karya_gaya` | Aliran (style) karya, 1 dari 11 kelas model Visual Search v1. Kategorikal. |
 | `karya_harga_listing_idr` | Harga pasang karya (Rp). |
 | `karya_log_harga` | ln(harga pasang). |
@@ -69,9 +73,9 @@ Aturan penting:
 
 ## 2. `clustering_kolektor.csv` -- 200 baris (1 per kolektor)
 
-Tugas: **segmentasi kolektor** (clustering, tanpa label). Snapshot di akhir periode data memakai seluruh riwayat.
-Lakukan scaling yang robust (mis. `RobustScaler`) -- harga sangat condong ke kanan; pertimbangkan `log` utk kolom `*_idr`.
-Tidak ada NaN. `kolektor_id` bukan fitur.
+Tugas: **segmentasi kolektor** (clustering, tanpa label) -- dikerjakan Thoriq dengan **UMAP + HDBSCAN** (`src/clustering.py`, laporan `models/LAPORAN_CLUSTERING.md`).
+Snapshot di akhir periode data memakai seluruh riwayat. Fitur klaster = 5 kolom perilaku (`harga_rata2_idr`, `frekuensi_beli_per_bulan`, `rata2_persentil_tren_saat_beli`,
+`porsi_beli_seniman_mapan`, `porsi_beli_seniman_pemula`; log1p utk dua kolom pertama lalu StandardScaler); kolom lain dipakai utk profil segmen. Tidak ada NaN. `kolektor_id` bukan fitur.
 
 | Kolom | Arti |
 |---|---|
@@ -108,12 +112,12 @@ Tidak ada NaN. `kolektor_id` bukan fitur.
 | `porsi_gaya_Symbolism` | Porsi pembelian aliran Symbolism (0-1). kolom porsi_gaya_* berjumlah 1. |
 
 ### `kolektor_label_asli.csv` -- HANYA utk validasi
-Segmen yang dipakai generator (`premium_selektif`, `menengah_aktif`, `pemula_hemat`, `spesialis_aliran`, `pengikut_tren`).
+Segmen yang dipakai generator-v2 (`premium_mapan`, `pemburu_tren`, `kakap_aktif`, `menengah_rutin`, `pemula_hemat`).
 **Jangan dipakai sbg fitur atau target latihan.** Gunakan setelah clustering selesai utk membandingkan (mis. Adjusted Rand Index).
 Di data nyata label ini tidak ada. Segmen ini hasil rancangan kita, jadi cocok/tidaknya dgn cluster hanya menunjukkan
 generator terbaca model, bukan kebenaran tentang kolektor sungguhan.
 
-## 3. `seniman_metrik_bulanan.csv` -- 363 baris
+## 3. `seniman_metrik_bulanan.csv` -- 356 baris
 
 Isi dashboard seniman: penjualan per seniman per bulan. Berasal dari view `dummy_rekomendasi.v_seniman_metrik_bulanan`.
 
