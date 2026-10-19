@@ -24,7 +24,16 @@ dashboard-admin/
 backend/ (file baru)       routers/admin_dashboard.py · services/admin_repo.py · schemas/admin.py → /api/admin/*
 ```
 
-## Menjalankan
+## Cara tercepat (setelah `git pull`)
+```powershell
+powershell -ExecutionPolicy Bypass -File dashboard-admin\mulai.ps1
+```
+Skrip ini memasang dependensi (backend + web), membuat akun admin di `backend\.env` bila belum ada (email `admin@galeria.id`,
+password acak yang dicetak di layar; atau `-Password "..."`), lalu membuka backend (:8000) dan web (:5173).
+**Satu-satunya yang harus disiapkan manual:** `DATABASE_URL` di `backend\.env` (connection string Neon dari tim; `.env` tidak masuk git).
+Data contoh sudah ada di Neon bersama, jadi tidak perlu `muat_neon.py` lagi.
+
+## Menjalankan manual
 ```powershell
 cd dashboard-admin
 python -m venv .venv --system-site-packages ; .venv\Scripts\activate ; pip install -r requirements.txt
