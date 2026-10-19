@@ -232,28 +232,36 @@ async def aliran(db: AsyncSession, sid: uuid.UUID) -> list[dict]:
 
 
 async def segmen_pembeli(db: AsyncSession, sid: uuid.UUID) -> dict:
+    """Peran tiap segmen kolektor (hasil clustering) bagi seniman ``sid``. Mengembalikan SEMUA segmen di ``segmen_kamus``,
+    termasuk yang belum pernah membeli dari seniman ini (``n_pembeli = 0``) -- berguna utk menunjukkan segmen yang belum terjangkau."""
     S = _schema()
     total_tabel = (await db.execute(text(f"SELECT count(*) FROM {S}.kolektor_segmen"))).scalar_one()
-    if total_tabel == 0:
+    total_kamus = (await db.execute(text(f"SELECT count(*) FROM {S}.segmen_kamus"))).scalar_one()
+    if total_tabel == 0 or total_kamus == 0:
         return {"tersedia": False, "items": []}
     rows = (
         await db.execute(
             text(
                 f"""
-                SELECT ks.segmen_id, ks.segmen_nama, sk.deskripsi,
-                       count(DISTINCT tr.pembeli_id) AS n_pembeli
-                FROM {S}.transaksi tr
-                JOIN {S}.kolektor_segmen ks ON ks.kolektor_id = tr.pembeli_id
-                LEFT JOIN {S}.segmen_kamus sk ON sk.segmen_id = ks.segmen_id
-                WHERE tr.penjual_id = :sid AND tr.created_at <= CAST(:t AS timestamptz)
-                GROUP BY ks.segmen_id, ks.segmen_nama, sk.deskripsi
-                ORDER BY n_pembeli DESC, ks.segmen_id
+                SELECT sk.segmen_id, sk.segmen_nama, sk.deskripsi, sk.ukuran, sk.aliran_favorit,
+                       count(DISTINCT tr.pembeli_id)                AS n_pembeli,
+                       count(tr.id)                                 AS n_transaksi,
+                       COALESCE(sum(tr.harga_final_idr), 0)::bigint AS omzet,
+                       avg(tr.harga_final_idr)                      AS rata2
+                FROM {S}.segmen_kamus sk
+                LEFT JOIN {S}.kolektor_segmen ks ON ks.segmen_id = sk.segmen_id
+                LEFT JOIN {S}.transaksi tr ON tr.pembeli_id = ks.kolektor_id
+                                          AND tr.penjual_id = :sid
+                                          AND tr.created_at <= CAST(:t AS timestamptz)
+                GROUP BY sk.segmen_id, sk.segmen_nama, sk.deskripsi, sk.ukuran, sk.aliran_favorit
+                ORDER BY n_pembeli DESC, omzet DESC, sk.segmen_id
                 """
             ),
             {"sid": sid, "t": waktu_acuan()},
         )
     ).all()
     jumlah = sum(r.n_pembeli for r in rows)
+    omzet_total = sum(int(r.omzet) for r in rows)
     items = [
         {
             "segmen_id": int(r.segmen_id),
@@ -261,6 +269,13 @@ async def segmen_pembeli(db: AsyncSession, sid: uuid.UUID) -> dict:
             "n_pembeli": int(r.n_pembeli),
             "porsi_pct": round(r.n_pembeli / jumlah * 100, 1) if jumlah else None,
             "deskripsi": r.deskripsi,
+            "n_transaksi": int(r.n_transaksi),
+            "omzet_idr": int(r.omzet),
+            "harga_rata2_idr": int(round(float(r.rata2))) if r.rata2 is not None else None,
+            "porsi_omzet_pct": round(int(r.omzet) / omzet_total * 100, 1) if omzet_total else None,
+            "n_kolektor_segmen": int(r.ukuran) if r.ukuran is not None else None,
+            "jangkauan_pct": round(r.n_pembeli / r.ukuran * 100, 1) if r.ukuran else None,
+            "aliran_favorit": (r.aliran_favorit or "").replace("_", " ") or None,
         }
         for r in rows
     ]

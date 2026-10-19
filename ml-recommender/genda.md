@@ -37,7 +37,7 @@ Atas arahan dosen, urutan kerja proyek sekarang **clustering dulu, lalu klasifik
    * **Ablasi** `kolektor_segmen` (dengan vs tanpa, beberapa seed). Hasil sementara Thoriq: **tidak menambah akurasi berarti** (selisih < 0,02, dalam derau) karena fitur riwayat sudah memuat informasinya. Laporkan hasilmu sendiri, jujur.
    * **Analisis kesalahan per segmen** (HitRate@1 per `kolektor_segmen`; segmen `Belum Cukup Riwayat` = cold-start). `kolektor_label_asli` tetap hanya untuk analisis.
 6. **Inferensi:** simpan model klasteringnya di bundle: `bundle["klaster_cutoff"] = joblib.load("models/clustering_kolektor_cutoff.joblib")`. `src/inference.py` sudah memakainya (atau memuat file itu otomatis) lewat
-   `cx.pasang_klaster(...)` dan memakai ulang satu `_Konteks` per tabel supaya tidak lambat. Memuatnya butuh `umap-learn` dan `hdbscan` (`pip install -r requirements.txt`, hanya di venv ml-recommender; backend tidak memuat model ini).
+   `cx.pasang_klaster(...)` dan memakai ulang satu `_Konteks` per tabel supaya tidak lambat. **Artefak kini portabel** (hanya scikit-learn: scaler + k-NN, tanpa objek UMAP/HDBSCAN/numba) sehingga bisa dimuat tanpa `umap-learn`/`hdbscan`; kunci versi ada di `requirements-lock.txt`. Backend tidak memuat model ini.
 7. **Uji ulang:** `python scripts/uji_paritas_fitur.py` (kini memuat model cutoff) harus 0 selisih; `python scripts/cek_sinyal_data.py` harus "ketidakcocokan: 0". Patokan md5 baru = CSV yang sekarang ada di repo
    (hasil `python jalankan_pipeline.py --dry-run`, deterministik).
 8. Beri `model_version` baru (`klasifikasi-v2`) karena datanya berbeda.
