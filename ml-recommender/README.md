@@ -160,7 +160,7 @@ provider Indonesia — saat dev ganti DNS ke 1.1.1.1/8.8.8.8 atau pakai data sel
 | `GET /api/dashboard/seniman/{id}/ringkasan?periode=30` | Aul | KPI periode (30/90/365 hari) + perubahan vs periode sebelumnya |
 | `GET /api/dashboard/seniman/{id}/penjualan-bulanan?bulan=12` | Aul | deret bulanan dari `v_seniman_metrik_bulanan` |
 | `GET /api/dashboard/seniman/{id}/aliran` | Aul | penjualan per aliran + perbandingan harga rata-rata vs pasar |
-| `GET /api/dashboard/seniman/{id}/segmen-pembeli` | Aul | sebaran segmen kolektor yang membeli (butuh `kolektor_segmen`) |
+| `GET /api/dashboard/seniman/{id}/segmen-pembeli` | Aul | peran tiap segmen kolektor (hasil clustering) bagi seniman: pembeli, omzet, harga rata-rata, jangkauan, aliran favorit; termasuk segmen yang belum membeli (butuh `kolektor_segmen` + `segmen_kamus`) |
 | `GET /api/dashboard/pasar/tren` | Aul | seniman & aliran yang sedang ramai |
 
 Bentuk respons rekomendasi (Vika wajib mengikuti persis supaya `Karya.fromJson` yang sudah ada tidak crash — field `gallery_name` **non-null** di Flutter):
@@ -197,7 +197,7 @@ Statistik deskriptif atas data dummy; jendela waktu dihitung dari `REKOMENDASI_W
 | `GET /api/dashboard/seniman/{id}/ringkasan?periode=30\|90\|365` | lihat contoh di bawah; `periode` lain → 422 |
 | `GET /api/dashboard/seniman/{id}/penjualan-bulanan?bulan=12` | deret LENGKAP N bulan (bulan kosong = 0): `[{"bulan":"2026-09-01","n_terjual","omzet_idr","harga_rata2_idr","n_pembeli_unik","gaya_terlaris"\|null}]` |
 | `GET /api/dashboard/seniman/{id}/aliran` | `[{"style_name","n_terjual","omzet_idr","harga_rata2_idr","harga_pasar_rata2_idr","selisih_pct"}]`, urut `n_terjual` turun |
-| `GET /api/dashboard/seniman/{id}/segmen-pembeli` | `{"tersedia":true,"items":[{"segmen_id","segmen_nama","n_pembeli","porsi_pct","deskripsi"}]}`; tabel `kolektor_segmen` kosong → `{"tersedia":false,"items":[]}` |
+| `GET /api/dashboard/seniman/{id}/segmen-pembeli` | `{"tersedia":true,"items":[{"segmen_id","segmen_nama","n_pembeli","porsi_pct","deskripsi","n_transaksi","omzet_idr","harga_rata2_idr"\|null,"porsi_omzet_pct","n_kolektor_segmen","jangkauan_pct","aliran_favorit"}]}` — SEMUA segmen di `segmen_kamus` dikembalikan (yang belum membeli: `n_pembeli=0`, `harga_rata2_idr=null`); tabel `kolektor_segmen`/`segmen_kamus` kosong → `{"tersedia":false,"items":[]}` |
 | `GET /api/dashboard/pasar/tren` | `{"seniman_ramai":[{"seniman_id","display_name","n_terjual_30hari","lonjakan","harga_rata2_30hari_idr"}],"aliran_ramai":[{"style_name","n_terjual_30hari","porsi_penjualan_pct","harga_rata2_30hari_idr"}]}` |
 
 ```json

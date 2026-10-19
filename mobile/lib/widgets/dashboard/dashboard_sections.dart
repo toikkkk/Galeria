@@ -367,7 +367,8 @@ class _AliranTab extends StatelessWidget {
   }
 }
 
-/// Tab "Pembeli": ringkasan segmen pembeli (bukan profil pasti per orang).
+/// Tab "Pembeli": peran tiap segmen kolektor (hasil clustering UMAP + HDBSCAN) bagi seniman ini.
+/// Ringkasan deskriptif, bukan profil pasti per orang dan bukan saran harga.
 class _PembeliTab extends StatelessWidget {
   const _PembeliTab({required this.hasil});
 
@@ -375,47 +376,70 @@ class _PembeliTab extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final items = hasil.items;
-    if (items.isEmpty) return _kosong('Belum ada pembeli.');
+    final aktif = hasil.items.where((s) => s.nPembeli > 0).toList();
+    final belum = hasil.items.where((s) => s.nPembeli == 0).toList();
+    if (aktif.isEmpty) return _kosong('Belum ada pembeli.');
+    final utama = aktif.first;
+    final gaya = AppTextStyles.bodySm.copyWith(color: AppColors.muted, fontSize: 11);
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text(
-          'Pembelimu didominasi ${items.first.segmenNama}. Segmen hanya ringkasan deskriptif, bukan profil pasti per orang.',
-          style: AppTextStyles.bodySm.copyWith(
-            color: AppColors.muted,
-            fontSize: 11,
-          ),
+          'Pembelimu paling banyak berasal dari ${utama.segmenNama}'
+          '${utama.porsiOmzetPct != null ? ', menyumbang ${formatPersen(utama.porsiOmzetPct, tandaPlus: false)} omzetmu' : ''}. '
+          'Segmen = ringkasan statistik hasil clustering, bukan profil pasti per orang.',
+          style: gaya,
         ),
         const SizedBox(height: AppSpacing.xs),
-        for (final s in items)
+        for (final s in aktif)
           Padding(
-            padding: const EdgeInsets.symmetric(vertical: 5),
+            padding: const EdgeInsets.symmetric(vertical: 6),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Row(
                   children: [
                     Expanded(
-                      child: Text(
-                        s.segmenNama,
-                        overflow: TextOverflow.ellipsis,
-                        style: AppTextStyles.labelMd,
-                      ),
+                      child: Text(s.segmenNama, overflow: TextOverflow.ellipsis, style: AppTextStyles.labelMd),
                     ),
                     Text(
-                      '${s.nPembeli} · ${formatPersen(s.porsiPct, tandaPlus: false)}',
-                      style: AppTextStyles.labelSm.copyWith(
-                        color: AppColors.muted,
-                      ),
+                      '${s.nPembeli} pembeli · ${formatPersen(s.porsiPct, tandaPlus: false)}',
+                      style: AppTextStyles.labelSm.copyWith(color: AppColors.muted),
                     ),
                   ],
                 ),
                 const SizedBox(height: 4),
                 _Bar(nilai: (s.porsiPct ?? 0) / 100, warna: AppColors.primary),
+                const SizedBox(height: 4),
+                Text(
+                  'Omzet ${formatRupiahRingkas(s.omzetIdr)}'
+                  '${s.porsiOmzetPct != null ? ' (${formatPersen(s.porsiOmzetPct, tandaPlus: false)} omzetmu)' : ''}'
+                  '${s.hargaRata2Idr != null ? ' · harga rata-rata ${formatRupiahRingkas(s.hargaRata2Idr!)}' : ''}',
+                  style: gaya,
+                ),
+                if (s.jangkauanPct != null && s.nKolektorSegmen != null)
+                  Text(
+                    'Menjangkau ${formatPersen(s.jangkauanPct, tandaPlus: false)} dari ${s.nKolektorSegmen} kolektor segmen ini'
+                    '${s.aliranFavorit != null ? ' · aliran favorit segmen: ${s.aliranFavorit}' : ''}',
+                    style: gaya,
+                  ),
               ],
             ),
           ),
+        if (belum.isNotEmpty) ...[
+          const SizedBox(height: AppSpacing.xs),
+          Text('BELUM PERNAH MEMBELI DARIMU', style: AppTextStyles.overline.copyWith(color: AppColors.accent)),
+          const SizedBox(height: 4),
+          for (final s in belum)
+            Padding(
+              padding: const EdgeInsets.symmetric(vertical: 2),
+              child: Text(
+                '${s.segmenNama}${s.nKolektorSegmen != null ? ' (${s.nKolektorSegmen} kolektor)' : ''}'
+                '${s.aliranFavorit != null ? ' · aliran favorit: ${s.aliranFavorit}' : ''}',
+                style: AppTextStyles.bodySm.copyWith(fontSize: 12),
+              ),
+            ),
+        ],
       ],
     );
   }
