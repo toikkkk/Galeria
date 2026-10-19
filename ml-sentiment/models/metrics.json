@@ -1,0 +1,171 @@
+{
+  "model_version": "indobert-v1",
+  "model": "indobenchmark/indobert-base-p1",
+  "n": {
+    "train": 350,
+    "val": 75,
+    "test": 75
+  },
+  "hiperparameter": {
+    "epochs": 6,
+    "batch": 16,
+    "max_len": 64,
+    "lr": 3e-05,
+    "seed": 42
+  },
+  "baseline_tfidf_logreg": {
+    "val": {
+      "akurasi": 0.9867,
+      "macro_f1": 0.9851,
+      "f1_per_kelas": {
+        "negatif": 0.9796,
+        "netral": 0.9756,
+        "positif": 1.0
+      },
+      "confusion_matrix": [
+        [
+          24,
+          0,
+          0
+        ],
+        [
+          1,
+          20,
+          0
+        ],
+        [
+          0,
+          0,
+          30
+        ]
+      ]
+    },
+    "test": {
+      "akurasi": 0.96,
+      "macro_f1": 0.9623,
+      "f1_per_kelas": {
+        "negatif": 0.9362,
+        "netral": 1.0,
+        "positif": 0.9508
+      },
+      "confusion_matrix": [
+        [
+          22,
+          0,
+          2
+        ],
+        [
+          0,
+          21,
+          0
+        ],
+        [
+          1,
+          0,
+          29
+        ]
+      ]
+    },
+    "test_macro_f1_ci95": [
+      0.9194,
+      1.0
+    ]
+  },
+  "riwayat_epoch": [
+    {
+      "epoch": 1,
+      "loss_train": 0.9461,
+      "val_macro_f1": 0.9729,
+      "detik": 102.3
+    },
+    {
+      "epoch": 2,
+      "loss_train": 0.1452,
+      "val_macro_f1": 0.9851,
+      "detik": 100.7
+    },
+    {
+      "epoch": 3,
+      "loss_train": 0.0159,
+      "val_macro_f1": 0.9851,
+      "detik": 99.6
+    },
+    {
+      "epoch": 4,
+      "loss_train": 0.037,
+      "val_macro_f1": 0.9851,
+      "detik": 97.7
+    },
+    {
+      "epoch": 5,
+      "loss_train": 0.0017,
+      "val_macro_f1": 0.9851,
+      "detik": 97.4
+    },
+    {
+      "epoch": 6,
+      "loss_train": 0.0017,
+      "val_macro_f1": 0.9851,
+      "detik": 788.1
+    }
+  ],
+  "epoch_terbaik": 2,
+  "indobert": {
+    "val": {
+      "akurasi": 0.9867,
+      "macro_f1": 0.9851,
+      "f1_per_kelas": {
+        "negatif": 0.9796,
+        "netral": 0.9756,
+        "positif": 1.0
+      },
+      "confusion_matrix": [
+        [
+          24,
+          0,
+          0
+        ],
+        [
+          1,
+          20,
+          0
+        ],
+        [
+          0,
+          0,
+          30
+        ]
+      ]
+    },
+    "test": {
+      "akurasi": 1.0,
+      "macro_f1": 1.0,
+      "f1_per_kelas": {
+        "negatif": 1.0,
+        "netral": 1.0,
+        "positif": 1.0
+      },
+      "confusion_matrix": [
+        [
+          24,
+          0,
+          0
+        ],
+        [
+          0,
+          21,
+          0
+        ],
+        [
+          0,
+          0,
+          30
+        ]
+      ]
+    },
+    "test_macro_f1_ci95": [
+      1.0,
+      1.0
+    ]
+  }
+}
