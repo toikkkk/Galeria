@@ -26,6 +26,7 @@ import models  # noqa: F401 -- registrasi SEMUA model ke Base.metadata, lihat mo
 from routers import (
     admin_dashboard,
     dashboard_seniman,
+    sentimen,
     gambar,
     karya_upload,
     katalog,
@@ -94,7 +95,17 @@ async def lifespan(app: FastAPI):
         ai_probability_threshold=float(os.environ.get("DAI_AI_PROBABILITY_THRESHOLD", "0.5")),
         phash_hamming_threshold=int(os.environ.get("DAI_PHASH_HAMMING_THRESHOLD", "5")),
     )
-    app.state.digital_art_identity_service.load()
+    try:
+        app.state.digital_art_identity_service.load()
+    except Exception as exc:
+        # Graceful degrade, pola SAMA dgn Visual Search di atas: file ONNX tidak
+        # di-commit (gitignore), jadi di mesin yang belum punya model, app tetap
+        # harus bisa start (mis. utk dashboard admin / katalog).
+        logger.warning(
+            "DigitalArtIdentityService gagal di-load (%s) -- endpoint verifikasi "
+            "karya TIDAK akan berfungsi, fitur lain tetap jalan normal.",
+            exc,
+        )
 
     yield
     # shutdown: (belum ada resource yang perlu ditutup eksplisit)
@@ -119,6 +130,7 @@ app.include_router(visual_search.router)
 app.include_router(katalog.router)
 app.include_router(verification.router)
 app.include_router(dashboard_seniman.router)
+app.include_router(sentimen.router)
 app.include_router(admin_dashboard.router)
 app.include_router(katalog_dummy.router)
 app.include_router(karya_upload.router)
