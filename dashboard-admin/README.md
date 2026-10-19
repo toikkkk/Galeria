@@ -68,6 +68,10 @@ komponen bisa sedikit berbeda (dashboard menampilkan keduanya).
 **Kejujuran:** data sintetis dengan struktur yang kita tentukan sendiri → skor mencerminkan desain simulasi, bukan performa
 produksi. Hanya 36 titik data bulanan; selisih kecil antar-model bisa noise. Forecast = proyeksi statistik, bukan jaminan pendapatan.
 
-## Keamanan
-Belum ada Auth. Bila `ADMIN_API_KEY` diisi di `backend/.env`, `/api/admin/*` mewajibkan header `X-Admin-Key`
-(`VITE_ADMIN_KEY` di web ikut ter-bundle ke browser → bukan rahasia sungguhan). Ganti dengan Auth admin asli sebelum rilis.
+## Login & keamanan
+Satu akun admin dari `backend/.env` (bukan tabel `users`): `ADMIN_EMAIL`, `ADMIN_PASSWORD_HASH` (bcrypt), `ADMIN_JWT_SECRET`.
+Buat nilainya dengan `python scripts/buat_hash_admin.py` (dari `backend/`), tempel ke `.env`, lalu **restart penuh** uvicorn
+(`--reload` tidak memantau `.env`). Web memanggil `POST /api/admin/login` → JWT (60 menit; "Ingat saya" 7 hari) → header
+`Authorization: Bearer` ke semua `/api/admin/*`. Salah 5× → IP dikunci 5 menit (disimpan di memori server).
+`X-Admin-Key` (`ADMIN_API_KEY`) lama masih diterima untuk skrip.
+Belum ada: banyak admin, 2FA, rate-limit terdistribusi; CORS backend masih `*`. Ganti dengan Auth asli sebelum rilis.

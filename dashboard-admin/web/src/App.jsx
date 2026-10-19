@@ -1,8 +1,10 @@
-import { useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import {
   Area, Bar, BarChart, CartesianGrid, ComposedChart, Line, LabelList,
   ReferenceLine, ResponsiveContainer, Tooltip, XAxis, YAxis,
 } from "recharts";
+import { ambilToken, hapusToken, onSesiHabis, tokenExp } from "./api.js";
+import Login from "./Login.jsx";
 import { Muat, Segmented, Tabel, Tabs, Tip, useApi } from "./components.jsx";
 import { angka, bulanPanjang, bulanPendek, persen, rupiah, rupiahRingkas, rupiahSumbu } from "./format.js";
 
@@ -403,10 +405,29 @@ function NaikKelas() {
 }
 
 /* ------------------------------------------------------------ halaman */
-export default function App() {
+function PeringatanSesi({ keluar }) {
+  const [sisa, setSisa] = useState(null); // menit tersisa, hanya diisi saat <= 5
+  useEffect(() => {
+    const cek = () => {
+      const exp = tokenExp();
+      if (!exp) return;
+      const ms = exp - Date.now();
+      if (ms <= 0) return keluar("Sesi berakhir, silakan login lagi.");
+      setSisa(ms <= 5 * 60000 ? Math.ceil(ms / 60000) : null);
+    };
+    cek();
+    const t = setInterval(cek, 15000);
+    return () => clearInterval(t);
+  }, [keluar]);
+  if (sisa == null) return null;
+  return <div className="sesi-habis" role="status">Sesi berakhir sekitar {sisa} menit lagi. Simpan pekerjaanmu, lalu login ulang.</div>;
+}
+
+function Dashboard({ keluar }) {
   const ringkasan = useApi(`/ringkasan?periode=${PERIODE_HARI}`);
   return (
     <main className="wrap">
+      <PeringatanSesi keluar={keluar} />
       <header className="top">
         <div>
           <div className="wordmark">
@@ -415,6 +436,7 @@ export default function App() {
           </div>
           <p className="tagline">Pantau pendapatan GALERIA dan perkembangan pengguna Pro</p>
         </div>
+        <button className="link" onClick={() => keluar()}>Keluar</button>
       </header>
 
       <Muat api={ringkasan}>
@@ -432,4 +454,16 @@ export default function App() {
       </div>
     </main>
   );
+}
+
+export default function App() {
+  const [masuk, setMasuk] = useState(() => !!ambilToken());
+  const [pesan, setPesan] = useState("");
+  useEffect(() => {
+    onSesiHabis(() => { setPesan("Sesi berakhir, silakan login lagi."); setMasuk(false); });
+  }, []);
+  const keluar = useCallback((alasan = "") => { hapusToken(); setPesan(alasan); setMasuk(false); }, []);
+  return masuk
+    ? <Dashboard keluar={keluar} />
+    : <Login pesan={pesan} onSukses={() => { setPesan(""); setMasuk(true); }} />;
 }
