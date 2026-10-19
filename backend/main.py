@@ -114,9 +114,14 @@ async def lifespan(app: FastAPI):
 
 app = FastAPI(title="GALERIA API", version="0.1.0", lifespan=lifespan)
 
+# CORS hanya relevan utk web (dashboard admin); app mobile (Flutter native) tidak terkena CORS.
+# Default: localhost/127.0.0.1 di port mana pun (Vite bisa pindah port). Tambah origin lain (mis. domain deploy)
+# lewat CORS_ORIGINS="https://a.com,https://b.com" di .env.
+_cors_tambahan = [o.strip() for o in os.environ.get("CORS_ORIGINS", "").split(",") if o.strip()]
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],   # TODO: ganti ke origin spesifik sebelum produksi
+    allow_origins=_cors_tambahan,
+    allow_origin_regex=r"^https?://(localhost|127\.0\.0\.1)(:\d+)?$",
     allow_methods=["*"],
     allow_headers=["*"],
 )

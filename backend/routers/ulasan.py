@@ -10,6 +10,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from database import get_db
 from schemas.ulasan import KolektorUlasan, UlasanBaru, UlasanTersimpan
 from services import dashboard_repo, ulasan_repo as repo
+from services.db_errors import tabel_belum_ada
 
 router = APIRouter(prefix="/api/ulasan", tags=["ulasan"])
 
@@ -38,7 +39,9 @@ async def tulis_ulasan(body: UlasanBaru, db: AsyncSession = Depends(get_db)):
         uid = await repo.simpan(db, karya_id=kar, kolektor_id=kol, seniman_id=sen, rating=body.rating, teks=body.teks)
     except repo.SudahMengulas:
         raise HTTPException(409, "Kamu sudah pernah mengulas karya ini")
-    except ProgrammingError:
+    except ProgrammingError as exc:
         await db.rollback()
+        if not tabel_belum_ada(exc):
+            raise  # bug SQL sungguhan: jangan disamarkan sebagai 'tabel belum ada'
         raise HTTPException(503, "Fitur ulasan belum siap (tabel belum dimigrasi)")
     return UlasanTersimpan(ulasan_id=uid, karya_id=str(kar), rating=body.rating)
