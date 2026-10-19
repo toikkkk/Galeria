@@ -13,7 +13,7 @@
 
 ## 1. Mengapa bukan K-Means, dan perbandingan algoritma
 K-Means (1957) memaksa jumlah klaster ditebak di awal dan mengasumsikan klaster berbentuk bola berukuran serupa. Dipilih **UMAP + HDBSCAN** karena: (a) K ditemukan dari kepadatan data,
-(b) bentuk klaster bebas dan outlier ditandai noise, (c) kolektor baru bisa ditetapkan tanpa melatih ulang (`umap.transform` + `hdbscan.approximate_predict`).
+(b) bentuk klaster bebas dan outlier ditandai noise, (c) kolektor baru bisa ditetapkan tanpa melatih ulang (k-NN pada fitur terstandarisasi yang dilatih dari label klaster; artefak tanpa objek numba, jadi portabel).
 
 Perbandingan pada fitur yang sama (silhouette di ruang fitur asli):
 
@@ -23,8 +23,8 @@ Perbandingan pada fitur yang sama (silhouette di ruang fitur asli):
 | Gaussian Mixture K=5 | 5 | 0% | 0.256 | 0.595 | ya | K harus ditebak |
 | Agglomerative (Ward) K=5 | 5 | 0% | 0.648 | 0.976 | tidak | tak punya fungsi predict |
 | Spectral K=5 | 5 | 0% | 0.649 | 0.965 | tidak | tak punya fungsi predict |
-| HDBSCAN (fitur asli) | 5 | 4% | 0.649 | 0.965 | ya (approximate_predict) | tanpa reduksi dimensi |
-| **UMAP + HDBSCAN (dipakai)** | 5 | 0% | 0.649 | 0.965 | ya (transform + approximate_predict) | K ditemukan sendiri; model dilatih satu kali |
+| HDBSCAN (fitur asli) | 5 | 4% | 0.649 | 0.965 | ya (k-NN) | tanpa reduksi dimensi |
+| **UMAP + HDBSCAN (dipakai)** | 5 | 0% | 0.649 | 0.965 | ya (k-NN pada fitur terstandarisasi) | K ditemukan sendiri; model dilatih satu kali |
 
 \* ARI vs label asli = hanya validasi. Aturan seleksi (ditetapkan sebelum melihat hasil): bukan K-Means · bisa menetapkan kolektor baru · noise ≤ 10% · silhouette tertinggi di ruang fitur asli.
 **Catatan jujur:** pada data ini beberapa algoritma lain (mis. Spectral, GMM) juga menemukan struktur yang sama; selisih antar-algoritma kecil dibanding pengaruh data. Silhouette
@@ -95,8 +95,8 @@ ARI = **0.965**, NMI = **0.960**. Tabel silang (baris = segmen hasil, kolom = se
 | Calinski-Harabasz | 706.6 | tak punya skala absolut |
 | Stabilitas bootstrap (ARI, 80% subsampel) | 0.994 ± 0.014 | ambang baik >= 0.80 |
 | Noise HDBSCAN saat pelatihan | 0.0% | titik noise ditetapkan ke klaster terdekat |
-| Kesesuaian label latih vs penugasan out-of-sample | 1.000 | 1 = identik |
-| Kepastian keanggotaan (median) | 1.00 | 0% bernilai 0 (noise) |
+| Konsistensi penugasan k-NN (5-fold CV) | 1.000 | kolektor baru ditetapkan dgn k-NN; 1 = identik dgn label klaster |
+| Kepastian penugasan (median) | 1.00 | proporsi suara tetangga k-NN |
 | ARI vs label asli* | 0.965 | 0 = acak, 1 = identik |
 | NMI* | 0.960 |  |
 | Homogenitas* | 0.959 |  |
@@ -130,4 +130,4 @@ segmen yang ditemukan: Kolektor Aktif Bernilai Tinggi (61), Pemburu Tren (25), K
 * **Fitur dipilih berdasarkan kebersihan sinyal** (lihat bagian 2) setelah percobaan pada data ini; ini disclosure, bukan klaim bahwa fitur lain "salah".
 * Nama & deskripsi segmen adalah **ringkasan statistik**, bukan kategori pasti. Jangan menampilkannya di UI sebagai fakta tentang orang tertentu.
 * Melatih ulang pada data lain dapat mengubah jumlah, nama, dan isi segmen; naikkan `VERSI` dan jalankan ulang `scripts/hitung_segmen.py`.
-* Model memuat objek UMAP/HDBSCAN: butuh `umap-learn` dan `hdbscan` terpasang utk memuatnya. Backend tidak memuatnya (hanya membaca tabel).
+* Artefak `.joblib` hanya memuat scaler + k-NN (scikit-learn), **tanpa objek UMAP/HDBSCAN**, jadi bisa dimuat lintas environment. `umap-learn`/`hdbscan` hanya dibutuhkan untuk melatih ulang. Backend tidak memuat model ini.
