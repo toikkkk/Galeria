@@ -5,10 +5,16 @@ import '../../services/sentimen_service.dart';
 import '../../theme/app_theme.dart';
 import 'dashboard_sections.dart';
 
+// Palet kalem khusus sentimen (sage / abu hangat / merah bata) -- selaras tema gading-emas,
+// tidak memakai AppColors.success/error yang lebih terang.
+const _positif = Color(0xFF6E8F78);
+const _netral = Color(0xFFB7B0A4);
+const _negatif = Color(0xFFB0574D);
+
 const _warna = {
-  'positif': AppColors.success,
-  'netral': AppColors.muted,
-  'negatif': AppColors.error,
+  'positif': _positif,
+  'netral': _netral,
+  'negatif': _negatif,
 };
 
 String _label(String s) => switch (s) {
@@ -24,13 +30,17 @@ String _bulanPendek(String iso) {
   return _namaBulan[m - 1];
 }
 
-/// Kartu "Sentimen Ulasan" di dashboard seniman. Memuat datanya sendiri dan TIDAK menjatuhkan
-/// dashboard bila gagal: kalau backend/tabel hasil belum ada, tampil pesan singkat.
+/// Kartu sentimen ulasan. Memuat datanya sendiri dan TIDAK menjatuhkan layar bila gagal.
+///
+/// * Default (dashboard seniman): "Sentimen Ulasan" lengkap -- indeks, proporsi, tren 6 bulan, ulasan.
+/// * [ringkas] (halaman detail karya untuk kolektor): "Ulasan Pembeli" -- rating, proporsi, 2 ulasan;
+///   disembunyikan sepenuhnya bila data tidak ada/gagal dimuat (tidak menambah kesan "error" di halaman beli).
 class SentimenCard extends StatefulWidget {
-  const SentimenCard({super.key, required this.senimanId, this.service});
+  const SentimenCard({super.key, required this.senimanId, this.service, this.ringkas = false});
 
   final String senimanId;
   final SentimenService? service;
+  final bool ringkas;
 
   @override
   State<SentimenCard> createState() => _SentimenCardState();
@@ -71,9 +81,11 @@ class _SentimenCardState extends State<SentimenCard> {
 
   @override
   Widget build(BuildContext context) {
+    final r = widget.ringkas;
+    if (r && !_loading && (_gagal || _data == null || _data!.nUlasan == 0)) return const SizedBox.shrink();
     return DashboardCard(
-      title: 'Sentimen Ulasan',
-      subtitle: 'Dibaca otomatis oleh IndoBERT dari ulasan kolektor',
+      title: r ? 'Ulasan Pembeli' : 'Sentimen Ulasan',
+      subtitle: r ? 'Ringkasan ulasan kolektor lain untuk seniman ini' : 'Dibaca otomatis oleh IndoBERT dari ulasan kolektor',
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -89,7 +101,7 @@ class _SentimenCardState extends State<SentimenCard> {
           else if (_data!.nUlasan == 0)
             const _Pesan(teks: 'Belum ada ulasan untuk seniman ini.')
           else
-            _Isi(data: _data!),
+            _Isi(data: _data!, ringkas: r),
         ],
       ),
     );
@@ -117,14 +129,37 @@ class _Pesan extends StatelessWidget {
 }
 
 class _Isi extends StatelessWidget {
-  const _Isi({required this.data});
+  const _Isi({required this.data, this.ringkas = false});
 
   final SentimenSeniman data;
+  final bool ringkas;
 
   @override
   Widget build(BuildContext context) {
     final indeks = data.indeksSentimen;
     final rating = data.ratingRata2 == null ? '' : ' · rating ${data.ratingRata2!.toStringAsFixed(1)}';
+    if (ringkas) {
+      return Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            '${data.ratingRata2 == null ? '' : '★ ${data.ratingRata2!.toStringAsFixed(1)} · '}${data.nUlasan} ulasan',
+            style: AppTextStyles.headlineSm.copyWith(fontSize: 15),
+          ),
+          const SizedBox(height: AppSpacing.sm),
+          _BarProporsi(hitung: data.hitung),
+          if (data.ulasanTerbaru.isNotEmpty) ...[
+            const SizedBox(height: AppSpacing.sm),
+            for (final u in data.ulasanTerbaru.take(2)) _Ulasan(u: u),
+          ],
+          const SizedBox(height: AppSpacing.xs),
+          Text(
+            'Contoh data: ulasan dan klasifikasinya sintetis.',
+            style: AppTextStyles.bodySm.copyWith(color: AppColors.muted, fontSize: 11),
+          ),
+        ],
+      );
+    }
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -135,7 +170,7 @@ class _Isi extends StatelessWidget {
               indeks == null ? '-' : '${indeks > 0 ? '+' : ''}${indeks.toStringAsFixed(0)}',
               style: AppTextStyles.headlineMd.copyWith(
                 fontSize: 32,
-                color: indeks != null && indeks < 0 ? AppColors.error : AppColors.success,
+                color: indeks != null && indeks < 0 ? _negatif : _positif,
               ),
             ),
             const SizedBox(width: AppSpacing.xs),
@@ -242,11 +277,11 @@ class _Tren extends StatelessWidget {
                           child: Column(
                             children: [
                               if (b.negatif > 0)
-                                Expanded(flex: b.negatif, child: const ColoredBox(color: AppColors.error, child: SizedBox.expand())),
+                                Expanded(flex: b.negatif, child: const ColoredBox(color: _negatif, child: SizedBox.expand())),
                               if (b.netral > 0)
-                                Expanded(flex: b.netral, child: const ColoredBox(color: AppColors.muted, child: SizedBox.expand())),
+                                Expanded(flex: b.netral, child: const ColoredBox(color: _netral, child: SizedBox.expand())),
                               if (b.positif > 0)
-                                Expanded(flex: b.positif, child: const ColoredBox(color: AppColors.success, child: SizedBox.expand())),
+                                Expanded(flex: b.positif, child: const ColoredBox(color: _positif, child: SizedBox.expand())),
                             ],
                           ),
                         ),
