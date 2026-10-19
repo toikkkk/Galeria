@@ -54,17 +54,17 @@ async def main() -> None:
     async with engine.begin() as conn:
         for stmt in [s.strip() for s in DDL.split(";") if s.strip()]:
             await conn.execute(text(stmt))
-        await conn.execute(text("DELETE FROM dummy_sentimen.ulasan"))
+        await conn.execute(text("DELETE FROM dummy_sentimen.ulasan WHERE sumber = 'dummy'"))  # ulasan 'app' (ditulis kolektor) TIDAK dihapus
         await conn.execute(
             text("""INSERT INTO dummy_sentimen.ulasan
                 (ulasan_id, transaksi_id, karya_id, kolektor_id, seniman_id, teks, rating, sentimen_label, split,
-                 sentimen_prediksi, prob_negatif, prob_netral, prob_positif, model_version, created_at)
+                 sentimen_prediksi, prob_negatif, prob_netral, prob_positif, model_version, created_at, dihitung_pada, sumber)
                 VALUES (CAST(:ulasan_id AS uuid), CAST(:transaksi_id AS uuid), CAST(:karya_id AS uuid),
                         CAST(:kolektor_id AS uuid), CAST(:seniman_id AS uuid), :teks, :rating, :sentimen_label, :split,
-                        :sentimen_prediksi, :prob_negatif, :prob_netral, :prob_positif, :model_version, :created_at)"""),
+                        :sentimen_prediksi, :prob_negatif, :prob_netral, :prob_positif, :model_version, :created_at, now(), 'dummy')"""),
             rows,
         )
-        n = (await conn.execute(text("SELECT count(*) FROM dummy_sentimen.ulasan"))).scalar()
+        n = (await conn.execute(text("SELECT count(*) FROM dummy_sentimen.ulasan WHERE sumber = 'dummy'"))).scalar()
     await engine.dispose()
     print(f"dummy_sentimen.ulasan terisi: {n} baris")
 
