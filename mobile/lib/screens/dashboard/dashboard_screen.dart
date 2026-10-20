@@ -8,6 +8,7 @@ import '../../widgets/galeria_logo.dart';
 import '../../utils/format.dart';
 import '../../widgets/dashboard/dashboard_sections.dart';
 import '../../widgets/dashboard/sales_chart_card.dart';
+import '../../widgets/dashboard/sentimen_card.dart';
 import '../../utils/coming_soon.dart';
 
 /// Konversi dari
@@ -450,6 +451,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
             segmen: data.segmen,
             tren: data.tren,
           ),
+          const SizedBox(height: AppSpacing.md),
+          SentimenCard(senimanId: data.senimanId),
           const SizedBox(height: AppSpacing.md),
           const SizedBox(height: AppSpacing.xl),
         ],

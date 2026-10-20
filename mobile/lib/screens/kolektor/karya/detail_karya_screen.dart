@@ -7,6 +7,8 @@ import '../../../theme/app_theme.dart';
 import '../../../widgets/karya_image.dart';
 import '../../../widgets/kolektor/karya_grid_card.dart';
 import '../../../utils/coming_soon.dart';
+import '../../../widgets/dashboard/sentimen_card.dart';
+import '../../../widgets/kolektor/tulis_ulasan_sheet.dart';
 
 /// Konversi dari
 /// docs/KOLEKTOR FITUR PEMBELIAN PEMBAYARAN/.../galeria_detail_karya_seni/code.html
@@ -268,6 +270,28 @@ class DetailKaryaScreen extends StatelessWidget {
                     ),
                   ),
                 ),
+                if (karya.senimanId != null) ...[
+                  const SizedBox(height: AppSpacing.md),
+                  SentimenCard(senimanId: karya.senimanId!, ringkas: true),
+                  const SizedBox(height: AppSpacing.xs),
+                  SizedBox(
+                    width: double.infinity,
+                    child: OutlinedButton.icon(
+                      key: const Key('tulis_ulasan'),
+                      onPressed: () async {
+                        final messenger = ScaffoldMessenger.of(context);
+                        final terkirim = await tampilkanTulisUlasan(context, karyaId: karya.id, judulKarya: karya.title);
+                        if (terkirim) {
+                          messenger.showSnackBar(const SnackBar(
+                            content: Text('Terima kasih! Ulasanmu tersimpan dan akan dianalisis.'),
+                          ));
+                        }
+                      },
+                      icon: const Icon(Icons.rate_review_outlined, size: 18),
+                      label: const Text('Tulis ulasan'),
+                    ),
+                  ),
+                ],
                 const SizedBox(height: AppSpacing.md),
                 Text('Cerita Karya', style: AppTextStyles.headlineMd),
                 const SizedBox(height: 4),

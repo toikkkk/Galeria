@@ -108,9 +108,28 @@ Manual di HP (backend jalan + `adb reverse`): (1) beranda menampilkan rekomendas
 (3) "Semua karya" → scroll memuat halaman berikut, filter aliran & harga bekerja; (4) detail karya menampilkan gambar R2; (5) layar Visual Search & onboarding tidak berubah.
 
 ## 7. Definition of Done
-- [ ] `/api/katalog-dummy`, `/api/rekomendasi/demo-kolektor`, `/api/rekomendasi/{id}` sesuai kontrak (diuji dgn curl, `gallery_name` tak pernah null)
-- [ ] Gambar dari R2 tampil di grid, beranda, dan detail; fallback aset tetap jalan
-- [ ] "Rekomendasi untukmu" memakai data model (atau mock) + chip alasan; gagal fetch → fallback tanpa crash
-- [ ] Katalog dummy ter-paging + filter + pencarian server-side
-- [ ] `flutter analyze` & `flutter test` bersih; tidak ada kredensial di diff
-- [ ] PR ke `develop` + catatan singkat cara menjalankan; kabari Thoriq
+Status per **2026-10-19** (`[x]` = sudah dicek; `[ ]` = belum / tertahan):
+- [x] `/api/katalog-dummy`, `/api/rekomendasi/demo-kolektor`, `/api/rekomendasi/{id}` sesuai kontrak (diuji: `gallery_name` tak pernah null; uuid asing → 404; hasil belum ada → 503). Dicek terhadap keluaran `klasifikasi-v2` Genda: semua 6 kode alasan dikenali backend, bentuk JSON tepat.
+- [x] Gambar dari R2 tampil di grid, beranda, dan detail; fallback aset tetap jalan (`KaryaImage`)
+- [x] "Rekomendasi untukmu" memakai data model (atau mock) + chip alasan; gagal fetch → fallback tanpa crash
+- [x] Katalog dummy ter-paging + filter + pencarian server-side (mis. 507 karya tersedia; cari "monet" → 144)
+- [x] `flutter analyze` bersih & `flutter test` 10/10 lolos — setelah memperbaiki error kompilasi di `lib/main.dart` (import `CupertinoPageTransitionsBuilder` hilang)
+- [x] Tidak ada kredensial di diff
+- [ ] **Data rekomendasi asli di Neon:** tabel `rekomendasi_kolektor` masih **0 baris** di database yang dipakai tim (lihat catatan di bawah) → app memakai mock / fallback sampai Genda menghitung ulang
+- [ ] Uji manual di HP (beranda, scroll "Semua karya", matikan backend) — belum dijalankan
+- [ ] PR ke `develop` + kabari Thoriq & Genda
+
+### Catatan temuan: keluaran Genda (`klasifikasi-v2`) tidak cocok dengan data Neon yang sekarang
+Diuji 2026-10-19 dengan memasukkan CSV Genda ke Neon di dalam transaksi yang di-rollback (Neon tidak berubah):
+* Dari 261 karya unik yang direkomendasikan, **186 sudah terjual** menurut `transaksi` (Neon *dan* `ml-recommender/data/export/transaksi.csv` di repo), 40 lagi ada di `fixtures/karya_disembunyikan.txt`.
+* Akibatnya endpoint (yang benar menyaring karya terjual/disembunyikan) mengembalikan **sangat sedikit item**: 105 dari 200 kolektor tidak dapat hasil sama sekali (503), sisanya <20 item (mis. satu kolektor hanya 2 dari 20).
+* Padahal `genda.md` melaporkan "0 karya sudah terjual direkomendasikan" dan tabel Neon terisi 4.000 baris. Dugaan: Genda menghitung dan menulis ke Neon/data yang **berbeda** dari yang dipakai tim sekarang.
+* **Tindak lanjut (Genda):** jalankan ulang `python scripts/hitung_rekomendasi.py` terhadap `DATABASE_URL` yang sama dengan `backend/.env` tim, lalu cek kriteria SQL di `genda.md`. Setelah tabel terisi, endpoint langsung bekerja tanpa mengubah kode.
+* Filter di backend (`tr.id IS NULL` + daftar karya disembunyikan) **sengaja dipertahankan** — jangan dilonggarkan demi "menambah jumlah hasil".
+
+### Menyegarkan mock dari keluaran Genda
+```powershell
+cd backend ; .venv\Scriptsctivate
+python scriptsuat_mock_rekomendasi.py --csv <path ke rekomendasi_kolektor.csv terbaru>
+```
+Skrip memasukkan CSV ke Neon dalam transaksi yang selalu di-rollback, memakai query yang sama dgn endpoint asli, lalu menulis `fixtures/rekomendasi_mock.json` (kolektor dgn item layak terbanyak). Jalankan app dgn `REKOMENDASI_MOCK=1`.
