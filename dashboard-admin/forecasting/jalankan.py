@@ -30,7 +30,7 @@ from sqlalchemy.ext.asyncio import create_async_engine
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 from dataset import SCHEMA, TARGET, kalender_masa_depan, muat_bulanan  # noqa: E402
-from modelku import MODEL, MODEL_ID, MODEL_UTAMA  # noqa: E402
+from modelku import MODEL, MODEL_DIBANDINGKAN, MODEL_ID, MODEL_UTAMA  # noqa: E402
 
 warnings.filterwarnings("ignore")
 
@@ -124,7 +124,8 @@ async def tulis(df, hasil, fc, terpilih, pilih_manual=False):
                 "chronos_model_id": MODEL_ID,
                 "tarif_komisi": "0.025",
                 "harga_pro_kolektor": "50000", "harga_pro_seniman": "150000",
-                "aturan_pilih": "manual" if pilih_manual else "MAPE terkecil di backtest bergulir (RMSE sebagai pembanding), per target",
+                "aturan_pilih": "manual" if pilih_manual else "MAPE terkecil di antara semua model yang diuji (RMSE sebagai pembanding), per target",
+                "model_diminta_dosen": json.dumps(MODEL_UTAMA),
                 "catatan": "Data sintetis; skor mencerminkan desain simulasi, bukan performa produksi."}
         for k, v in meta.items():
             await conn.execute(text(f"INSERT INTO {SCHEMA}.forecast_meta (kunci, nilai) VALUES (:k, :v)"),
@@ -138,7 +139,7 @@ def main(tanpa_db: bool, hanya: list[str] | None, pilih: str | None = None, targ
     print(f"Deret: {len(df0)} bulan, {df0['bulan'].iloc[0].date()} .. {df0['bulan'].iloc[-1].date()}, "
           f"total pendapatan platform Rp{total:,} (komisi Rp{int(df0['komisi_idr'].sum()):,}, "
           f"langganan Rp{int(df0['langganan_kolektor_idr'].sum() + df0['langganan_seniman_idr'].sum()):,})")
-    nama_model = hanya or MODEL_UTAMA
+    nama_model = hanya or MODEL_DIBANDINGKAN
     hasil, fc, terpilih = {}, {}, {}
     for target, kolom in TARGET.items():
         if target_uji and target not in target_uji:

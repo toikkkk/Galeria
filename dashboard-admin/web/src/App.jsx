@@ -109,6 +109,8 @@ function TipForecast({ active, payload }) {
   return <Tip judul={`${j} · perkiraan`} baris={[["Perkiraan", rupiah(r.forecast)]]} />;
 }
 
+const METODE_DIMINTA = ["arima", "fts_multivariat"];
+
 const pTampil = (v, kpss = false) => {
   if (kpss && v <= 0.01) return "≤ 0,01";
   if (kpss && v >= 0.1) return "≥ 0,10";
@@ -237,17 +239,18 @@ function Forecast() {
                 </>
               )}
 
-              <h3 className="sub">Langkah 2 — Perbandingan metode</h3>
+              <h3 className="sub">Langkah 2 — Perbandingan metode ({fc.backtest.length} metode diuji)</h3>
               <Tabel
                 kolom={[
-                  { judul: "Metode", sel: (r) => namaModel(r.model) + (r.terpilih ? " ✓ terbaik" : "") },
+                  { judul: "Metode", sel: (r) => namaModel(r.model) + (METODE_DIMINTA.includes(r.model) ? " ★" : "") + (r.terpilih ? " ✓ terbaik" : "") },
                   { judul: "MAPE", sel: (r) => (r.mape_pct == null ? "–" : persen(r.mape_pct)) },
                   { judul: "RMSE", sel: (r) => (r.rmse_idr == null ? "–" : rupiahRingkas(r.rmse_idr)) },
                 ]}
                 baris={fc.backtest.map((b) => ({ ...b, _pilih: b.terpilih }))}
               />
               <p className="cap">
-                Metode terbaik dipilih dari MAPE terkecil (RMSE sebagai pembanding) pada uji ulang bergulir: model dilatih pada data lama,
+                ★ = dua metode yang diminta untuk dibandingkan (ARIMA univariat dan Fuzzy Time Series multivariat); metode lain adalah pembanding.
+                Metode terbaik dipilih dari MAPE terkecil di antara <b>semua</b> metode (RMSE sebagai pembanding) pada uji ulang bergulir: model dilatih pada data lama,
                 meramal 6 bulan, lalu dibandingkan dengan kenyataan, diulang 7 kali. Pemenangnya dipilih per sumber pendapatan.
               </p>
 

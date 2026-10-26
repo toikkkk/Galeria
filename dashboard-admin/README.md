@@ -73,27 +73,38 @@ musiman (kekuatan STL + ACF lag 12), stasioneritas (ADF dan KPSS pada level dan 
 Temuan pada data ini: 36 bulan lengkap; tren naik kuat (±9–13% per bulan); musiman sedang–kuat tetapi hanya 3 siklus (berdaya rendah);
 level tidak stasioner → d = 1; bulan peluncuran (nilai < 5% median) dibuang sebelum pemodelan.
 
-**Langkah 2 — dua metode dibandingkan** (`forecasting/arima_fts.py`, `jalankan.py`), target: total, komisi, langganan kolektor, langganan seniman:
-* **ARIMA (univariat)** pada log1p(y); d dari ADF+KPSS (0/1), (p, q) 0–1 dipilih dari AICc.
-* **Fuzzy Time Series multivariat** (2 faktor: pendapatan + satu faktor pengaruh yang dipilih otomatis dari korelasi pada data latih: jumlah transaksi / pengguna Pro / pengguna baru), orde-1,
+**Langkah 2 — semua metode dibandingkan** (`forecasting/arima_fts.py`, `modelku.py`, `jalankan.py`), target: total, komisi, langganan kolektor, langganan seniman.
+Dua metode yang DIMINTA dosen selalu masuk perbandingan, ditandai ★ di web, dan sembilan model pembanding dari eksplorasi sebelumnya ikut diuji supaya yang ditampilkan benar-benar yang terbaik:
+* ★ **ARIMA (univariat)** pada log1p(y); d dari ADF+KPSS (0/1), (p, q) 0–1 dipilih dari AICc.
+* ★ **Fuzzy Time Series multivariat** (2 faktor: pendapatan + satu faktor pengaruh yang dipilih otomatis dari korelasi pada data latih: jumlah transaksi / pengguna Pro / pengguna baru), orde-1,
   pada selisih log (FTS tidak bisa mengekstrapolasi di luar rentang universe).
-* Evaluasi: backtest bergulir (titik potong T = 24…30 bulan, horizon 6) → **MAPE** (kriteria utama) dan **RMSE** (pembanding). Pemenang per target ditampilkan di web dengan **dua garis** (aktual dan forecast); tanpa stacked bar.
-Model lama (ETS, Theta, LightGBM, Chronos-2, dst.) masih ada di `modelku.py` dan bisa diuji lewat `jalankan.py --hanya <model>`, tetapi tidak ditampilkan.
+* Pembanding: seasonal-naive+tren, ETS, Theta, LightGBM, Chronos-2 (4 varian), ensemble Chronos-2+Theta.
+* Evaluasi: backtest bergulir (titik potong T = 24…30 bulan, horizon 6) → **MAPE** (kriteria utama) dan **RMSE** (pembanding). Pemenang per target ditampilkan di web dengan **dua garis** (aktual dan forecast); tanpa stacked bar, tanpa pita interval.
 
 ```powershell
 cd dashboard-admin
 python -m venv .venv --system-site-packages ; .venv\Scripts\activate ; pip install asyncpg
+pip install torch --index-url https://download.pytorch.org/whl/cpu ; pip install chronos-forecasting lightgbm   # hanya utk model pembanding
 python forecasting\diagnosa.py        # cek data series -> Neon
-python forecasting\jalankan.py        # backtest ARIMA vs FTS + forecast -> Neon
-python forecasting\uji_model.py       # 14 uji cepat kedua model (tanpa database)
+python forecasting\jalankan.py        # backtest 11 model + forecast -> Neon (±20-30 menit krn Chronos-2 di CPU)
+python forecasting\uji_model.py       # 14 uji cepat ARIMA dan FTS (tanpa database)
 ```
 
-Hasil run terakhir (MAPE backtest; makin kecil makin baik): total — ARIMA 28,8% (FTS 48,6%) · komisi — ARIMA 30,5% (FTS 51,7%) ·
-langganan kolektor — FTS 10,6% (ARIMA 38,7%) · langganan seniman — FTS 20,7% (ARIMA 27,9%). Pemenangnya berbeda per target.
+Hasil run terakhir (MAPE backtest, makin kecil makin baik):
+
+| Sumber | **Terbaik (ditampilkan)** | ★ ARIMA | ★ FTS |
+|---|---|---|---|
+| Total | Chronos-2 + kovariat Pro **15,6%** | 28,8% | 48,6% |
+| Komisi | Chronos-2 + kovariat Pro **15,9%** | 30,5% | 51,7% |
+| Langganan kolektor | Theta **9,7%** | 38,7% | 10,6% |
+| Langganan seniman | Theta **15,3%** | 27,9% | 20,7% |
+
+Antara dua metode yang diminta: ARIMA unggul di total dan komisi, FTS unggul di dua langganan. Namun **model pembanding lebih akurat daripada keduanya di semua sumber** (di langganan kolektor FTS hampir setara Theta).
+Angka model pembanding mereproduksi hasil sebelumnya (Aulya) pada metrik WAPE yang sama.
 
 **Kejujuran:**
 * Data sintetis dengan struktur yang kita tentukan sendiri → skor mencerminkan desain simulasi, bukan performa produksi. Hanya 36 bulan; 7 titik uji × 6 bulan, sehingga selisih kecil antar-metode bisa kebetulan.
-* **Keputusan desain diambil setelah melihat hasil awal**, jadi skor di atas bukan evaluasi yang sepenuhnya "buta": percobaan pertama meledak (ARIMA komisi MAPE >1.600%) karena (1) bulan peluncuran bernilai Rp0,2 juta lalu Rp15 juta
+* **Keputusan desain diambil setelah melihat hasil awal**, jadi skor di atas bukan evaluasi yang sepenuhnya "buta": pada ARIMA/FTS, percobaan pertama meledak (ARIMA komisi MAPE >1.600%) karena (1) bulan peluncuran bernilai Rp0,2 juta lalu Rp15 juta
   membuat satu selisih log raksasa → diperbaiki dengan membuang bulan awal < 5% median; (2) d=2 dan orde ARMA besar overfit pada ±30 titik → d maks 1, (p, q) ≤ 1 dengan AICc; (3) FTS pada selisih mentah terkunci
   di keadaan "naik besar" → dipindah ke selisih log. Perubahan ini beralasan metodologis, tetapi pembaca harus tahu urutannya.
 * Forecast meneruskan tren historis; bila pertumbuhan melambat keduanya cenderung melebihkan.

@@ -169,7 +169,7 @@ def ensemble_chronos_theta(train, masa_depan):
 
 from arima_fts import arima, fts_multivariat  # noqa: E402  (dua model utama yang dibandingkan di dashboard)
 
-# Model yang dibandingkan & ditampilkan secara default (permintaan dosen: ARIMA univariat vs FTS multivariat).
+# Dua metode yang DIMINTA dosen (ARIMA univariat vs FTS multivariat). Keduanya selalu masuk perbandingan.
 MODEL_UTAMA = ["arima", "fts_multivariat"]
 
 MODEL = {
@@ -185,3 +185,7 @@ MODEL = {
     "chronos2_log_kovariat_pro": chronos2_log_kovariat_pro,
     "ensemble_chronos_theta": ensemble_chronos_theta,
 }
+
+# Semua model yang dibandingkan secara default: dua metode permintaan dosen + model pembanding lama (ETS, Theta,
+# LightGBM, Chronos-2, ...). Yang ditampilkan di dashboard = MAPE terkecil di antara SEMUANYA.
+MODEL_DIBANDINGKAN = list(MODEL)
