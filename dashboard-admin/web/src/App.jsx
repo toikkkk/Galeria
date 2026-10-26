@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from "react";
 import {
-  Bar, BarChart, CartesianGrid, ComposedChart, Line, LabelList,
+  Bar, BarChart, Cell, CartesianGrid, ComposedChart, Line, LabelList,
   ReferenceLine, ResponsiveContainer, Tooltip, XAxis, YAxis,
 } from "recharts";
 import { ambilToken, hapusToken, onSesiHabis, tokenExp } from "./api.js";
@@ -321,32 +321,50 @@ function labelAngka(langkah) {
   };
 }
 
-/** SATU grafik: dua batang berdampingan per bulan (emas = sudah Pro, biru = belum upgrade), jumlah tertulis di batang. */
-function BatangGabungan({ data, info, langkah }) {
+/** Grafik 1: posisi akhir bulan terakhir, dua batang horizontal (sudah Pro vs belum upgrade). */
+function BarSaatIni({ b, info }) {
+  const data = [
+    { nama: "Sudah Pro", nilai: b.n_pro, persen: b.pro_share_pct, warna: "var(--series-1)" },
+    { nama: "Belum upgrade", nilai: b.n_non_pro, persen: 100 - b.pro_share_pct, warna: "var(--series-2)" },
+  ];
   return (
-    <>
-      <div className="legend">
-        <span><i style={{ background: "var(--series-1)" }} />Sudah Pro</span>
-        <span><i style={{ background: "var(--series-2)" }} />Belum upgrade</span>
-      </div>
-      <div className="chart" role="img"
-        aria-label={`Diagram batang jumlah ${info.sebutan} yang sudah Pro dan yang belum upgrade, per bulan`}>
-        <ResponsiveContainer>
-          <BarChart data={data} margin={{ top: 26, right: 8, bottom: 0, left: 0 }} barGap={3} barCategoryGap="14%">
-            <CartesianGrid stroke="var(--grid)" vertical={false} />
-            <XAxis dataKey="label" tick={AXIS} tickLine={false} axisLine={{ stroke: "var(--grid)" }} interval="preserveStartEnd" minTickGap={14} />
-            <YAxis tick={AXIS} tickLine={false} axisLine={false} width={48} tickFormatter={angka} domain={[0, "auto"]} />
-            <Tooltip content={<TipPro />} cursor={{ fill: "var(--grid)", opacity: 0.6 }} />
-            <Bar dataKey="n_pro" fill="var(--series-1)" radius={[4, 4, 0, 0]} maxBarSize={30} isAnimationActive={false}>
-              <LabelList dataKey="n_pro" content={labelAngka(langkah)} />
-            </Bar>
-            <Bar dataKey="n_non_pro" fill="var(--series-2)" radius={[4, 4, 0, 0]} maxBarSize={30} isAnimationActive={false}>
-              <LabelList dataKey="n_non_pro" content={labelAngka(langkah)} />
-            </Bar>
-          </BarChart>
-        </ResponsiveContainer>
-      </div>
-    </>
+    <div className="chart" style={{ height: 130 }} role="img"
+      aria-label={`Diagram batang ${info.sebutan} per ${bulanPanjang(b.bulan)}: ${angka(b.n_pro)} sudah Pro dan ${angka(b.n_non_pro)} belum upgrade`}>
+      <ResponsiveContainer>
+        <BarChart data={data} layout="vertical" margin={{ top: 4, right: 110, bottom: 4, left: 4 }} barCategoryGap="28%">
+          <XAxis type="number" hide domain={[0, "dataMax"]} />
+          <YAxis type="category" dataKey="nama" tick={{ ...AXIS, fontSize: 13 }} tickLine={false} axisLine={false} width={104} />
+          <Bar dataKey="nilai" radius={[0, 6, 6, 0]} maxBarSize={34} isAnimationActive={false}>
+            {data.map((d) => <Cell key={d.nama} fill={d.warna} />)}
+            <LabelList dataKey="nilai" content={(p) => (
+              <text x={p.x + p.width + 8} y={p.y + p.height / 2} dominantBaseline="middle" fontSize={13} fontWeight={600} fill="var(--text-primary)">
+                {angka(p.value)} <tspan fontWeight={400} fill="var(--text-secondary)">({persen(data[p.index].persen)})</tspan>
+              </text>
+            )} />
+          </Bar>
+        </BarChart>
+      </ResponsiveContainer>
+    </div>
+  );
+}
+
+/** Grafik 2: jumlah pengguna Pro tiap bulan (satu warna, angka di tiap batang). */
+function BarPerkembangan({ data, info }) {
+  const langkah = data.length > 12 ? 2 : 1;
+  return (
+    <div className="chart" style={{ height: 250 }} role="img"
+      aria-label={`Diagram batang jumlah ${info.sebutan} Pro per bulan, dari ${angka(data[0].n_pro)} menjadi ${angka(data[data.length - 1].n_pro)}`}>
+      <ResponsiveContainer>
+        <BarChart data={data} margin={{ top: 22, right: 8, bottom: 0, left: 8 }} barCategoryGap="18%">
+          <XAxis dataKey="label" tick={AXIS} tickLine={false} axisLine={{ stroke: "var(--grid)" }} interval={0} />
+          <YAxis hide domain={[0, "dataMax"]} />
+          <Tooltip content={<TipPro />} cursor={{ fill: "var(--grid)", opacity: 0.6 }} />
+          <Bar dataKey="n_pro" fill="var(--series-1)" radius={[4, 4, 0, 0]} maxBarSize={36} isAnimationActive={false}>
+            <LabelList dataKey="n_pro" content={labelAngka(langkah)} />
+          </Bar>
+        </BarChart>
+      </ResponsiveContainer>
+    </div>
   );
 }
 
@@ -370,7 +388,6 @@ function PanelRole({ role, n }) {
           const a = data[0], b = data[data.length - 1];
           const tumbuh = a.n_pro ? ((b.n_pro - a.n_pro) / a.n_pro) * 100 : null;
           const pendapatan = pend.status === "ok" ? pend.data[pend.data.length - 1][info.kolomPendapatan] : null;
-          const langkah = data.length > 12 ? 2 : 1;
           return (
             <>
               <p className="kalimat">
@@ -388,10 +405,7 @@ function PanelRole({ role, n }) {
 
               <div className="card-head" style={{ marginBottom: 6 }}>
                 <div>
-                  <h3 className="judul-grafik">Sudah Naik Kelas atau Belum? {info.label} Bulan demi Bulan</h3>
-                  <p className="cap" style={{ margin: 0 }}>
-                    Emas = sudah Pro, biru = belum upgrade. Angka di atas batang = jumlah {info.sebutan} pada akhir bulan.
-                  </p>
+                  <h3 className="judul-grafik">Sudah Naik Kelas atau Belum? {info.label}</h3>
                 </div>
                 <button className="link" onClick={() => setTabel(!tabel)}>{tabel ? "Lihat grafik" : "Lihat angka per bulan"}</button>
               </div>
@@ -409,7 +423,10 @@ function PanelRole({ role, n }) {
                 />
               ) : (
                 <>
-                  <BatangGabungan data={data} info={info} langkah={langkah} />
+                  <p className="cap" style={{ margin: "0 0 2px" }}>Posisi akhir {bulanPanjang(b.bulan)}</p>
+                  <BarSaatIni b={b} info={info} />
+                  <p className="cap" style={{ margin: "14px 0 2px" }}>Jumlah {info.sebutan} Pro pada akhir tiap bulan</p>
+                  <BarPerkembangan data={data} info={info} />
                 </>
               )}
             </>
