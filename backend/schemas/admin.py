@@ -52,6 +52,8 @@ class TitikForecast(BaseModel):
 
 class MetrikModel(BaseModel):
     model: str
+    mape_pct: float | None = None   # kriteria utama pemilihan model (backtest bergulir)
+    rmse_idr: float | None = None   # kriteria pembanding
     wape_pct: float
     smape_pct: float
     mase: float
@@ -74,6 +76,14 @@ class ForecastPendapatan(BaseModel):
     jumlah_komponen_p50_idr: int | None = None  # hanya target 'total': komisi + 2 langganan (P50 masing-masing)
     backtest: list[MetrikModel] = []
     catatan: str | None = None
+
+
+class DiagnosaDeret(BaseModel):
+    """Hasil cek data series sebelum memilih metode (lihat dashboard-admin/forecasting/diagnosa.py)."""
+    target: str
+    tersedia: bool
+    dibuat_at: str | None = None
+    hasil: dict | None = None
 
 
 class ProVsNonPro(BaseModel):

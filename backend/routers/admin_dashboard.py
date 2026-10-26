@@ -17,7 +17,7 @@ from pydantic import BaseModel
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from database import get_db
-from schemas.admin import ForecastPendapatan, PendapatanBulan, ProVsNonPro, RingkasanAdmin
+from schemas.admin import DiagnosaDeret, ForecastPendapatan, PendapatanBulan, ProVsNonPro, RingkasanAdmin
 from services import admin_auth, admin_repo as repo
 
 
@@ -85,6 +85,14 @@ async def forecast(
     if target not in repo.TARGET_VALID:
         raise HTTPException(422, f"target harus salah satu dari {', '.join(repo.TARGET_VALID)}")
     return await repo.forecast(db, target, bulan_aktual)
+
+
+@protected.get("/diagnosa", response_model=DiagnosaDeret)
+async def diagnosa(target: str = Query("total"), db: AsyncSession = Depends(get_db)):
+    """Cek data series (kelengkapan, outlier, tren, musiman, stasioneritas) sebelum memilih metode forecast."""
+    if target not in repo.TARGET_VALID:
+        raise HTTPException(422, f"target harus salah satu dari {', '.join(repo.TARGET_VALID)}")
+    return await repo.diagnosa_deret(db, target)
 
 
 @protected.get("/pro-vs-nonpro", response_model=list[ProVsNonPro])

@@ -12,6 +12,7 @@ Catatan asyncpg: parameter waktu wajib ``CAST(:t AS timestamptz)``.
 
 from __future__ import annotations
 
+import json
 import os
 import re
 from datetime import date, datetime, timezone
@@ -147,8 +148,9 @@ async def forecast(db: AsyncSession, target: str, n_aktual: int) -> dict:
         return dasar
     meta = dict((await db.execute(text(f"SELECT kunci, nilai FROM {S}.forecast_meta"))).all())
     bt = (await db.execute(
-        text(f"SELECT model, wape_pct, smape_pct, mase, cakupan_p80, n_evaluasi, terpilih "
-             f"FROM {S}.forecast_backtest WHERE target = :tg ORDER BY wape_pct"), {"tg": target})).all()
+        text(f"SELECT model, wape_pct, smape_pct, mase, cakupan_p80, n_evaluasi, terpilih, mape_pct, rmse_idr "
+             f"FROM {S}.forecast_backtest WHERE target = :tg ORDER BY mape_pct NULLS LAST, wape_pct"),
+        {"tg": target})).all()
     terpilih = next((r[0] for r in bt if r[6]), None)
     if not terpilih:
         return dasar
@@ -181,10 +183,26 @@ async def forecast(db: AsyncSession, target: str, n_aktual: int) -> dict:
         "total_p10_idr": int(sum(x[1] for x in fc)), "total_p50_idr": int(sum(x[2] for x in fc)),
         "total_p90_idr": int(sum(x[3] for x in fc)), "jumlah_komponen_p50_idr": jumlah_komponen,
         "backtest": [{"model": m, "wape_pct": round(w, 2), "smape_pct": round(s, 2), "mase": round(ma, 2),
+                      "mape_pct": round(mp, 2) if mp is not None else None,
+                      "rmse_idr": round(rm) if rm is not None else None,
                       "cakupan_p80": round(c, 2) if c is not None else None,
-                      "n_evaluasi": int(ne), "terpilih": bool(tp)} for m, w, s, ma, c, ne, tp in bt],
+                      "n_evaluasi": int(ne), "terpilih": bool(tp)} for m, w, s, ma, c, ne, tp, mp, rm in bt],
         "catatan": meta.get("catatan"),
     }
+
+
+async def diagnosa_deret(db: AsyncSession, target: str) -> dict:
+    """Hasil cek data series (ditulis batch oleh forecasting/diagnosa.py)."""
+    S = _schema()
+    dasar = {"target": target, "tersedia": False}
+    if not await tabel_ada(db, "diagnosa_deret"):
+        return dasar
+    r = (await db.execute(
+        text(f"SELECT hasil, dibuat_at FROM {S}.diagnosa_deret WHERE target = :tg"), {"tg": target})).first()
+    if r is None:
+        return dasar
+    hasil = r[0] if isinstance(r[0], dict) else json.loads(r[0])
+    return {"target": target, "tersedia": True, "dibuat_at": r[1].isoformat(), "hasil": hasil}
 
 
 async def pro_vs_nonpro(db: AsyncSession, role: str, n: int) -> list[dict]:
