@@ -47,7 +47,7 @@ cd web ; copy .env.example .env ; npm install ; npm run dev    # http://localhos
 `--hanya <model...>` / `--target <t...>` menguji sebagian tanpa menulis DB.
 
 ## Endpoint (`/api/admin/*`)
-`/ringkasan?periode=30|90|365` · `/pendapatan-bulanan?bulan=36` · `/forecast?target=total|komisi|langganan_kolektor|langganan_seniman&bulan_aktual=18` · `/diagnosa?target=...` · `/pro-vs-nonpro?role=kolektor|seniman&bulan=12`
+`/ringkasan?periode=30|90|365` · `/pendapatan-bulanan?bulan=36` · `/forecast?target=total|komisi|langganan_kolektor|langganan_seniman&bulan_aktual=18` · `/diagnosa?target=...` · `/keaktifan-seniman` · `/pro-vs-nonpro?role=kolektor|seniman&bulan=12`
 
 ## Data sintetis — variabel simulasi
 Simulasi per-pengguna: pertumbuhan pengguna (+4%/bln, promo), peluang upgrade Pro per role (naik bertahap + lonjakan
@@ -97,6 +97,24 @@ langganan kolektor — FTS 10,6% (ARIMA 38,7%) · langganan seniman — FTS 20,7
   membuat satu selisih log raksasa → diperbaiki dengan membuang bulan awal < 5% median; (2) d=2 dan orde ARMA besar overfit pada ±30 titik → d maks 1, (p, q) ≤ 1 dengan AICc; (3) FTS pada selisih mentah terkunci
   di keadaan "naik besar" → dipindah ke selisih log. Perubahan ini beralasan metodologis, tetapi pembaca harus tahu urutannya.
 * Forecast meneruskan tren historis; bila pertumbuhan melambat keduanya cenderung melebihkan.
+
+## Keaktifan seniman: cluster dan Top 10
+`seniman/aktivitas.py` (batch → tabel `seniman_aktivitas`, `seniman_cluster_info` → `GET /api/admin/keaktifan-seniman` → kartu "Keaktifan seniman"):
+* **Skor keaktifan** (0–100) = 50% peringkat-persentil penjualan 90 hari + 30% omzet 90 hari + 20% kebaruan penjualan terakhir. Satu definisi ini dipakai Top 10, cluster, dan (nanti) notifikasi/reward/rekomendasi.
+  Data admin tidak mencatat unggahan karya, jadi keaktifan = keaktifan **menjual**.
+* **Cluster Aktif / Kurang Aktif / Tidak Aktif**: UMAP + HDBSCAN (bukan K-Means, arahan dosen). Pada data ini HDBSCAN menemukan **18 kelompok kecil**
+  (perilaku bersifat kontinu), bukan 3, dan jumlahnya tak bisa dipaksa; kelompok-kelompok itu digabung hierarkis (Ward, 1-D pada rata-rata skor) menjadi 3 tingkat.
+* **Top 10 seniman terbaik** (omzet 12 bulan terakhir) dan **Top 10 paling aktif** (skor keaktifan): bar chart horizontal biasa.
+* Hasil: Aktif 355 (20,4%) · Kurang Aktif 969 (55,7%) · Tidak Aktif 416 (23,9%) dari 1.740 seniman.
+
+```powershell
+cd dashboard-admin ; .venv\Scripts\activate ; pip install umap-learn hdbscan
+python seniman\aktivitas.py          # hitung + tulis ke Neon (±1–2 menit)
+python seniman\uji_aktivitas.py      # 8 uji fungsi murni (tanpa database)
+```
+**Kejujuran:** silhouette (ruang fitur asli) kelompok HDBSCAN = 0,42 dan stabil (ARI 0,81 ± 0,03), tetapi setelah digabung menjadi 3 tingkat hanya **0,30**
+(di bawah ambang 0,5 yang dosen sebut untuk cluster kolektor): batas antar-tingkat lebih berupa kesepakatan bisnis daripada celah alami di data.
+Cluster sebagian besar mencerminkan "pernah/masih menjual" dan umur akun, dan data sintetis, jadi bukan temuan perilaku nyata.
 
 ## Login & keamanan
 Satu akun admin dari `backend/.env` (bukan tabel `users`): `ADMIN_EMAIL`, `ADMIN_PASSWORD_HASH` (bcrypt), `ADMIN_JWT_SECRET`.

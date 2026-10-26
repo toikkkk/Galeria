@@ -439,6 +439,108 @@ function NaikKelas() {
   );
 }
 
+/* ------------------------------------------------------------ keaktifan seniman */
+const WARNA_CLUSTER = { "Aktif": "#B08A12", "Kurang Aktif": "#D9C37C", "Tidak Aktif": "#B7B0A4" };
+const skorFmt = (v) => Number(v).toFixed(1).replace(".", ",");
+
+function TipPeringkat({ active, payload, baris }) {
+  if (!active || !payload?.length) return null;
+  const r = payload[0].payload;
+  return <Tip judul={r.nama} baris={baris(r)} />;
+}
+
+/* Bar chart horizontal biasa (bukan stacked) */
+function BarPeringkat({ data, kunci, judul, format, warna, baris }) {
+  const isi = data.map((d, i) => ({ ...d, nama: `${i + 1}. ${d.nama}`, nilai: d[kunci] }));
+  return (
+    <div className="chart" style={{ height: 380 }} role="img" aria-label={judul}>
+      <ResponsiveContainer>
+        <BarChart data={isi} layout="vertical" margin={{ top: 4, right: 64, bottom: 0, left: 8 }} barCategoryGap="22%">
+          <CartesianGrid stroke="var(--grid)" horizontal={false} />
+          <XAxis type="number" tick={AXIS} tickLine={false} axisLine={false} tickFormatter={format} />
+          <YAxis type="category" dataKey="nama" tick={AXIS} tickLine={false} axisLine={false} width={150} />
+          <Tooltip content={<TipPeringkat baris={baris} />} cursor={{ fill: "var(--surface-2)" }} />
+          <Bar dataKey="nilai" fill={warna} radius={[0, 4, 4, 0]} maxBarSize={22} isAnimationActive={false}>
+            <LabelList dataKey="nilai" position="right" formatter={format}
+              style={{ fontSize: 12, fill: "var(--text-secondary)" }} />
+          </Bar>
+        </BarChart>
+      </ResponsiveContainer>
+    </div>
+  );
+}
+
+function KeaktifanSeniman() {
+  const api = useApi("/keaktifan-seniman");
+  return (
+    <section className="card" aria-labelledby="h-kt" style={{ marginTop: 16 }}>
+      <div className="card-head">
+        <div>
+          <h2 id="h-kt">Keaktifan seniman</h2>
+          <p className="desc">Seberapa aktif seniman menjual dalam 90 hari terakhir, dikelompokkan menjadi Aktif, Kurang Aktif, dan Tidak Aktif.</p>
+        </div>
+      </div>
+      <Muat api={api}>
+        {(d) => {
+          if (!d.tersedia)
+            return <div className="state">Data keaktifan belum tersedia. Hubungi tim data untuk menjalankan perhitungannya.</div>;
+          const m = d.meta;
+          return (
+            <>
+              <div className="cluster-baris">
+                {d.cluster.map((c) => (
+                  <div className="cluster-item" key={c.cluster}>
+                    <div className="cluster-nama">
+                      <i style={{ background: WARNA_CLUSTER[c.cluster] }} />
+                      <b>{c.cluster}</b>
+                      <span className="sub">{angka(c.ukuran)} seniman · {persen(c.persen)}</span>
+                    </div>
+                    <div className="cluster-bar"><span style={{ width: `${c.persen}%`, background: WARNA_CLUSTER[c.cluster] }} /></div>
+                    <div className="sub">
+                      Terakhir menjual sekitar {c.hari_sejak_jual_median} hari lalu (median) · {persen(c.pernah_jual_pct, 0)} pernah menjual · {persen(c.pro_pct, 0)} Pro
+                    </div>
+                  </div>
+                ))}
+              </div>
+
+              <div className="grid2" style={{ marginTop: 20 }}>
+                <div>
+                  <h3 className="sub-judul">Top 10 seniman terbaik</h3>
+                  <p className="desc">Berdasarkan omzet penjualan 12 bulan terakhir.</p>
+                  <BarPeringkat data={d.top_terbaik} kunci="omzet_12b_idr" warna="var(--series-1)"
+                    judul="Bar chart 10 seniman dengan omzet 12 bulan terakhir tertinggi" format={rupiahRingkas}
+                    baris={(r) => [["Omzet 12 bulan", rupiah(r.omzet_12b_idr)], ["Karya terjual", angka(r.n_jual_12b)], ["Kelompok", r.cluster]]} />
+                </div>
+                <div>
+                  <h3 className="sub-judul">Top 10 seniman paling aktif</h3>
+                  <p className="desc">Berdasarkan skor keaktifan 0–100 (penjualan, omzet, dan kebaruan penjualan 90 hari terakhir).</p>
+                  <BarPeringkat data={d.top_aktif} kunci="skor_keaktifan" warna="var(--series-2)"
+                    judul="Bar chart 10 seniman dengan skor keaktifan tertinggi" format={skorFmt}
+                    baris={(r) => [["Skor keaktifan", skorFmt(r.skor_keaktifan)], ["Terjual 90 hari", angka(r.n_jual_90d)], ["Terakhir menjual", `${r.hari_sejak_jual} hari lalu`]]} />
+                </div>
+              </div>
+
+              <details className="teknis">
+                <summary>Detail untuk tim data</summary>
+                <ul className="istilah">
+                  <li><b>Skor keaktifan</b> = 50% peringkat jumlah penjualan 90 hari + 30% peringkat omzet 90 hari + 20% kebaruan penjualan terakhir (peringkat-persentil, 0–100).</li>
+                  <li><b>Pengelompokan</b>: {m.algoritma}. HDBSCAN menemukan <b>{m.k_ditemukan} kelompok kecil</b> (perilaku penjualan bersifat kontinu, jumlahnya tidak bisa dipaksa menjadi tiga),
+                    lalu digabung hierarkis (Ward) menjadi tiga tingkat menurut rata-rata skor. K-Means tidak dipakai.</li>
+                  <li><b>Silhouette</b> (ruang fitur asli): kelompok HDBSCAN {String(m.silhouette_ruang_fitur).replace(".", ",")}; tiga tingkat akhir <b>{String(m.silhouette_tiga_tingkat).replace(".", ",")}</b>.
+                    Nilai tiga tingkat di bawah 0,5: pemisahan antar-tingkat <b>lemah</b>; batas antar-kelompok lebih berupa kesepakatan bisnis daripada celah alami di data.</li>
+                  <li>Stabilitas (ARI, subsampel 80%): {String(m.stabilitas_ari_rata2).replace(".", ",")} ± {String(m.stabilitas_ari_sd).replace(".", ",")}; noise HDBSCAN {String(m.noise_pct).replace(".", ",")}% (ditetapkan ke kelompok terdekat).</li>
+                  <li>Seniman yang belum pernah menjual dinilai dari umur akunnya, sehingga akun baru yang belum menjual cenderung masuk "Kurang Aktif" dan akun lama tanpa penjualan masuk "Tidak Aktif".</li>
+                </ul>
+                <p className="desc">{m.catatan}</p>
+              </details>
+            </>
+          );
+        }}
+      </Muat>
+    </section>
+  );
+}
+
 /* ------------------------------------------------------------ halaman */
 function PeringatanSesi({ keluar }) {
   const [sisa, setSisa] = useState(null); // menit tersisa, hanya diisi saat <= 5
@@ -487,6 +589,8 @@ function Dashboard({ keluar }) {
         <Forecast />
         <NaikKelas />
       </div>
+
+      <KeaktifanSeniman />
     </main>
   );
 }

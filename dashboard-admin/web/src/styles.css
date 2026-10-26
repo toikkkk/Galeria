@@ -172,3 +172,12 @@ details.teknis summary:focus-visible { outline: 2px solid var(--focus); outline-
 
 /* ---- subjudul langkah forecast ---- */
 .card h3.sub { font-family: var(--serif); font-size: 21px; font-weight: 500; margin: 22px 0 8px; }
+
+/* ---- keaktifan seniman ---- */
+.cluster-baris { display: grid; gap: 16px; }
+.cluster-item { display: flex; flex-direction: column; gap: 6px; }
+.cluster-nama { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+.cluster-nama i { width: 12px; height: 12px; border-radius: 3px; display: inline-block; }
+.cluster-bar { height: 12px; border-radius: 6px; background: var(--surface-2); overflow: hidden; }
+.cluster-bar span { display: block; height: 100%; border-radius: 6px; }
+.sub-judul { font-family: var(--serif); font-size: 21px; font-weight: 500; margin: 0 0 2px; }

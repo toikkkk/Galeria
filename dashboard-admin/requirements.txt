@@ -7,6 +7,9 @@ asyncpg>=0.29
 python-dotenv>=1.0       # baca DATABASE_URL dari ../backend/.env
 statsmodels>=0.14        # ARIMA, ETS, Theta, uji ADF/KPSS/STL
 scipy>=1.11              # Mann-Kendall, Theil-Sen (diagnosa)
+scikit-learn>=1.4        # StandardScaler, silhouette, Ward (cluster seniman)
+umap-learn>=0.5.5        # cluster seniman: reduksi dimensi UMAP
+hdbscan>=0.8.33          # cluster seniman: HDBSCAN
 # --- opsional: hanya utk model lama di modelku.py (tidak dipakai ARIMA/FTS) ---
 lightgbm>=4.0            # pembanding ML
 torch>=2.2               # dibutuhkan Chronos-2 (CPU cukup)
