@@ -72,3 +72,14 @@ CREATE TABLE IF NOT EXISTS dummy_admin.forecast_meta (
     kunci  text PRIMARY KEY,
     nilai  text NOT NULL
 );
+
+-- Kolom MAPE & RMSE (kriteria pemilihan ARIMA vs Fuzzy Time Series). Idempotent; jalankan juga oleh forecasting/jalankan.py.
+ALTER TABLE dummy_admin.forecast_backtest ADD COLUMN IF NOT EXISTS mape_pct double precision;
+ALTER TABLE dummy_admin.forecast_backtest ADD COLUMN IF NOT EXISTS rmse_idr double precision;
+
+-- Hasil cek data series sebelum memilih metode (ditulis forecasting/diagnosa.py, dibaca /api/admin/diagnosa).
+CREATE TABLE IF NOT EXISTS dummy_admin.diagnosa_deret (
+    target     text PRIMARY KEY,
+    hasil      jsonb NOT NULL,
+    dibuat_at  timestamptz NOT NULL DEFAULT now()
+);

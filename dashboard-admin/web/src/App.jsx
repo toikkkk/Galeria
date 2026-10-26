@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from "react";
 import {
-  Area, Bar, BarChart, CartesianGrid, ComposedChart, Line, LabelList,
+  Bar, BarChart, CartesianGrid, ComposedChart, Line, LabelList,
   ReferenceLine, ResponsiveContainer, Tooltip, XAxis, YAxis,
 } from "recharts";
 import { ambilToken, hapusToken, onSesiHabis, tokenExp } from "./api.js";
@@ -14,6 +14,8 @@ const arah = (v) => (v >= 0 ? "naik" : "turun");
 
 /* istilah teknis -> hanya muncul di "Detail untuk tim data" */
 const NAMA_MODEL = {
+  arima: "ARIMA (univariat)",
+  fts_multivariat: "Fuzzy Time Series (multivariat)",
   seasonal_naive_tren: "Seasonal naive + tren",
   ets_redaman: "ETS (tren teredam)",
   theta: "Theta",
@@ -92,12 +94,9 @@ function bangunSeri(fc) {
     iso: a.bulan, label: bulanPendek(a.bulan), jenis: "aktual", aktual: a.nilai_idr,
   }));
   const akhir = aktual[aktual.length - 1];
-  akhir.forecast = akhir.aktual; // sambungkan garis putus-putus ke titik terakhir
-  akhir.base = akhir.aktual;
-  akhir.band = 0;
+  akhir.forecast = akhir.aktual; // sambungkan garis perkiraan ke titik aktual terakhir
   const depan = fc.forecast.map((f) => ({
     iso: f.bulan, label: bulanPendek(f.bulan), jenis: "forecast", forecast: f.p50_idr,
-    p10: f.p10_idr, p90: f.p90_idr, base: f.p10_idr, band: f.p90_idr - f.p10_idr,
   }));
   return [...aktual, ...depan];
 }
@@ -107,12 +106,51 @@ function TipForecast({ active, payload }) {
   const r = payload[0].payload;
   const j = bulanPanjang(r.iso);
   if (r.jenis === "aktual") return <Tip judul={j} baris={[["Pendapatan sebenarnya", rupiah(r.aktual)]]} />;
+  return <Tip judul={`${j} · perkiraan`} baris={[["Perkiraan", rupiah(r.forecast)]]} />;
+}
+
+const pTampil = (v, kpss = false) => {
+  if (kpss && v <= 0.01) return "≤ 0,01";
+  if (kpss && v >= 0.1) return "≥ 0,10";
+  return v < 0.001 ? "< 0,001" : v.toFixed(3).replace(".", ",");
+};
+
+/* Langkah 1: cek data series sebelum memilih metode */
+function DiagnosaDeret({ target }) {
+  const api = useApi(`/diagnosa?target=${target}`);
   return (
-    <Tip judul={`${j} · perkiraan`} baris={[
-      ["Paling mungkin", rupiah(r.forecast)],
-      ["Kemungkinan terendah", rupiah(r.p10)],
-      ["Kemungkinan tertinggi", rupiah(r.p90)],
-    ]} />
+    <details className="teknis" open>
+      <summary>Langkah 1 — Cek data series sebelum memilih metode</summary>
+      <Muat api={api}>
+        {(d) => {
+          if (!d.tersedia) return <p className="desc">Hasil pemeriksaan data belum tersedia.</p>;
+          const h = d.hasil;
+          const s = h.stasioneritas;
+          return (
+            <>
+              <ul className="istilah">
+                {h.ringkasan.map((b) => <li key={b}>{b}</li>)}
+              </ul>
+              <Tabel
+                kolom={[
+                  { judul: "Uji (p-value)", sel: (r) => r.uji },
+                  { judul: "Level", sel: (r) => r.level },
+                  { judul: "Selisih pertama", sel: (r) => r.selisih },
+                ]}
+                baris={[
+                  { uji: "ADF (H0: ada akar unit)", level: pTampil(s.level.adf_p), selisih: pTampil(s.selisih_pertama.adf_p) },
+                  { uji: "KPSS (H0: stasioner)", level: pTampil(s.level.kpss_p, true), selisih: pTampil(s.selisih_pertama.kpss_p, true) },
+                ]}
+              />
+              <p className="desc" style={{ marginTop: 10 }}>
+                Kesimpulan: data ditransformasi log, orde diferensiasi <b>d = {s.d_disarankan}</b>, ada tren naik, musiman {h.musiman.tingkat}.
+                Karena hanya {h.kelengkapan.n_titik} bulan (3 siklus tahunan), uji musiman dan stasioneritas berdaya rendah; data ini sintetis.
+              </p>
+            </>
+          );
+        }}
+      </Muat>
+    </details>
   );
 }
 
@@ -135,12 +173,13 @@ function Forecast() {
         <Segmented label="Sumber pendapatan" value={target} onChange={setTarget}
           options={TARGET.map((t) => ({ value: t.value, label: t.label }))} />
       </div>
+      <DiagnosaDeret target={target} />
       <Muat api={api}>
         {(fc) => {
           if (!fc.tersedia)
             return <div className="state">Perkiraan belum tersedia. Hubungi tim data untuk menjalankan perhitungannya.</div>;
           const seri = bangunSeri(fc);
-          const batas = seri.find((s) => s.jenis === "aktual" && s.forecast != null).label;
+          const batas = seri.find((x) => x.jenis === "aktual" && x.forecast != null).label;
           const aktual6 = fc.aktual.slice(-6).reduce((a, b) => a + b.nilai_idr, 0);
           const naik = aktual6 ? ((fc.total_p50_idr - aktual6) / aktual6) * 100 : null;
           const bt = fc.backtest.find((b) => b.terpilih);
@@ -153,9 +192,11 @@ function Forecast() {
                 {naik != null && <> Ini <b className={naik >= 0 ? "delta-up" : "delta-down"}>{arah(naik)} {persen(Math.abs(naik), 0)}</b> dibanding 6 bulan terakhir.</>}
               </p>
               <div className="stats">
-                <div><div className="s-l">Perkiraan paling mungkin</div><div className="s-v">{rupiahRingkas(fc.total_p50_idr)}</div></div>
-                <div><div className="s-l">Kemungkinan terendah</div><div className="s-v">{rupiahRingkas(fc.total_p10_idr)}</div></div>
-                <div><div className="s-l">Kemungkinan tertinggi</div><div className="s-v">{rupiahRingkas(fc.total_p90_idr)}</div></div>
+                <div><div className="s-l">Perkiraan {fc.horizon_bulan} bulan</div><div className="s-v">{rupiahRingkas(fc.total_p50_idr)}</div></div>
+                <div><div className="s-l">Metode terbaik</div><div className="s-v">{namaModel(fc.model_terpilih)}</div></div>
+                {bt && bt.mape_pct != null && (
+                  <div><div className="s-l">Galat uji (MAPE)</div><div className="s-v">{persen(bt.mape_pct)}</div></div>
+                )}
               </div>
 
               {tabel ? (
@@ -164,20 +205,17 @@ function Forecast() {
                     { judul: "Bulan", sel: (r) => bulanPanjang(r.iso) },
                     { judul: "Keterangan", sel: (r) => (r.jenis === "aktual" ? "Sebenarnya" : "Perkiraan") },
                     { judul: "Pendapatan", sel: (r) => rupiah(r.jenis === "aktual" ? r.aktual : r.forecast) },
-                    { judul: "Terendah", sel: (r) => (r.p10 != null ? rupiah(r.p10) : "–") },
-                    { judul: "Tertinggi", sel: (r) => (r.p90 != null ? rupiah(r.p90) : "–") },
                   ]}
                   baris={seri}
                 />
               ) : (
                 <>
                   <div className="legend">
-                    <span><i style={{ background: "var(--series-1)" }} />Pendapatan sebenarnya</span>
-                    <span><i className="dash" />Perkiraan paling mungkin</span>
-                    <span><i className="band" />Kisaran kemungkinan</span>
+                    <span><i style={{ background: "var(--series-1)" }} />Aktual</span>
+                    <span><i style={{ background: "var(--series-2)" }} />Forecast ({namaModel(fc.model_terpilih)})</span>
                   </div>
                   <div className="chart" role="img"
-                    aria-label={`Grafik pendapatan ${info.judul}: 18 bulan terakhir dan perkiraan 6 bulan ke depan`}>
+                    aria-label={`Grafik pendapatan ${info.judul}: garis aktual 18 bulan terakhir dan garis forecast 6 bulan ke depan`}>
                     <ResponsiveContainer>
                       <ComposedChart data={seri} margin={{ top: 8, right: 12, bottom: 0, left: 0 }}>
                         <CartesianGrid stroke="var(--grid)" vertical={false} />
@@ -185,54 +223,51 @@ function Forecast() {
                         <YAxis tick={AXIS} tickLine={false} axisLine={false} width={74} tickFormatter={rupiahSumbu} />
                         <Tooltip content={<TipForecast />} cursor={{ stroke: "var(--text-muted)", strokeDasharray: "3 3" }} />
                         <ReferenceLine x={batas} stroke="var(--text-muted)" strokeDasharray="2 4"
-                          label={{ value: "Perkiraan →", position: "insideTopRight", fill: "var(--text-muted)", fontSize: 12 }} />
-                        <Area dataKey="base" stackId="band" stroke="none" fill="none" isAnimationActive={false} legendType="none" />
-                        <Area dataKey="band" stackId="band" stroke="none" fill="var(--band)" isAnimationActive={false} legendType="none" />
+                          label={{ value: "Forecast →", position: "insideTopRight", fill: "var(--text-muted)", fontSize: 12 }} />
                         <Line dataKey="aktual" stroke="var(--series-1)" strokeWidth={2.5} dot={false}
                           activeDot={{ r: 5, stroke: "var(--surface-1)", strokeWidth: 2 }} isAnimationActive={false} />
-                        <Line dataKey="forecast" stroke="var(--series-1)" strokeWidth={2.5} strokeDasharray="6 4" dot={false}
+                        <Line dataKey="forecast" stroke="var(--series-2)" strokeWidth={2.5} strokeDasharray="6 4" dot={false}
                           activeDot={{ r: 5, stroke: "var(--surface-1)", strokeWidth: 2 }} isAnimationActive={false} />
                       </ComposedChart>
                     </ResponsiveContainer>
                   </div>
                   <p className="cap">
-                    Garis putus-putus adalah perkiraan yang paling mungkin. Area krem menunjukkan kisarannya: hasil sebenarnya bisa lebih
-                    rendah atau lebih tinggi. Perkiraan dibuat dari pola bulan-bulan sebelumnya dan bukan jaminan.
+                    Forecast dibuat dari pola bulan-bulan sebelumnya dan bukan jaminan pendapatan.
                   </p>
                 </>
               )}
 
+              <h3 className="sub">Langkah 2 — Perbandingan metode</h3>
+              <Tabel
+                kolom={[
+                  { judul: "Metode", sel: (r) => namaModel(r.model) + (r.terpilih ? " ✓ terbaik" : "") },
+                  { judul: "MAPE", sel: (r) => (r.mape_pct == null ? "–" : persen(r.mape_pct)) },
+                  { judul: "RMSE", sel: (r) => (r.rmse_idr == null ? "–" : rupiahRingkas(r.rmse_idr)) },
+                ]}
+                baris={fc.backtest.map((b) => ({ ...b, _pilih: b.terpilih }))}
+              />
+              <p className="cap">
+                Metode terbaik dipilih dari MAPE terkecil (RMSE sebagai pembanding) pada uji ulang bergulir: model dilatih pada data lama,
+                meramal 6 bulan, lalu dibandingkan dengan kenyataan, diulang 7 kali. Pemenangnya dipilih per sumber pendapatan.
+              </p>
+
               <details className="teknis">
                 <summary>Detail untuk tim data</summary>
-                <p className="desc">
-                  Bagian ini berisi istilah teknis dan tidak perlu dibaca untuk memahami dashboard.
-                </p>
                 <ul className="istilah">
-                  <li><b>Kemungkinan terendah / tertinggi</b> = batas P10 dan P90: hasil sebenarnya diperkirakan jatuh di antara keduanya dengan peluang sekitar 80%.</li>
-                  <li><b>Paling mungkin</b> = median (P50).</li>
-                  <li><b>Galat (WAPE)</b> = rata-rata selisih antara perkiraan dan kenyataan saat model diuji ulang pada data lama (backtest); makin kecil makin baik.</li>
+                  <li><b>ARIMA (univariat)</b> = hanya memakai riwayat pendapatan itu sendiri; skala log; orde d dari uji ADF + KPSS; orde (p, q) 0–1 dari AICc.</li>
+                  <li><b>Fuzzy Time Series (multivariat)</b> = dua faktor: pendapatan dan satu faktor pengaruh (jumlah transaksi, pengguna Pro, atau pengguna baru) yang dipilih otomatis dari korelasi pada data latih; dihitung pada selisih log.</li>
+                  <li><b>MAPE</b> = rata-rata |aktual − forecast| ÷ aktual; <b>RMSE</b> = akar rata-rata kuadrat selisih (dalam Rupiah).</li>
+                  <li>Bulan awal yang nilainya &lt; 5% median (bulan peluncuran) dibuang sebelum pemodelan.</li>
                 </ul>
-                {bt && (
-                  <p className="desc">Model yang dipakai untuk tampilan ini: <b>{namaModel(fc.model_terpilih)}</b> (galat uji {persen(bt.wape_pct)}).</p>
-                )}
                 {fc.target === "total" && fc.jumlah_komponen_p50_idr != null && (
                   <p className="desc">
-                    Total diramal langsung. Jumlah ramalan tiga komponennya (komisi + 2 langganan, masing-masing dengan model sendiri) ={" "}
-                    <b>{rupiahRingkas(fc.jumlah_komponen_p50_idr)}</b>; selisih kecil wajar karena model tiap sumber dipilih terpisah.
+                    Total diramal langsung. Jumlah ramalan tiga komponennya (komisi + 2 langganan, masing-masing dengan metode sendiri) ={" "}
+                    <b>{rupiahRingkas(fc.jumlah_komponen_p50_idr)}</b>; selisih kecil wajar karena metode tiap sumber dipilih terpisah.
                   </p>
                 )}
-                <Tabel
-                  kolom={[
-                    { judul: "Model", sel: (r) => namaModel(r.model) + (r.terpilih ? " ✓" : "") },
-                    { judul: "WAPE", sel: (r) => persen(r.wape_pct) },
-                    { judul: "sMAPE", sel: (r) => persen(r.smape_pct) },
-                    { judul: "MASE", sel: (r) => r.mase.toFixed(2).replace(".", ",") },
-                    { judul: "Cakupan P10–P90", sel: (r) => (r.cakupan_p80 == null ? "–" : persen(r.cakupan_p80 * 100, 0)) },
-                  ]}
-                  baris={fc.backtest.map((b) => ({ ...b, _pilih: b.terpilih }))}
-                />
-                <p className="desc" style={{ marginTop: 10 }}>
-                  Dokumentasi data: <code>dashboard-admin/data/LAPORAN_DATA.md</code>
+                <p className="desc">
+                  Hanya 7 titik uji × 6 bulan dari data sintetis 36 bulan, sehingga selisih kecil antar-metode bisa saja kebetulan, dan skor
+                  mencerminkan desain simulasi, bukan performa produksi. Metode meneruskan tren historis; bila pertumbuhan melambat, keduanya cenderung melebihkan.
                 </p>
               </details>
             </>

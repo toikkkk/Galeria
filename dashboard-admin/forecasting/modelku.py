@@ -167,7 +167,14 @@ def ensemble_chronos_theta(train, masa_depan):
     return {"p50": (a + b) / 2, "p10": None, "p90": None}
 
 
+from arima_fts import arima, fts_multivariat  # noqa: E402  (dua model utama yang dibandingkan di dashboard)
+
+# Model yang dibandingkan & ditampilkan secara default (permintaan dosen: ARIMA univariat vs FTS multivariat).
+MODEL_UTAMA = ["arima", "fts_multivariat"]
+
 MODEL = {
+    "arima": arima,
+    "fts_multivariat": fts_multivariat,
     "seasonal_naive_tren": seasonal_naive_tren,
     "ets_redaman": ets,
     "theta": theta,

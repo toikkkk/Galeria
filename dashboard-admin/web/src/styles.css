@@ -169,3 +169,6 @@ details.teknis summary:focus-visible { outline: 2px solid var(--focus); outline-
 .login-lupa { margin: 10px 0 0; padding: 10px 12px; border-radius: 8px; background: var(--surface-2); font-size: 12.5px; color: var(--text-secondary); line-height: 1.55; }
 .login-lupa code { font-size: 11.5px; background: #fff; padding: 1px 5px; border-radius: 4px; border: 1px solid var(--border); }
 .sesi-habis { margin-bottom: 16px; padding: 10px 14px; border-radius: 8px; background: var(--gold-soft); border-left: 3px solid var(--gold); font-size: 13px; }
+
+/* ---- subjudul langkah forecast ---- */
+.card h3.sub { font-family: var(--serif); font-size: 21px; font-weight: 500; margin: 22px 0 8px; }

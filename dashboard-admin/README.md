@@ -47,7 +47,7 @@ cd web ; copy .env.example .env ; npm install ; npm run dev    # http://localhos
 `--hanya <model...>` / `--target <t...>` menguji sebagian tanpa menulis DB.
 
 ## Endpoint (`/api/admin/*`)
-`/ringkasan?periode=30|90|365` · `/pendapatan-bulanan?bulan=36` · `/forecast?target=total|komisi|langganan_kolektor|langganan_seniman&bulan_aktual=18` · `/pro-vs-nonpro?role=kolektor|seniman&bulan=12`
+`/ringkasan?periode=30|90|365` · `/pendapatan-bulanan?bulan=36` · `/forecast?target=total|komisi|langganan_kolektor|langganan_seniman&bulan_aktual=18` · `/diagnosa?target=...` · `/pro-vs-nonpro?role=kolektor|seniman&bulan=12`
 
 ## Data sintetis — variabel simulasi
 Simulasi per-pengguna: pertumbuhan pengguna (+4%/bln, promo), peluang upgrade Pro per role (naik bertahap + lonjakan
@@ -64,18 +64,39 @@ Temuan penting: efek Pro kolektor, penjual Pro, dan laju dasar terpulihkan; **ef
 (±2% laju beli) tenggelam di noise bulanan (±9%) — jangan ditafsirkan sebagai pendorong penjualan di data ini. Pemenang model Theta/ensemble
 berganti-ganti antar-seed; kovariat Pro secara konsisten memperbaiki Chronos-2. Laporan itu juga memuat keterbatasan untuk presentasi.
 
-## Forecasting
-Target: **total**, **komisi**, **langganan kolektor**, **langganan seniman** — masing-masing punya backtest dan pemenang sendiri.
-Backtest bergulir (titik potong 24–30 bulan, horizon 6): seasonal-naive+tren, ETS, Theta, LightGBM, **Chronos-2**
-(4 varian: kalender / kovariat Pro, skala asli / log) dan ensemble Chronos-2+Theta. Metrik: WAPE, sMAPE, MASE, cakupan P10–P90.
-Model titik mendapat interval dari galat backtest. Backend hanya membaca tabel `dummy_admin.forecast_*` (tanpa torch di server).
+## Forecasting (ARIMA vs Fuzzy Time Series)
+Urutan kerja (sesuai arahan dosen): **cek data series dulu, baru pilih metode**.
 
-Hasil run terakhir (WAPE backtest, makin kecil makin baik): total — Chronos-2 (log)+kalender 15,7% · komisi — Chronos-2+kovariat Pro
-16,3% · langganan kolektor — Theta 10,2% · langganan seniman — Theta 14,9%. Total diramal langsung, sehingga jumlah ramalan
-komponen bisa sedikit berbeda (dashboard menampilkan keduanya).
+**Langkah 1 — diagnosa** (`forecasting/diagnosa.py` → tabel `diagnosa_deret` → `GET /api/admin/diagnosa?target=`; tampil di kartu Forecast):
+kelengkapan (bulan hilang/ganda/nol/negatif), outlier (robust z-score MAD pada sisa tren Theil–Sen), tren (Mann–Kendall + laju Theil–Sen),
+musiman (kekuatan STL + ACF lag 12), stasioneritas (ADF dan KPSS pada level dan selisih → orde `d`).
+Temuan pada data ini: 36 bulan lengkap; tren naik kuat (±9–13% per bulan); musiman sedang–kuat tetapi hanya 3 siklus (berdaya rendah);
+level tidak stasioner → d = 1; bulan peluncuran (nilai < 5% median) dibuang sebelum pemodelan.
 
-**Kejujuran:** data sintetis dengan struktur yang kita tentukan sendiri → skor mencerminkan desain simulasi, bukan performa
-produksi. Hanya 36 titik data bulanan; selisih kecil antar-model bisa noise. Forecast = proyeksi statistik, bukan jaminan pendapatan.
+**Langkah 2 — dua metode dibandingkan** (`forecasting/arima_fts.py`, `jalankan.py`), target: total, komisi, langganan kolektor, langganan seniman:
+* **ARIMA (univariat)** pada log1p(y); d dari ADF+KPSS (0/1), (p, q) 0–1 dipilih dari AICc.
+* **Fuzzy Time Series multivariat** (2 faktor: pendapatan + satu faktor pengaruh yang dipilih otomatis dari korelasi pada data latih: jumlah transaksi / pengguna Pro / pengguna baru), orde-1,
+  pada selisih log (FTS tidak bisa mengekstrapolasi di luar rentang universe).
+* Evaluasi: backtest bergulir (titik potong T = 24…30 bulan, horizon 6) → **MAPE** (kriteria utama) dan **RMSE** (pembanding). Pemenang per target ditampilkan di web dengan **dua garis** (aktual dan forecast); tanpa stacked bar.
+Model lama (ETS, Theta, LightGBM, Chronos-2, dst.) masih ada di `modelku.py` dan bisa diuji lewat `jalankan.py --hanya <model>`, tetapi tidak ditampilkan.
+
+```powershell
+cd dashboard-admin
+python -m venv .venv --system-site-packages ; .venv\Scripts\activate ; pip install asyncpg
+python forecasting\diagnosa.py        # cek data series -> Neon
+python forecasting\jalankan.py        # backtest ARIMA vs FTS + forecast -> Neon
+python forecasting\uji_model.py       # 14 uji cepat kedua model (tanpa database)
+```
+
+Hasil run terakhir (MAPE backtest; makin kecil makin baik): total — ARIMA 28,8% (FTS 48,6%) · komisi — ARIMA 30,5% (FTS 51,7%) ·
+langganan kolektor — FTS 10,6% (ARIMA 38,7%) · langganan seniman — FTS 20,7% (ARIMA 27,9%). Pemenangnya berbeda per target.
+
+**Kejujuran:**
+* Data sintetis dengan struktur yang kita tentukan sendiri → skor mencerminkan desain simulasi, bukan performa produksi. Hanya 36 bulan; 7 titik uji × 6 bulan, sehingga selisih kecil antar-metode bisa kebetulan.
+* **Keputusan desain diambil setelah melihat hasil awal**, jadi skor di atas bukan evaluasi yang sepenuhnya "buta": percobaan pertama meledak (ARIMA komisi MAPE >1.600%) karena (1) bulan peluncuran bernilai Rp0,2 juta lalu Rp15 juta
+  membuat satu selisih log raksasa → diperbaiki dengan membuang bulan awal < 5% median; (2) d=2 dan orde ARMA besar overfit pada ±30 titik → d maks 1, (p, q) ≤ 1 dengan AICc; (3) FTS pada selisih mentah terkunci
+  di keadaan "naik besar" → dipindah ke selisih log. Perubahan ini beralasan metodologis, tetapi pembaca harus tahu urutannya.
+* Forecast meneruskan tren historis; bila pertumbuhan melambat keduanya cenderung melebihkan.
 
 ## Login & keamanan
 Satu akun admin dari `backend/.env` (bukan tabel `users`): `ADMIN_EMAIL`, `ADMIN_PASSWORD_HASH` (bcrypt), `ADMIN_JWT_SECRET`.

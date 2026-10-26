@@ -30,7 +30,7 @@ from sqlalchemy.ext.asyncio import create_async_engine
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 from dataset import SCHEMA, TARGET, kalender_masa_depan, muat_bulanan  # noqa: E402
-from modelku import MODEL, MODEL_ID  # noqa: E402
+from modelku import MODEL, MODEL_ID, MODEL_UTAMA  # noqa: E402
 
 warnings.filterwarnings("ignore")
 
@@ -61,7 +61,10 @@ def backtest(df: pd.DataFrame, nama_model: list[str]) -> dict:
                 dalam += int(((y >= r["p10"]) & (y <= r["p90"])).sum())
                 total += len(y)
         a, p = np.concatenate(aktual), np.concatenate(prediksi)
+        ada = a > 0  # MAPE tidak terdefinisi utk aktual 0
         hasil[nama] = {
+            "mape_pct": float(np.mean(np.abs(a[ada] - p[ada]) / a[ada]) * 100) if ada.any() else float("inf"),
+            "rmse_idr": float(np.sqrt(np.mean((a - p) ** 2))),
             "wape_pct": float(np.abs(a - p).sum() / a.sum() * 100),
             "smape_pct": float(np.mean(2 * np.abs(a - p) / (np.abs(a) + np.abs(p) + 1e-9)) * 100),
             "mase": float(np.mean(mase_list)),
@@ -69,8 +72,8 @@ def backtest(df: pd.DataFrame, nama_model: list[str]) -> dict:
             "n_evaluasi": int(len(a)),
             "rasio": np.clip(a / np.maximum(p, 1.0), 0.2, 5.0),  # aktual/prediksi -> utk interval
         }
-        print(f"  {nama:24s} WAPE {hasil[nama]['wape_pct']:6.1f}%  sMAPE {hasil[nama]['smape_pct']:6.1f}%"
-              f"  MASE {hasil[nama]['mase']:5.2f}"
+        print(f"  {nama:24s} MAPE {hasil[nama]['mape_pct']:6.1f}%  RMSE Rp{hasil[nama]['rmse_idr']:>14,.0f}"
+              f"  (WAPE {hasil[nama]['wape_pct']:5.1f}%  sMAPE {hasil[nama]['smape_pct']:5.1f}%  MASE {hasil[nama]['mase']:4.2f})"
               + (f"  cakupan P10-P90 {hasil[nama]['cakupan_p80']:.0%}" if total else ""), flush=True)
     return hasil
 
@@ -78,8 +81,8 @@ def backtest(df: pd.DataFrame, nama_model: list[str]) -> dict:
 def forecast_akhir(df: pd.DataFrame, hasil_bt: dict) -> dict:
     masa_depan = kalender_masa_depan(df["bulan"].iloc[-1], H)
     keluar = {}
-    for nama, fn in MODEL.items():
-        r = fn(df, masa_depan)
+    for nama in hasil_bt:  # hanya model yang di-backtest
+        r = MODEL[nama](df, masa_depan)
         p50 = np.maximum(r["p50"], 0)
         if r["p10"] is None:  # model titik -> interval dari galat backtest (conformal sederhana)
             q10, q90 = np.quantile(hasil_bt[nama]["rasio"], [0.1, 0.9])
@@ -95,6 +98,9 @@ async def tulis(df, hasil, fc, terpilih, pilih_manual=False):
     """hasil/fc/terpilih: dict per target."""
     engine = create_async_engine(os.environ["DATABASE_URL"])
     async with engine.begin() as conn:
+        # migrasi idempotent: kolom MAPE & RMSE (permintaan dosen) pada tabel yang sudah ada
+        await conn.execute(text(f"ALTER TABLE {SCHEMA}.forecast_backtest ADD COLUMN IF NOT EXISTS mape_pct double precision"))
+        await conn.execute(text(f"ALTER TABLE {SCHEMA}.forecast_backtest ADD COLUMN IF NOT EXISTS rmse_idr double precision"))
         for tbl in ("forecast_pendapatan", "forecast_backtest", "forecast_meta"):
             await conn.execute(text(f"DELETE FROM {SCHEMA}.{tbl}"))
         for target in fc:
@@ -107,9 +113,10 @@ async def tulis(df, hasil, fc, terpilih, pilih_manual=False):
             for nama, m in hasil[target].items():
                 await conn.execute(text(
                     f"INSERT INTO {SCHEMA}.forecast_backtest "
-                    "(target, model, wape_pct, smape_pct, mase, cakupan_p80, n_evaluasi, terpilih) "
-                    "VALUES (:tg, :m, :w, :s, :ma, :c, :n, :t)"),
+                    "(target, model, wape_pct, smape_pct, mase, cakupan_p80, n_evaluasi, terpilih, mape_pct, rmse_idr) "
+                    "VALUES (:tg, :m, :w, :s, :ma, :c, :n, :t, :mp, :rm)"),
                     {"tg": target, "m": nama, "w": m["wape_pct"], "s": m["smape_pct"], "ma": m["mase"],
+                     "mp": m["mape_pct"] if np.isfinite(m["mape_pct"]) else None, "rm": m["rmse_idr"],
                      "c": m["cakupan_p80"], "n": m["n_evaluasi"], "t": nama == terpilih[target]})
         meta = {"horizon_bulan": str(H),
                 "titik_potong_backtest": json.dumps(TITIK_POTONG),
@@ -117,7 +124,7 @@ async def tulis(df, hasil, fc, terpilih, pilih_manual=False):
                 "chronos_model_id": MODEL_ID,
                 "tarif_komisi": "0.025",
                 "harga_pro_kolektor": "50000", "harga_pro_seniman": "150000",
-                "aturan_pilih": "manual" if pilih_manual else "WAPE terkecil di backtest (per target)",
+                "aturan_pilih": "manual" if pilih_manual else "MAPE terkecil di backtest bergulir (RMSE sebagai pembanding), per target",
                 "catatan": "Data sintetis; skor mencerminkan desain simulasi, bukan performa produksi."}
         for k, v in meta.items():
             await conn.execute(text(f"INSERT INTO {SCHEMA}.forecast_meta (kunci, nilai) VALUES (:k, :v)"),
@@ -131,7 +138,7 @@ def main(tanpa_db: bool, hanya: list[str] | None, pilih: str | None = None, targ
     print(f"Deret: {len(df0)} bulan, {df0['bulan'].iloc[0].date()} .. {df0['bulan'].iloc[-1].date()}, "
           f"total pendapatan platform Rp{total:,} (komisi Rp{int(df0['komisi_idr'].sum()):,}, "
           f"langganan Rp{int(df0['langganan_kolektor_idr'].sum() + df0['langganan_seniman_idr'].sum()):,})")
-    nama_model = hanya or list(MODEL)
+    nama_model = hanya or MODEL_UTAMA
     hasil, fc, terpilih = {}, {}, {}
     for target, kolom in TARGET.items():
         if target_uji and target not in target_uji:
@@ -139,10 +146,11 @@ def main(tanpa_db: bool, hanya: list[str] | None, pilih: str | None = None, targ
         df = df0.assign(y=df0[kolom].astype(float))
         print(f"\n=== Target: {target} ===  backtest bergulir (T={TITIK_POTONG[0]}..{TITIK_POTONG[-1]}, horizon {H})")
         hasil[target] = backtest(df, nama_model)
-        terpilih[target] = pilih or min(hasil[target], key=lambda n: hasil[target][n]["wape_pct"])
+        terpilih[target] = pilih or min(
+            hasil[target], key=lambda n: (hasil[target][n]["mape_pct"], hasil[target][n]["rmse_idr"]))
         if terpilih[target] not in hasil[target]:
             raise SystemExit(f"--pilih {terpilih[target]} tidak ada di {list(hasil[target])}")
-        print(f"Model terpilih ({'manual' if pilih else 'WAPE terkecil'}): {terpilih[target]}")
+        print(f"Model terpilih ({'manual' if pilih else 'MAPE terkecil'}): {terpilih[target]}")
         if not (tanpa_db or hanya):
             fc[target] = forecast_akhir(df, hasil[target])
             b, p10, p50, p90 = fc[target][terpilih[target]]
