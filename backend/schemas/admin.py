@@ -86,6 +86,38 @@ class DiagnosaDeret(BaseModel):
     hasil: dict | None = None
 
 
+class SenimanPeringkat(BaseModel):
+    seniman_id: str
+    nama: str
+    cluster: str
+    skor_keaktifan: float
+    n_jual_90d: int
+    omzet_12b_idr: int
+    n_jual_12b: int
+    hari_sejak_jual: int
+    pro: bool
+
+
+class ClusterSeniman(BaseModel):
+    cluster: str  # Aktif | Kurang Aktif | Tidak Aktif
+    ukuran: int
+    persen: float
+    skor_rata2: float
+    n_jual_90d_median: float
+    hari_sejak_jual_median: int
+    pernah_jual_pct: float
+    pro_pct: float
+
+
+class KeaktifanSeniman(BaseModel):
+    """Cluster keaktifan + Top 10 (lihat dashboard-admin/seniman/aktivitas.py; data contoh)."""
+    tersedia: bool
+    meta: dict | None = None
+    cluster: list[ClusterSeniman] = []
+    top_terbaik: list[SenimanPeringkat] = []  # omzet 12 bulan terakhir
+    top_aktif: list[SenimanPeringkat] = []    # skor keaktifan
+
+
 class ProVsNonPro(BaseModel):
     bulan: str
     role: str

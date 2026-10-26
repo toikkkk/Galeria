@@ -17,7 +17,7 @@ from pydantic import BaseModel
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from database import get_db
-from schemas.admin import DiagnosaDeret, ForecastPendapatan, PendapatanBulan, ProVsNonPro, RingkasanAdmin
+from schemas.admin import DiagnosaDeret, ForecastPendapatan, KeaktifanSeniman, PendapatanBulan, ProVsNonPro, RingkasanAdmin
 from services import admin_auth, admin_repo as repo
 
 
@@ -93,6 +93,12 @@ async def diagnosa(target: str = Query("total"), db: AsyncSession = Depends(get_
     if target not in repo.TARGET_VALID:
         raise HTTPException(422, f"target harus salah satu dari {', '.join(repo.TARGET_VALID)}")
     return await repo.diagnosa_deret(db, target)
+
+
+@protected.get("/keaktifan-seniman", response_model=KeaktifanSeniman)
+async def keaktifan_seniman(db: AsyncSession = Depends(get_db)):
+    """Cluster keaktifan seniman (Aktif / Kurang Aktif / Tidak Aktif) + Top 10 terbaik dan Top 10 paling aktif."""
+    return await repo.keaktifan_seniman(db)
 
 
 @protected.get("/pro-vs-nonpro", response_model=list[ProVsNonPro])

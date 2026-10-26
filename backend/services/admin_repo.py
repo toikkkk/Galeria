@@ -205,6 +205,41 @@ async def diagnosa_deret(db: AsyncSession, target: str) -> dict:
     return {"target": target, "tersedia": True, "dibuat_at": r[1].isoformat(), "hasil": hasil}
 
 
+_URUT_CLUSTER = ("Aktif", "Kurang Aktif", "Tidak Aktif")
+
+
+def _peringkat(r) -> dict:
+    return {"seniman_id": str(r["seniman_id"]), "nama": r["display_name"], "cluster": r["cluster"],
+            "skor_keaktifan": round(float(r["skor_keaktifan"]), 1), "n_jual_90d": int(r["n_jual_90d"]),
+            "omzet_12b_idr": int(r["omzet_12b"]), "n_jual_12b": int(r["n_jual_12b"]),
+            "hari_sejak_jual": int(r["hari_sejak_jual"]), "pro": bool(r["pro"])}
+
+
+async def keaktifan_seniman(db: AsyncSession, n_top: int = 10) -> dict:
+    """Cluster keaktifan + Top 10 seniman (hasil batch seniman/aktivitas.py; backend hanya membaca)."""
+    S = _schema()
+    if not await tabel_ada(db, "seniman_aktivitas") or not await tabel_ada(db, "seniman_cluster_info"):
+        return {"tersedia": False}
+    info = {k: (v if isinstance(v, dict) else json.loads(v))
+            for k, v in (await db.execute(text(f"SELECT kunci, nilai FROM {S}.seniman_cluster_info"))).all()}
+    if "meta" not in info:
+        return {"tersedia": False}
+    kolom = "seniman_id, display_name, cluster, skor_keaktifan, n_jual_90d, omzet_12b, n_jual_12b, hari_sejak_jual, pro"
+    terbaik = (await db.execute(text(
+        f"SELECT {kolom} FROM {S}.seniman_aktivitas WHERE omzet_12b > 0 ORDER BY omzet_12b DESC, seniman_id LIMIT :n"),
+        {"n": n_top})).mappings().all()
+    aktif = (await db.execute(text(
+        f"SELECT {kolom} FROM {S}.seniman_aktivitas ORDER BY skor_keaktifan DESC, n_jual_90d DESC, seniman_id LIMIT :n"),
+        {"n": n_top})).mappings().all()
+    return {
+        "tersedia": True,
+        "meta": {k: v for k, v in info["meta"].items() if k != "grid"},
+        "cluster": [{"cluster": c, **info[c]} for c in _URUT_CLUSTER if c in info],
+        "top_terbaik": [_peringkat(r) for r in terbaik],
+        "top_aktif": [_peringkat(r) for r in aktif],
+    }
+
+
 async def pro_vs_nonpro(db: AsyncSession, role: str, n: int) -> list[dict]:
     """Per akhir bulan: pengguna role tsb yg Pro vs tidak upgrade. Pro = langganan yang sedang
     berlaku di akhir bulan itu (kolektor_pro / seniman_pro)."""
