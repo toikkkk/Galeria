@@ -96,6 +96,12 @@ class Karya(Base):
     sertifikat_aktif_id: Mapped[uuid.UUID | None] = mapped_column(
         UUID(as_uuid=True), ForeignKey("sertifikat_keaslian.id", ondelete="SET NULL"), nullable=True
     )
+    # --- Kriptografi (migrasi 0008) -- identitas APLIKASI human-readable, mis.
+    # "GAL-ART-2026-000001". BEDA dari `id` (UUID internal) -- lihat
+    # ml-digital-art-identity/kriptografi.md 5.1. Diisi SEKALI saat karya pertama
+    # kali lolos verifikasi (services/sertifikat_service.py), TIDAK PERNAH diubah
+    # setelahnya -- identitas publik karya ini harus tetap sama selamanya.
+    artwork_id: Mapped[str | None] = mapped_column(Text, unique=True, nullable=True)
 
     embedding: Mapped["KaryaEmbedding"] = relationship(
         back_populates="karya", uselist=False, cascade="all, delete-orphan"

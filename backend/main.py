@@ -13,20 +13,40 @@ Docs otomatis: http://localhost:8000/docs
 
 from __future__ import annotations
 
+import logging
 import os
 from contextlib import asynccontextmanager
 from pathlib import Path
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.staticfiles import StaticFiles
 
-from routers import katalog, verification, visual_search
+import models  # noqa: F401 -- registrasi SEMUA model ke Base.metadata, lihat models/__init__.py
+from routers import (
+    admin_dashboard,
+    dashboard_seniman,
+    sentimen,
+    ulasan,
+    gambar,
+    karya_upload,
+    katalog,
+    katalog_dummy,
+    verifikasi_publik,
+    verification,
+    visual_search,
+)
 from services.digital_art_identity_service import DigitalArtIdentityService
 from services.visual_search_service import VisualSearchService
+
+logger = logging.getLogger("galeria.startup")
 
 BASE_DIR = Path(__file__).parent
 ML_DIR = BASE_DIR.parent / "ml-visual-search"
 DAI_DIR = BASE_DIR.parent / "ml-digital-art-identity"
+# Penyimpanan gambar LOKAL sementara (ganti Cloudflare R2 begitu
+# diimplementasi, lihat routers/karya_upload.py untuk alasan lengkap).
+UPLOADS_DIR = BASE_DIR / "uploads"
 
 
 @asynccontextmanager
@@ -39,7 +59,28 @@ async def lifespan(app: FastAPI):
             "VS_LABEL_MAP_PATH", ML_DIR / "data" / "cache" / "label_to_idx__style_name.json"
         ),
     )
-    app.state.visual_search_service.load()
+    try:
+        app.state.visual_search_service.load()
+    except Exception as exc:
+        # Graceful degrade -- pola SAMA PERSIS dgn database.py (DATABASE_URL
+        # kosong tidak bikin app gagal start). Visual Search adalah fitur
+        # TERPISAH (model/checkpoint dikerjakan anggota tim lain); kalau
+        # ONNX-nya belum di-export di mesin ini, verification engine
+        # (Art-to-Art/Art-to-AI, fitur terpisah) tetap harus bisa dipakai --
+        # endpoint /api/visual-search sendiri yang akan gagal jelas
+        # (RuntimeError "belum di-load", lihat visual_search_service.py)
+        # kalau benar-benar dipanggil tanpa model, bukan silent-wrong.
+        #
+        # exc_info SENGAJA tidak dipakai -- traceback penuh di konsol startup
+        # mudah disalahartikan sbg crash fatal (sudah pernah terjadi: user
+        # menekan Ctrl+C begitu melihatnya, padahal startup lanjut normal
+        # setelah ini). Satu baris ringkas sudah cukup informatif.
+        logger.warning(
+            "VisualSearchService gagal di-load (%s) -- endpoint "
+            "/api/visual-search TIDAK akan berfungsi, fitur lain (termasuk "
+            "verification engine Art-to-Art/Art-to-AI) tetap jalan normal.",
+            exc,
+        )
 
     # Verification engine (Art-to-Art + Art-to-AI) -- lihat
     # services/digital_art_identity_service.py. Threshold dibaca dari env
@@ -56,7 +97,17 @@ async def lifespan(app: FastAPI):
         ai_probability_threshold=float(os.environ.get("DAI_AI_PROBABILITY_THRESHOLD", "0.5")),
         phash_hamming_threshold=int(os.environ.get("DAI_PHASH_HAMMING_THRESHOLD", "5")),
     )
-    app.state.digital_art_identity_service.load()
+    try:
+        app.state.digital_art_identity_service.load()
+    except Exception as exc:
+        # Graceful degrade, pola SAMA dgn Visual Search di atas: file ONNX tidak
+        # di-commit (gitignore), jadi di mesin yang belum punya model, app tetap
+        # harus bisa start (mis. utk dashboard admin / katalog).
+        logger.warning(
+            "DigitalArtIdentityService gagal di-load (%s) -- endpoint verifikasi "
+            "karya TIDAK akan berfungsi, fitur lain tetap jalan normal.",
+            exc,
+        )
 
     yield
     # shutdown: (belum ada resource yang perlu ditutup eksplisit)
@@ -64,16 +115,35 @@ async def lifespan(app: FastAPI):
 
 app = FastAPI(title="GALERIA API", version="0.1.0", lifespan=lifespan)
 
+# CORS hanya relevan utk web (dashboard admin); app mobile (Flutter native) tidak terkena CORS.
+# Default: localhost/127.0.0.1 di port mana pun (Vite bisa pindah port). Tambah origin lain (mis. domain deploy)
+# lewat CORS_ORIGINS="https://a.com,https://b.com" di .env.
+_cors_tambahan = [o.strip() for o in os.environ.get("CORS_ORIGINS", "").split(",") if o.strip()]
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],   # TODO: ganti ke origin spesifik sebelum produksi
+    allow_origins=_cors_tambahan,
+    allow_origin_regex=r"^https?://(localhost|127\.0\.0\.1)(:\d+)?$",
     allow_methods=["*"],
     allow_headers=["*"],
 )
 
+# Serve gambar karya yang di-upload lewat POST /api/karya (lihat
+# routers/karya_upload.py) -- dibuat kalau belum ada, supaya startup tidak
+# gagal di instalasi baru yang belum pernah ada upload sama sekali.
+UPLOADS_DIR.mkdir(parents=True, exist_ok=True)
+app.mount("/uploads", StaticFiles(directory=UPLOADS_DIR), name="uploads")
+
 app.include_router(visual_search.router)
 app.include_router(katalog.router)
 app.include_router(verification.router)
+app.include_router(dashboard_seniman.router)
+app.include_router(sentimen.router)
+app.include_router(ulasan.router)
+app.include_router(admin_dashboard.router)
+app.include_router(katalog_dummy.router)
+app.include_router(karya_upload.router)
+app.include_router(gambar.router)
+app.include_router(verifikasi_publik.router)
 
 
 @app.get("/")

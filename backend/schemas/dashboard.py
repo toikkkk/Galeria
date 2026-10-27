@@ -1,0 +1,130 @@
+"""Skema respons Pydantic untuk endpoint dashboard seniman.
+
+Konvensi (lihat ``ml-recommender/aulya.md``): uang = integer Rupiah, persen =
+angka biasa (``12.5``, bukan ``0.125``), ``None`` bila pembagi 0.
+"""
+
+from __future__ import annotations
+
+from pydantic import BaseModel
+
+
+class SenimanDemoItem(BaseModel):
+    id: str
+    display_name: str
+    level_reputasi: str
+    n_terjual: int
+
+
+class SenimanInfo(BaseModel):
+    id: str
+    display_name: str
+    level_reputasi: str
+
+
+class PerubahanPct(BaseModel):
+    n_terjual: float | None
+    omzet_idr: float | None
+
+
+class RingkasanSeniman(BaseModel):
+    seniman: SenimanInfo
+    periode_hari: int
+    n_terjual: int
+    omzet_idr: int
+    komisi_platform_idr: int
+    pendapatan_bersih_idr: int
+    harga_rata2_idr: int
+    n_pembeli_unik: int
+    karya_tersedia: int
+    karya_terjual_total: int
+    perubahan_pct: PerubahanPct
+
+
+class PenjualanBulan(BaseModel):
+    bulan: str  # "YYYY-MM-01"
+    n_terjual: int
+    omzet_idr: int
+    harga_rata2_idr: int
+    n_pembeli_unik: int
+    gaya_terlaris: str | None
+
+
+class AliranSeniman(BaseModel):
+    style_name: str
+    n_terjual: int
+    omzet_idr: int
+    harga_rata2_idr: int
+    harga_pasar_rata2_idr: int
+    selisih_pct: float | None
+
+
+class SegmenPembeli(BaseModel):
+    """Satu segmen kolektor (hasil clustering UMAP + HDBSCAN) dan perannya bagi seniman ini.
+
+    Semua angka bersifat DESKRIPTIF (statistik atas transaksi seniman ini), bukan prediksi/saran harga.
+    Segmen yang belum pernah membeli dari seniman ini tetap dikembalikan dengan ``n_pembeli = 0``.
+    """
+
+    segmen_id: int
+    segmen_nama: str
+    n_pembeli: int                          # kolektor segmen ini yang pernah membeli dari seniman
+    porsi_pct: float | None                 # porsi n_pembeli terhadap seluruh pembeli seniman
+    deskripsi: str | None = None            # dari segmen_kamus
+    n_transaksi: int = 0                    # jumlah pembelian dari seniman ini oleh segmen
+    omzet_idr: int = 0                      # total harga final dari segmen ke seniman ini
+    harga_rata2_idr: int | None = None      # rata-rata harga final yang dibayar segmen ke seniman ini
+    porsi_omzet_pct: float | None = None    # porsi omzet seniman yang berasal dari segmen ini
+    n_kolektor_segmen: int | None = None    # jumlah kolektor di segmen (seluruh pasar)
+    jangkauan_pct: float | None = None      # % kolektor segmen yang sudah membeli dari seniman ini
+    aliran_favorit: str | None = None       # aliran terbanyak dibeli segmen (profil segmen)
+
+
+class SegmenPembeliResponse(BaseModel):
+    tersedia: bool
+    items: list[SegmenPembeli]
+
+
+class SenimanRamai(BaseModel):
+    seniman_id: str
+    display_name: str
+    n_terjual_30hari: int
+    lonjakan: float
+    harga_rata2_30hari_idr: int
+
+
+class AliranRamai(BaseModel):
+    style_name: str
+    n_terjual_30hari: int
+    porsi_penjualan_pct: float | None
+    harga_rata2_30hari_idr: int
+
+
+class TrenPasar(BaseModel):
+    seniman_ramai: list[SenimanRamai]
+    aliran_ramai: list[AliranRamai]
+
+
+class PenarikanDana(BaseModel):
+    """Satu baris riwayat tarik dana (payout pendapatan bersih bulanan)."""
+
+    id: str
+    periode_bulan: str  # "YYYY-MM" -- pendapatan bulan yang ditarik
+    jumlah_idr: int
+    tanggal: str  # ISO-8601
+    status: str  # "berhasil" | "diproses"
+    tujuan: str
+
+
+class RiwayatPenarikan(BaseModel):
+    total_ditarik_idr: int
+    items: list[PenarikanDana]
+
+
+class NotifikasiSeniman(BaseModel):
+    id: str
+    tipe: str  # "pembelian" | "lelang" | "tindakan"
+    judul: str
+    deskripsi: str
+    waktu: str  # ISO-8601
+    nominal_idr: int | None = None

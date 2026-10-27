@@ -1,0 +1,308 @@
+{
+  "kolektor": {
+    "id": "1abd8d19-9a49-5833-aba9-6f3a70b537f2",
+    "display_name": "Fajar Permana",
+    "segmen": "Kolektor Menengah Rutin",
+    "n_pembelian": 6
+  },
+  "rekomendasi": {
+    "kolektor_id": "1abd8d19-9a49-5833-aba9-6f3a70b537f2",
+    "strategi": "model",
+    "model_version": "klasifikasi-v2",
+    "dihitung_pada": "2026-10-19T09:01:19Z",
+    "segmen": {
+      "id": 4,
+      "nama": "Kolektor Menengah Rutin"
+    },
+    "items": [
+      {
+        "peringkat": 3,
+        "skor": 0.6971,
+        "alasan": [
+          {
+            "kode": "gaya_favorit",
+            "teks": "Sesuai aliran favoritmu: Expressionism"
+          },
+          {
+            "kode": "harga_sesuai",
+            "teks": "Harga sesuai kebiasaan belanjamu"
+          },
+          {
+            "kode": "pernah_beli_seniman",
+            "teks": "Kamu pernah membeli dari seniman ini"
+          }
+        ],
+        "karya": {
+          "id": "fd36ce1f-b940-538e-8eb0-451813c8566d",
+          "title": "Tanpa Judul (Expressionism)",
+          "artist_name": "Pablo Picasso",
+          "style_name": "Expressionism",
+          "gallery_name": "Studio Pablo Picasso",
+          "price_idr": 10000000,
+          "is_promoted": false,
+          "image_filename": "wikiart_01345.jpg",
+          "image_url": "https://pub-25fc11d282cf4037bdcb2f24a6c9d1ff.r2.dev/katalog-dummy/wikiart_01345.jpg",
+          "seniman_id": "23ba78b5-421a-5447-b022-5a66fe8d084d",
+          "lebar_cm": 94.8,
+          "tinggi_cm": 115.2
+        }
+      },
+      {
+        "peringkat": 4,
+        "skor": 0.6726,
+        "alasan": [
+          {
+            "kode": "gaya_favorit",
+            "teks": "Sesuai aliran favoritmu: Realism"
+          },
+          {
+            "kode": "gaya_ramai",
+            "teks": "Aliran ini sedang ramai"
+          },
+          {
+            "kode": "pernah_beli_seniman",
+            "teks": "Kamu pernah membeli dari seniman ini"
+          }
+        ],
+        "karya": {
+          "id": "af61ac87-32c4-5efd-8511-35b77930f211",
+          "title": "Tanpa Judul (Realism)",
+          "artist_name": "Salvador Dali",
+          "style_name": "Realism",
+          "gallery_name": "Studio Salvador Dali",
+          "price_idr": 4600000,
+          "is_promoted": false,
+          "image_filename": "wikiart_04181.jpg",
+          "image_url": "https://pub-25fc11d282cf4037bdcb2f24a6c9d1ff.r2.dev/katalog-dummy/wikiart_04181.jpg",
+          "seniman_id": "7cf14239-60d5-5ff0-9270-0d2dd0d62e05",
+          "lebar_cm": 37.1,
+          "tinggi_cm": 22.2
+        }
+      },
+      {
+        "peringkat": 6,
+        "skor": 0.6557,
+        "alasan": [
+          {
+            "kode": "gaya_favorit",
+            "teks": "Sesuai aliran favoritmu: Realism"
+          },
+          {
+            "kode": "gaya_ramai",
+            "teks": "Aliran ini sedang ramai"
+          }
+        ],
+        "karya": {
+          "id": "907284b9-5769-5208-a57d-827fe030dc98",
+          "title": "Tanpa Judul (Realism)",
+          "artist_name": "Boris Kustodiev",
+          "style_name": "Realism",
+          "gallery_name": "Studio Boris Kustodiev",
+          "price_idr": 14000000,
+          "is_promoted": false,
+          "image_filename": "wikiart_00801.jpg",
+          "image_url": "https://pub-25fc11d282cf4037bdcb2f24a6c9d1ff.r2.dev/katalog-dummy/wikiart_00801.jpg",
+          "seniman_id": "dbc6f383-447d-5f26-a2f4-86753b3c416a",
+          "lebar_cm": 54.8,
+          "tinggi_cm": 85.2
+        }
+      },
+      {
+        "peringkat": 9,
+        "skor": 0.6041,
+        "alasan": [
+          {
+            "kode": "seniman_naik_daun",
+            "teks": "Penjualan seniman ini sedang naik"
+          },
+          {
+            "kode": "pernah_beli_seniman",
+            "teks": "Kamu pernah membeli dari seniman ini"
+          }
+        ],
+        "karya": {
+          "id": "0bc9d34a-7f95-5dee-beb4-55f3af9b97c9",
+          "title": "Tanpa Judul (Naive Art Primitivism)",
+          "artist_name": "Marc Chagall",
+          "style_name": "Naive_Art_Primitivism",
+          "gallery_name": "Studio Marc Chagall",
+          "price_idr": 15000000,
+          "is_promoted": false,
+          "image_filename": "wikiart_03958.jpg",
+          "image_url": "https://pub-25fc11d282cf4037bdcb2f24a6c9d1ff.r2.dev/katalog-dummy/wikiart_03958.jpg",
+          "seniman_id": "c868fe01-5c24-57bf-8ffb-fdc6d3ae09a2",
+          "lebar_cm": 94.2,
+          "tinggi_cm": 131.8
+        }
+      },
+      {
+        "peringkat": 10,
+        "skor": 0.6009,
+        "alasan": [
+          {
+            "kode": "harga_sesuai",
+            "teks": "Harga sesuai kebiasaan belanjamu"
+          },
+          {
+            "kode": "pernah_beli_seniman",
+            "teks": "Kamu pernah membeli dari seniman ini"
+          }
+        ],
+        "karya": {
+          "id": "c076498a-37d3-5ced-a0b9-ee99692df9c5",
+          "title": "Tanpa Judul (Cubism)",
+          "artist_name": "Pablo Picasso",
+          "style_name": "Cubism",
+          "gallery_name": "Studio Pablo Picasso",
+          "price_idr": 7000000,
+          "is_promoted": false,
+          "image_filename": "wikiart_00460.jpg",
+          "image_url": "https://pub-25fc11d282cf4037bdcb2f24a6c9d1ff.r2.dev/katalog-dummy/wikiart_00460.jpg",
+          "seniman_id": "23ba78b5-421a-5447-b022-5a66fe8d084d",
+          "lebar_cm": 34.3,
+          "tinggi_cm": 43.1
+        }
+      },
+      {
+        "peringkat": 11,
+        "skor": 0.5955,
+        "alasan": [
+          {
+            "kode": "harga_sesuai",
+            "teks": "Harga sesuai kebiasaan belanjamu"
+          },
+          {
+            "kode": "seniman_naik_daun",
+            "teks": "Penjualan seniman ini sedang naik"
+          },
+          {
+            "kode": "pernah_beli_seniman",
+            "teks": "Kamu pernah membeli dari seniman ini"
+          }
+        ],
+        "karya": {
+          "id": "8856b1b5-28c4-536b-9a51-9ff06bfdbd80",
+          "title": "Tanpa Judul (Naive Art Primitivism)",
+          "artist_name": "Marc Chagall",
+          "style_name": "Naive_Art_Primitivism",
+          "gallery_name": "Studio Marc Chagall",
+          "price_idr": 11000000,
+          "is_promoted": false,
+          "image_filename": "wikiart_02791.jpg",
+          "image_url": "https://pub-25fc11d282cf4037bdcb2f24a6c9d1ff.r2.dev/katalog-dummy/wikiart_02791.jpg",
+          "seniman_id": "c868fe01-5c24-57bf-8ffb-fdc6d3ae09a2",
+          "lebar_cm": 88.0,
+          "tinggi_cm": 66.0
+        }
+      },
+      {
+        "peringkat": 14,
+        "skor": 0.5668,
+        "alasan": [
+          {
+            "kode": "harga_sesuai",
+            "teks": "Harga sesuai kebiasaan belanjamu"
+          },
+          {
+            "kode": "gaya_ramai",
+            "teks": "Aliran ini sedang ramai"
+          }
+        ],
+        "karya": {
+          "id": "0a787edb-c0d2-5c3f-88e6-03cd57116b4f",
+          "title": "Tanpa Judul (Impressionism)",
+          "artist_name": "Eugene Boudin",
+          "style_name": "Impressionism",
+          "gallery_name": "Studio Eugene Boudin",
+          "price_idr": 5300000,
+          "is_promoted": false,
+          "image_filename": "wikiart_02185.jpg",
+          "image_url": "https://pub-25fc11d282cf4037bdcb2f24a6c9d1ff.r2.dev/katalog-dummy/wikiart_02185.jpg",
+          "seniman_id": "5a27ac9a-1e04-52e2-8392-12edbe43c594",
+          "lebar_cm": 56.3,
+          "tinggi_cm": 83.3
+        }
+      },
+      {
+        "peringkat": 17,
+        "skor": 0.5365,
+        "alasan": [
+          {
+            "kode": "harga_sesuai",
+            "teks": "Harga sesuai kebiasaan belanjamu"
+          }
+        ],
+        "karya": {
+          "id": "deeacde5-7269-5bce-bc8f-9c7480c60aab",
+          "title": "Tanpa Judul (Art Nouveau)",
+          "artist_name": "Raphael Kirchner",
+          "style_name": "Art_Nouveau",
+          "gallery_name": "Studio Raphael Kirchner",
+          "price_idr": 6300000,
+          "is_promoted": false,
+          "image_filename": "wikiart_03748.jpg",
+          "image_url": "https://pub-25fc11d282cf4037bdcb2f24a6c9d1ff.r2.dev/katalog-dummy/wikiart_03748.jpg",
+          "seniman_id": "dad52c43-2eab-5272-a61d-dca032e6b1db",
+          "lebar_cm": 84.9,
+          "tinggi_cm": 56.8
+        }
+      },
+      {
+        "peringkat": 18,
+        "skor": 0.536,
+        "alasan": [
+          {
+            "kode": "harga_sesuai",
+            "teks": "Harga sesuai kebiasaan belanjamu"
+          }
+        ],
+        "karya": {
+          "id": "a3257c02-ae31-5da0-ae8e-d2092e70840b",
+          "title": "Tanpa Judul (Art Nouveau)",
+          "artist_name": "Raphael Kirchner",
+          "style_name": "Art_Nouveau",
+          "gallery_name": "Studio Raphael Kirchner",
+          "price_idr": 6000000,
+          "is_promoted": false,
+          "image_filename": "wikiart_01938.jpg",
+          "image_url": "https://pub-25fc11d282cf4037bdcb2f24a6c9d1ff.r2.dev/katalog-dummy/wikiart_01938.jpg",
+          "seniman_id": "dad52c43-2eab-5272-a61d-dca032e6b1db",
+          "lebar_cm": 86.9,
+          "tinggi_cm": 137.1
+        }
+      },
+      {
+        "peringkat": 20,
+        "skor": 0.5328,
+        "alasan": [
+          {
+            "kode": "gaya_favorit",
+            "teks": "Sesuai aliran favoritmu: Expressionism"
+          },
+          {
+            "kode": "harga_sesuai",
+            "teks": "Harga sesuai kebiasaan belanjamu"
+          },
+          {
+            "kode": "pernah_beli_seniman",
+            "teks": "Kamu pernah membeli dari seniman ini"
+          }
+        ],
+        "karya": {
+          "id": "8f923243-748b-5547-b90c-2a220e52c01f",
+          "title": "Tanpa Judul (Expressionism)",
+          "artist_name": "Pablo Picasso",
+          "style_name": "Expressionism",
+          "gallery_name": "Studio Pablo Picasso",
+          "price_idr": 6800000,
+          "is_promoted": false,
+          "image_filename": "wikiart_03086.jpg",
+          "image_url": "https://pub-25fc11d282cf4037bdcb2f24a6c9d1ff.r2.dev/katalog-dummy/wikiart_03086.jpg",
+          "seniman_id": "23ba78b5-421a-5447-b022-5a66fe8d084d",
+          "lebar_cm": 40.8,
+          "tinggi_cm": 59.5
+        }
+      }
+    ]
+  }
+}

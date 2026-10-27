@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../../../models/lelang.dart';
 import '../../../theme/app_theme.dart';
 import 'pasang_bid_sheet.dart';
+import '../../../utils/coming_soon.dart';
 
 /// Konversi dari
 /// docs/KOLEKTOR FITUR UTAMA/.../galeria_detail_lelang_karya/code.html
@@ -29,8 +30,8 @@ class DetailLelangScreen extends StatelessWidget {
         ),
         title: Text('Ajukan Tawaran', style: AppTextStyles.headlineSm),
         actions: [
-          IconButton(onPressed: () {}, icon: const Icon(Icons.share_outlined)),
-          IconButton(onPressed: () {}, icon: const Icon(Icons.favorite_border)),
+          IconButton(onPressed: () => showComingSoon(context, 'Bagikan'), icon: const Icon(Icons.share_outlined)),
+          IconButton(onPressed: () => showComingSoon(context, 'Favorit'), icon: const Icon(Icons.favorite_border)),
         ],
       ),
       body: ListView(
@@ -201,7 +202,7 @@ class DetailLelangScreen extends StatelessWidget {
                         ),
                       ),
                       TextButton(
-                        onPressed: () {},
+                        onPressed: () => showComingSoon(context, 'Ikuti'),
                         style: TextButton.styleFrom(
                           backgroundColor: AppColors.surfaceContainerHighest,
                         ),
@@ -401,7 +402,7 @@ class DetailLelangScreen extends StatelessWidget {
         child: Row(
           children: [
             OutlinedButton.icon(
-              onPressed: () {},
+              onPressed: () => showComingSoon(context, 'Asisten bid otomatis'),
               icon: const Icon(
                 Icons.smart_toy_outlined,
                 size: 18,

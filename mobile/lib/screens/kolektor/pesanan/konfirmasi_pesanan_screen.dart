@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../../../models/karya.dart';
 import '../../../theme/app_theme.dart';
+import '../../../utils/coming_soon.dart';
 
 /// Konversi dari
 /// docs/KOLEKTOR FITUR PEMBELIAN PEMBAYARAN/.../galeria_konfirmasi_pesanan/code.html
@@ -69,7 +70,7 @@ class _KonfirmasiPesananScreenState extends State<KonfirmasiPesananScreen> {
           const SizedBox(height: AppSpacing.md),
           _card(
             title: 'Alamat Pengiriman',
-            trailing: TextButton(onPressed: () {}, child: const Text('Ubah')),
+            trailing: TextButton(onPressed: () => showComingSoon(context, 'Ubah'), child: const Text('Ubah')),
             child: Container(
               padding: const EdgeInsets.all(AppSpacing.sm),
               decoration: BoxDecoration(
