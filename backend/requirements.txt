@@ -19,3 +19,8 @@ alembic>=1.13                # migration schema
 pgvector>=0.2.5              # tipe kolom Vector(768) + operator cosine distance
 pyjwt>=2.8
 bcrypt>=4.1                  # hash password login admin dashboard (services/admin_auth.py)
+cryptography>=42.0            # Ed25519 digital signature -- sertifikat keaslian & transaksi
+                                # (services/kripto.py), lihat ml-digital-art-identity/SPEC_PAYLOAD.md
+
+# Testing
+pytest>=8.0                   # unit test services/kripto.py, lihat tests/test_kripto.py
