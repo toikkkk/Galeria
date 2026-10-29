@@ -1,13 +1,15 @@
 import 'package:flutter/material.dart';
 
+import '../../services/auth_service.dart';
 import '../../theme/app_theme.dart';
+import '../../utils/password_strength.dart';
 
 /// Konversi dari
 /// docs/design/role_seniman_1/.../galeria_daftar_sebagai_seniman/code.html
 /// (Langkah 1/3 pendaftaran seniman -- lanjut ke VerifikasiIdentitasScreen)
 ///
-/// TODO(backend): wire form ke endpoint registrasi asli + validasi kekuatan
-/// password nyata (saat ini strength meter statis, bukan dihitung live).
+/// Daftar memakai `POST /api/auth/register` (nama, email, password); kekuatan password dihitung langsung.
+/// Catatan: kolom "Nomor HP" belum dikirim -- tabel `users` belum punya kolom telepon (TODO bila nanti dibutuhkan).
 class DaftarSenimanScreen extends StatefulWidget {
   const DaftarSenimanScreen({
     super.key,
@@ -27,6 +29,56 @@ class DaftarSenimanScreen extends StatefulWidget {
 class _DaftarSenimanScreenState extends State<DaftarSenimanScreen> {
   bool _obscurePassword = true;
   bool _obscureConfirm = true;
+  final _namaCtrl = TextEditingController();
+  final _hpCtrl = TextEditingController();
+  final _emailCtrl = TextEditingController();
+  final _pwCtrl = TextEditingController();
+  final _pw2Ctrl = TextEditingController();
+  bool _kirim = false;
+  String? _error;
+
+  @override
+  void dispose() {
+    for (final c in [_namaCtrl, _hpCtrl, _emailCtrl, _pwCtrl, _pw2Ctrl]) {
+      c.dispose();
+    }
+    super.dispose();
+  }
+
+  /// Daftar lewat `POST /api/auth/register` (peran dikirim sesuai layar ini). Berhasil = langsung masuk
+  /// (server menerbitkan token), lalu lanjut ke langkah berikutnya.
+  Future<void> _daftar() async {
+    final nama = _namaCtrl.text.trim();
+    final email = _emailCtrl.text.trim();
+    final pw = _pwCtrl.text;
+    String? err;
+    if (nama.length < 2) {
+      err = 'Isi nama lengkapmu dulu.';
+    } else if (!RegExp(r'^[^@\s]+@[^@\s]+\.[^@\s]+$').hasMatch(email)) {
+      err = 'Format email belum benar.';
+    } else if (validasiPassword(pw) != null) {
+      err = validasiPassword(pw);
+    } else if (pw != _pw2Ctrl.text) {
+      err = 'Konfirmasi kata sandi belum sama.';
+    }
+    if (err != null) {
+      setState(() => _error = err);
+      return;
+    }
+    setState(() {
+      _kirim = true;
+      _error = null;
+    });
+    try {
+      await AuthService.instance.register(email: email, password: pw, displayName: nama, role: 'seniman');
+      if (!mounted) return;
+      widget.onContinue();
+    } on AuthException catch (e) {
+      if (mounted) setState(() => _error = e.message);
+    } finally {
+      if (mounted) setState(() => _kirim = false);
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -171,12 +223,15 @@ class _DaftarSenimanScreenState extends State<DaftarSenimanScreen> {
                     ),
                     const SizedBox(height: AppSpacing.md),
                     _FormField(
+                      controller: _namaCtrl,
                       label: 'Nama Lengkap (sesuai KTP)',
                       hint: 'Masukkan nama lengkap',
                       trailingIcon: Icons.person_outline,
                     ),
                     const SizedBox(height: AppSpacing.sm),
                     _FormField(
+                      controller: _hpCtrl,
+                      keyboardType: TextInputType.phone,
                       label: 'Nomor HP',
                       hint: '812 3456 7890',
                       prefix: '+62',
@@ -185,12 +240,15 @@ class _DaftarSenimanScreenState extends State<DaftarSenimanScreen> {
                     ),
                     const SizedBox(height: AppSpacing.sm),
                     _FormField(
+                      controller: _emailCtrl,
+                      keyboardType: TextInputType.emailAddress,
                       label: 'Alamat Email',
                       hint: 'nama@domain.com',
                       trailingIcon: Icons.mail_outline,
                     ),
                     const SizedBox(height: AppSpacing.sm),
                     _PasswordField(
+                      controller: _pwCtrl,
                       label: 'Password',
                       obscure: _obscurePassword,
                       onToggle: () =>
@@ -199,11 +257,12 @@ class _DaftarSenimanScreenState extends State<DaftarSenimanScreen> {
                     ),
                     const SizedBox(height: AppSpacing.sm),
                     _PasswordField(
+                      controller: _pw2Ctrl,
+                      konfirmasiDari: _pwCtrl,
                       label: 'Konfirmasi Password',
                       obscure: _obscureConfirm,
                       onToggle: () =>
                           setState(() => _obscureConfirm = !_obscureConfirm),
-                      matched: true,
                     ),
                     const SizedBox(height: AppSpacing.md),
                     Row(
@@ -232,9 +291,35 @@ class _DaftarSenimanScreenState extends State<DaftarSenimanScreen> {
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
+                  if (_error != null) ...[
+                    Container(
+                      key: const Key('daftar_error'),
+                      width: double.infinity,
+                      padding: const EdgeInsets.all(AppSpacing.xs),
+                      margin: const EdgeInsets.only(bottom: AppSpacing.xs),
+                      decoration: BoxDecoration(
+                        color: AppColors.error.withValues(alpha: 0.08),
+                        borderRadius: BorderRadius.circular(AppRadius.md),
+                      ),
+                      child: Row(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          const Icon(Icons.error_outline, size: 16, color: AppColors.error),
+                          const SizedBox(width: 6),
+                          Expanded(
+                            child: Text(_error!, style: AppTextStyles.bodySm.copyWith(color: AppColors.error)),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
                   ElevatedButton(
-                    onPressed: widget.onContinue,
-                    child: Row(
+                    onPressed: _kirim ? null : _daftar,
+                    child: _kirim ? const SizedBox(
+                            width: 18,
+                            height: 18,
+                            child: CircularProgressIndicator(strokeWidth: 2),
+                          ) : Row(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: const [
                         Text('Lanjut'),
@@ -276,8 +361,12 @@ class _FormField extends StatelessWidget {
     this.prefix,
     this.trailingIcon,
     this.trailingColor = AppColors.muted,
+    this.controller,
+    this.keyboardType,
   });
 
+  final TextEditingController? controller;
+  final TextInputType? keyboardType;
   final String label;
   final String hint;
   final String? prefix;
@@ -311,6 +400,8 @@ class _FormField extends StatelessWidget {
               ],
               Expanded(
                 child: TextField(
+                  controller: controller,
+                  keyboardType: keyboardType,
                   decoration: InputDecoration(
                     hintText: hint,
                     border: InputBorder.none,
@@ -332,18 +423,20 @@ class _FormField extends StatelessWidget {
 
 class _PasswordField extends StatelessWidget {
   const _PasswordField({
+    required this.controller,
     required this.label,
     required this.obscure,
     required this.onToggle,
     this.showStrength = false,
-    this.matched = false,
+    this.konfirmasiDari,
   });
 
+  final TextEditingController controller;
+  final TextEditingController? konfirmasiDari;
   final String label;
   final bool obscure;
   final VoidCallback onToggle;
   final bool showStrength;
-  final bool matched;
 
   @override
   Widget build(BuildContext context) {
@@ -363,16 +456,27 @@ class _PasswordField extends StatelessWidget {
               Text(label.toUpperCase(),
                   style: AppTextStyles.overline.copyWith(fontSize: 10.5)),
               if (showStrength)
-                Row(
-                  children: [
-                    const CircleAvatar(radius: 3, backgroundColor: Colors.green),
-                    const SizedBox(width: 4),
-                    Text('Kuat',
-                        style: AppTextStyles.bodySm.copyWith(
+                ListenableBuilder(
+                  listenable: controller,
+                  builder: (context, _) {
+                    final k = kekuatanPassword(controller.text);
+                    if (k == 0) return const SizedBox.shrink();
+                    final warna = _warnaKekuatan(k);
+                    return Row(
+                      children: [
+                        CircleAvatar(radius: 3, backgroundColor: warna),
+                        const SizedBox(width: 4),
+                        Text(
+                          labelKekuatan[k],
+                          style: AppTextStyles.bodySm.copyWith(
                             fontSize: 11,
-                            color: Colors.green.shade700,
-                            fontWeight: FontWeight.w600)),
-                  ],
+                            color: warna,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                      ],
+                    );
+                  },
                 ),
             ],
           ),
@@ -381,6 +485,7 @@ class _PasswordField extends StatelessWidget {
             children: [
               Expanded(
                 child: TextField(
+                  controller: controller,
                   obscureText: obscure,
                   decoration: const InputDecoration(
                     hintText: '••••••••••••',
@@ -391,10 +496,18 @@ class _PasswordField extends StatelessWidget {
                   style: AppTextStyles.bodyMd,
                 ),
               ),
-              if (matched)
-                const Padding(
-                  padding: EdgeInsets.only(right: 8),
-                  child: Icon(Icons.check, size: 16, color: AppColors.accent),
+              if (konfirmasiDari != null)
+                ListenableBuilder(
+                  listenable: Listenable.merge([controller, konfirmasiDari!]),
+                  builder: (context, _) {
+                    final cocok = controller.text.isNotEmpty && controller.text == konfirmasiDari!.text;
+                    return cocok
+                        ? const Padding(
+                            padding: EdgeInsets.only(right: 8),
+                            child: Icon(Icons.check, size: 16, color: AppColors.accent),
+                          )
+                        : const SizedBox.shrink();
+                  },
                 ),
               GestureDetector(
                 onTap: onToggle,
@@ -410,21 +523,27 @@ class _PasswordField extends StatelessWidget {
             const SizedBox(height: 8),
             const Divider(height: 1),
             const SizedBox(height: 8),
-            Row(
-              children: [
-                for (int i = 0; i < 4; i++) ...[
-                  if (i > 0) const SizedBox(width: 6),
-                  Expanded(
-                    child: Container(
-                      height: 4,
-                      decoration: BoxDecoration(
-                        color: i < 3 ? AppColors.accent : Colors.green,
-                        borderRadius: BorderRadius.circular(AppRadius.full),
+            ListenableBuilder(
+              listenable: controller,
+              builder: (context, _) {
+                final k = kekuatanPassword(controller.text);
+                return Row(
+                  children: [
+                    for (int i = 0; i < 4; i++) ...[
+                      if (i > 0) const SizedBox(width: 6),
+                      Expanded(
+                        child: Container(
+                          height: 4,
+                          decoration: BoxDecoration(
+                            color: i < k ? _warnaKekuatan(k) : AppColors.border,
+                            borderRadius: BorderRadius.circular(AppRadius.full),
+                          ),
+                        ),
                       ),
-                    ),
-                  ),
-                ],
-              ],
+                    ],
+                  ],
+                );
+              },
             ),
           ],
         ],
@@ -432,3 +551,10 @@ class _PasswordField extends StatelessWidget {
     );
   }
 }
+
+Color _warnaKekuatan(int k) => switch (k) {
+      1 => AppColors.error,
+      2 => Colors.orange.shade700,
+      3 => AppColors.accent,
+      _ => Colors.green.shade700,
+    };

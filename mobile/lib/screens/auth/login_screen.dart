@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../../services/auth_service.dart';
 import '../../theme/app_theme.dart';
 import '../../widgets/galeria_logo.dart';
 import '../onboarding/role_selection_screen.dart';
@@ -8,26 +9,23 @@ import '../../utils/coming_soon.dart';
 /// Konversi dari
 /// docs/design/role_seniman_1/.../galeria_layar_masuk_login_screen/code.html
 ///
-/// Ditambah toggle "Masuk sebagai" (Kolektor/Seniman) -- di mockup asli
-/// layar ini generik tanpa pemilihan peran, tapi karena satu akun demo
-/// dipakai utk kedua peran (belum ada auth nyata), toggle ini yang
-/// menentukan dashboard mana yang dibuka setelah masuk. Lihat main.dart.
+/// Masuk memakai `POST /api/auth/login` (lihat [AuthService]). Peran (seniman/kolektor) ditentukan oleh AKUN di server,
+/// bukan pilihan di layar ini -- toggle "Masuk sebagai" yang dulu dipakai saat belum ada auth sudah dihapus.
 ///
-/// TODO(backend): wire ke endpoint auth asli -- saat ini submit cuma
-/// memanggil [onLoginSuccess] tanpa validasi kredensial nyata.
+/// "Masuk dengan Google": backend sudah siap (`POST /api/auth/google`), tapi sisi aplikasi butuh `google_sign_in` +
+/// Client ID + SHA-1 (lihat root CLAUDE.md), jadi tombolnya sementara "segera hadir" -- BUKAN lagi melewati login.
+/// "Lupa password?" juga belum ada alurnya (belum ada pengiriman email).
 class LoginScreen extends StatefulWidget {
   const LoginScreen({
     super.key,
     required this.onBack,
     required this.onLoginSuccess,
     required this.onRegisterTap,
-    this.initialRole = UserRole.kolektor,
   });
 
   final VoidCallback onBack;
   final ValueChanged<UserRole> onLoginSuccess;
   final VoidCallback onRegisterTap;
-  final UserRole initialRole;
 
   @override
   State<LoginScreen> createState() => _LoginScreenState();
@@ -37,13 +35,36 @@ class _LoginScreenState extends State<LoginScreen> {
   final _emailCtrl = TextEditingController();
   final _passwordCtrl = TextEditingController();
   bool _obscurePassword = true;
-  late UserRole _role = widget.initialRole;
+  bool _kirim = false;
+  String? _error;
 
   @override
   void dispose() {
     _emailCtrl.dispose();
     _passwordCtrl.dispose();
     super.dispose();
+  }
+
+  Future<void> _masuk() async {
+    final email = _emailCtrl.text.trim();
+    final password = _passwordCtrl.text;
+    if (email.isEmpty || password.isEmpty) {
+      setState(() => _error = 'Isi email dan kata sandi dulu.');
+      return;
+    }
+    setState(() {
+      _kirim = true;
+      _error = null;
+    });
+    try {
+      final user = await AuthService.instance.login(email, password);
+      if (!mounted) return;
+      widget.onLoginSuccess(user.isSeniman ? UserRole.seniman : UserRole.kolektor);
+    } on AuthException catch (e) {
+      if (mounted) setState(() => _error = e.message);
+    } finally {
+      if (mounted) setState(() => _kirim = false);
+    }
   }
 
   @override
@@ -104,25 +125,9 @@ class _LoginScreenState extends State<LoginScreen> {
               ),
               const SizedBox(height: 4),
               Text(
-                'Satu akun untuk kolektor dan seniman',
+                'Masuk dengan akun yang sudah kamu daftarkan',
                 textAlign: TextAlign.center,
                 style: AppTextStyles.bodyMd.copyWith(color: AppColors.muted),
-              ),
-              const SizedBox(height: AppSpacing.lg),
-              // Toggle peran -- tentukan dashboard tujuan setelah masuk
-              // (belum ada auth nyata utk mendeteksi peran dari akun).
-              Container(
-                padding: const EdgeInsets.all(4),
-                decoration: BoxDecoration(
-                  color: AppColors.surfaceContainerLow,
-                  borderRadius: BorderRadius.circular(AppRadius.full),
-                ),
-                child: Row(
-                  children: [
-                    Expanded(child: _roleTab('Kolektor', UserRole.kolektor)),
-                    Expanded(child: _roleTab('Seniman', UserRole.seniman)),
-                  ],
-                ),
               ),
               const SizedBox(height: AppSpacing.lg),
               // Form card
@@ -156,6 +161,7 @@ class _LoginScreenState extends State<LoginScreen> {
                       icon: Icons.mail_outline,
                       hint: 'nama@domain.com',
                       keyboardType: TextInputType.emailAddress,
+                      enabled: !_kirim,
                     ),
                     const SizedBox(height: AppSpacing.md),
                     Text('Kata Sandi', style: AppTextStyles.labelMd),
@@ -164,6 +170,8 @@ class _LoginScreenState extends State<LoginScreen> {
                       controller: _passwordCtrl,
                       icon: Icons.lock_outline,
                       hint: 'Masukkan kata sandi',
+                      enabled: !_kirim,
+                      onSubmitted: (_) => _masuk(),
                       obscureText: _obscurePassword,
                       suffix: IconButton(
                         icon: Icon(
@@ -192,17 +200,47 @@ class _LoginScreenState extends State<LoginScreen> {
                         ),
                       ),
                     ),
+                    if (_error != null) ...[
+                      const SizedBox(height: AppSpacing.xs),
+                      Container(
+                        key: const Key('login_error'),
+                        padding: const EdgeInsets.all(AppSpacing.xs),
+                        decoration: BoxDecoration(
+                          color: AppColors.error.withValues(alpha: 0.08),
+                          borderRadius: BorderRadius.circular(AppRadius.md),
+                        ),
+                        child: Row(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            const Icon(Icons.error_outline, size: 16, color: AppColors.error),
+                            const SizedBox(width: 6),
+                            Expanded(
+                              child: Text(
+                                _error!,
+                                style: AppTextStyles.bodySm.copyWith(color: AppColors.error),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
                     const SizedBox(height: AppSpacing.xs),
                     ElevatedButton(
-                      onPressed: () => widget.onLoginSuccess(_role),
-                      child: Row(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: const [
-                          Text('Masuk'),
-                          SizedBox(width: AppSpacing.xs),
-                          Icon(Icons.arrow_forward, size: 16),
-                        ],
-                      ),
+                      onPressed: _kirim ? null : _masuk,
+                      child: _kirim
+                          ? const SizedBox(
+                              width: 18,
+                              height: 18,
+                              child: CircularProgressIndicator(strokeWidth: 2),
+                            )
+                          : Row(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: const [
+                                Text('Masuk'),
+                                SizedBox(width: AppSpacing.xs),
+                                Icon(Icons.arrow_forward, size: 16),
+                              ],
+                            ),
                     ),
                   ],
                 ),
@@ -227,7 +265,7 @@ class _LoginScreenState extends State<LoginScreen> {
               ),
               const SizedBox(height: AppSpacing.lg),
               OutlinedButton.icon(
-                onPressed: () => widget.onLoginSuccess(_role),
+                onPressed: () => showComingSoon(context, 'Masuk dengan Google'),
                 icon: const Icon(Icons.g_mobiledata, size: 24),
                 label: const Text('Masuk dengan Google'),
               ),
@@ -311,32 +349,6 @@ class _LoginScreenState extends State<LoginScreen> {
       ),
     );
   }
-
-  Widget _roleTab(String label, UserRole role) {
-    final active = _role == role;
-    return GestureDetector(
-      onTap: () => setState(() => _role = role),
-      child: AnimatedContainer(
-        duration: const Duration(milliseconds: 150),
-        padding: const EdgeInsets.symmetric(vertical: 10),
-        decoration: BoxDecoration(
-          color: active ? Colors.white : Colors.transparent,
-          borderRadius: BorderRadius.circular(AppRadius.full),
-          boxShadow: active
-              ? const [BoxShadow(color: Colors.black12, blurRadius: 6)]
-              : null,
-        ),
-        alignment: Alignment.center,
-        child: Text(
-          'Masuk sebagai $label',
-          style: AppTextStyles.labelMd.copyWith(
-            color: active ? AppColors.onSurface : AppColors.muted,
-            fontSize: 12.5,
-          ),
-        ),
-      ),
-    );
-  }
 }
 
 class _InputField extends StatelessWidget {
@@ -347,8 +359,12 @@ class _InputField extends StatelessWidget {
     this.obscureText = false,
     this.keyboardType,
     this.suffix,
+    this.enabled = true,
+    this.onSubmitted,
   });
 
+  final bool enabled;
+  final ValueChanged<String>? onSubmitted;
   final TextEditingController controller;
   final IconData icon;
   final String hint;
@@ -371,6 +387,8 @@ class _InputField extends StatelessWidget {
           Expanded(
             child: TextField(
               controller: controller,
+              enabled: enabled,
+              onSubmitted: onSubmitted,
               obscureText: obscureText,
               keyboardType: keyboardType,
               style: AppTextStyles.bodyMd,

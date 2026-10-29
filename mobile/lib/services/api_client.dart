@@ -41,10 +41,30 @@ class ApiException implements Exception {
 /// dipakai backend saat ini: GET JSON biasa, dan POST multipart (upload
 /// gambar utk Visual Search).
 class ApiClient {
-  Future<dynamic> getJson(String path) async {
+  /// Diisi di `main()` dengan `AuthService.instance.accessToken` (supaya file ini tidak bergantung pada AuthService).
+  /// `paksaPerbarui: true` = abaikan token lama dan minta yang baru. Mengembalikan null bila belum masuk.
+  static Future<String?> Function({bool paksaPerbarui})? tokenProvider;
+
+  /// Header untuk request ber-auth (`Authorization: Bearer ...`). Tanpa token, hanya header dasar.
+  static Future<Map<String, String>> _header({required bool auth, bool paksa = false, bool json = false}) async {
+    final h = <String, String>{if (json) 'Content-Type': 'application/json'};
+    if (auth) {
+      final token = await tokenProvider?.call(paksaPerbarui: paksa);
+      if (token != null) h['Authorization'] = 'Bearer $token';
+    }
+    return h;
+  }
+
+  /// [auth] = true menyertakan token login; bila server membalas 401, token diperbarui dan request diulang SEKALI.
+  Future<dynamic> getJson(String path, {bool auth = false}) async {
     final Uri uri = Uri.parse('$kApiBaseUrl$path');
     try {
-      final response = await http.get(uri).timeout(const Duration(seconds: 15));
+      var response = await http.get(uri, headers: await _header(auth: auth)).timeout(const Duration(seconds: 15));
+      if (auth && response.statusCode == 401) {
+        response = await http
+            .get(uri, headers: await _header(auth: true, paksa: true))
+            .timeout(const Duration(seconds: 15));
+      }
       if (response.statusCode < 200 || response.statusCode >= 300) {
         throw ApiException('Server error ${response.statusCode}: ${response.body}');
       }
@@ -56,12 +76,17 @@ class ApiClient {
     }
   }
 
-  Future<dynamic> postJson(String path, Map<String, dynamic> body) async {
+  Future<dynamic> postJson(String path, Map<String, dynamic> body, {bool auth = false}) async {
     final Uri uri = Uri.parse('$kApiBaseUrl$path');
     try {
-      final response = await http
-          .post(uri, headers: {'Content-Type': 'application/json'}, body: jsonEncode(body))
+      var response = await http
+          .post(uri, headers: await _header(auth: auth, json: true), body: jsonEncode(body))
           .timeout(const Duration(seconds: 15));
+      if (auth && response.statusCode == 401) {
+        response = await http
+            .post(uri, headers: await _header(auth: true, paksa: true, json: true), body: jsonEncode(body))
+            .timeout(const Duration(seconds: 15));
+      }
       if (response.statusCode < 200 || response.statusCode >= 300) {
         throw ApiException('Server error ${response.statusCode}: ${response.body}');
       }

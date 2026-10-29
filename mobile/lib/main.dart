@@ -1,9 +1,13 @@
+import 'dart:async';
+
 import 'models/picked_image.dart';
 
 import 'package:flutter/cupertino.dart' show CupertinoPageTransitionsBuilder;
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
+import 'services/api_client.dart';
+import 'services/auth_service.dart';
 import 'services/digital_art_identity_service.dart';
 
 import 'models/karya.dart';
@@ -57,8 +61,22 @@ import 'screens/pesanan/pesanan_seniman_screen.dart';
 import 'screens/profile/profil_screen.dart';
 import 'theme/app_theme.dart';
 
-void main() {
+Future<void> main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+  // Request ber-auth (ApiClient `auth: true`) memakai access token dari AuthService, diperbarui otomatis.
+  ApiClient.tokenProvider = ({bool paksaPerbarui = false}) =>
+      AuthService.instance.accessToken(paksaPerbarui: paksaPerbarui);
+  await AuthService.instance.restore(); // cepat: hanya membaca penyimpanan aman, tanpa jaringan
   runApp(const GaleriaApp());
+  // Setelah UI tampil: pastikan sesi tersimpan masih berlaku di server (offline = tetap dianggap masuk).
+  unawaited(AuthService.instance.validasiSesi());
+}
+
+/// Tujuan setelah splash: pengguna yang sudah masuk langsung ke beranda perannya, selain itu ke welcome.
+String _awalSetelahSplash() {
+  final user = AuthService.instance.user;
+  if (!AuthService.instance.loggedIn || user == null) return '/welcome';
+  return user.isSeniman ? '/dashboard' : '/beranda-kolektor';
 }
 
 /// Routing hasil verifikasi Digital Art Identity (Art-to-Art + Art-to-AI)
@@ -167,13 +185,19 @@ void _kembali(BuildContext context) {
 
 final _messengerKey = GlobalKey<ScaffoldMessengerState>();
 
+/// Keluar akun: sesi dicabut di server (best-effort) + token lokal dihapus, lalu kembali ke welcome.
+Future<void> _keluar(BuildContext context) async {
+  await AuthService.instance.logout();
+  if (context.mounted) context.go('/welcome');
+}
+
 final _router = GoRouter(
   initialLocation: '/splash',
   routes: [
     GoRoute(
       path: '/splash',
       builder: (context, state) =>
-          SplashScreen(onFinished: () => context.go('/welcome')),
+          SplashScreen(onFinished: () => context.go(_awalSetelahSplash())),
     ),
     GoRoute(
       path: '/welcome',
@@ -282,7 +306,7 @@ final _router = GoRouter(
       path: '/profil',
       builder: (context, state) => ProfilScreen(
         onNavTap: (i) => _goSenimanTab(context, i),
-        onLogout: () => context.go('/welcome'),
+        onLogout: () => _keluar(context),
         onLihatProfilToko: () => context.push('/toko'),
         onDataDiri: () => context.push('/verifikasi-identitas'),
       ),
@@ -601,7 +625,7 @@ final _router = GoRouter(
       builder: (context, state) => ProfilKolektorScreen(
         onNavTap: (i) => _goKolektorTab(context, i),
         onPindai: () => context.push('/pindai'),
-        onLogout: () => context.go('/welcome'),
+        onLogout: () => _keluar(context),
         onPesananTap: () => context.push('/pesanan'),
       ),
     ),
@@ -621,9 +645,20 @@ class GaleriaApp extends StatefulWidget {
 class _GaleriaAppState extends State<GaleriaApp> with WidgetsBindingObserver {
   DateTime? _backTerakhir;
 
+  /// Server menolak sesi tersimpan (dicabut/berakhir) -> beri tahu + arahkan ke layar masuk.
+  void _onSesiBerakhir() {
+    if (!AuthService.instance.sesiBerakhir.value) return;
+    _messengerKey.currentState
+      ?..clearSnackBars()
+      ..showSnackBar(const SnackBar(content: Text('Sesimu sudah berakhir. Silakan masuk lagi.')));
+    final path = _lokasiSekarang();
+    if (path != '/splash' && path != '/login' && path != '/welcome') _router.go('/login');
+  }
+
   @override
   void initState() {
     super.initState();
+    AuthService.instance.sesiBerakhir.addListener(_onSesiBerakhir);
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (mounted) WidgetsBinding.instance.addObserver(this);
     });
@@ -631,6 +666,7 @@ class _GaleriaAppState extends State<GaleriaApp> with WidgetsBindingObserver {
 
   @override
   void dispose() {
+    AuthService.instance.sesiBerakhir.removeListener(_onSesiBerakhir);
     WidgetsBinding.instance.removeObserver(this);
     super.dispose();
   }
