@@ -8,51 +8,47 @@ import '../../widgets/karya_image.dart';
 
 /// Tujuan tombol "Karya" di bottom nav Seniman (index 1).
 ///
-/// Menampilkan SEMUA karya terverifikasi di platform (`GET /api/katalog`) --
-/// yaitu karya yang sudah lolos verification engine Digital Art Identity
-/// (Art-to-Art: bukan duplikat; Art-to-AI: bukan AI-generated). Tiap kartu
-/// menampilkan skor Art-to-AI dari engine kalau ada.
-///
-/// Filter "Milik saya" SENGAJA terkunci: butuh Auth (belum dibangun, lihat
-/// CLAUDE.md). Begitu Login tersedia, isi [senimanId] dari sesi login dan
-/// filter ini otomatis aktif (backend sudah mendukung `?seniman_id=`).
+/// Menampilkan SEMUA karya milik seniman yang sedang login (`GET /api/karya-saya`), apa pun
+/// status verifikasinya: menunggu, terverifikasi, perlu ditinjau, atau ditolak. Karya yang
+/// belum terverifikasi hanya terlihat olehmu, belum tampil di katalog kolektor.
 class KaryaSayaScreen extends StatefulWidget {
   const KaryaSayaScreen({
     super.key,
     required this.onBack,
     this.onUploadKarya,
     this.onKaryaTap,
-    this.senimanId,
-  });
+    KatalogService? service,
+  }) : _service = service;
 
   final VoidCallback onBack;
   final VoidCallback? onUploadKarya;
   final void Function(Karya karya)? onKaryaTap;
-
-  /// ID seniman yang sedang login. `null` = belum login -> "Milik saya"
-  /// terkunci.
-  final String? senimanId;
+  final KatalogService? _service;
 
   @override
   State<KaryaSayaScreen> createState() => _KaryaSayaScreenState();
 }
 
 class _KaryaSayaScreenState extends State<KaryaSayaScreen> {
-  static const _pageSize = 20;
-
-  final _service = KatalogService();
+  late final KatalogService _service = widget._service ?? KatalogService();
   final _searchCtrl = TextEditingController();
-  final List<Karya> _karya = [];
-  int _total = 0;
-  int _page = 0;
-  bool _loading = false;
-  bool _milikSaya = false;
+  List<Karya> _karya = [];
+  bool _loading = true;
   String? _error;
+  String _filter = 'semua';
+
+  static const _filters = <(String, String)>[
+    ('semua', 'Semua'),
+    ('terverifikasi', 'Terverifikasi'),
+    ('menunggu', 'Menunggu'),
+    ('perlu_ditinjau', 'Perlu ditinjau'),
+    ('ditolak', 'Ditolak'),
+  ];
 
   @override
   void initState() {
     super.initState();
-    _load(reset: true);
+    _load();
   }
 
   @override
@@ -61,30 +57,15 @@ class _KaryaSayaScreenState extends State<KaryaSayaScreen> {
     super.dispose();
   }
 
-  Future<void> _load({bool reset = false}) async {
-    if (_loading) return;
+  Future<void> _load() async {
     setState(() {
       _loading = true;
       _error = null;
-      if (reset) {
-        _karya.clear();
-        _page = 0;
-        _total = 0;
-      }
     });
     try {
-      final res = await _service.fetchKatalogTerverifikasi(
-        page: _page + 1,
-        pageSize: _pageSize,
-        q: _searchCtrl.text,
-        senimanId: _milikSaya ? widget.senimanId : null,
-      );
+      final hasil = await _service.fetchKaryaSaya();
       if (!mounted) return;
-      setState(() {
-        _karya.addAll(res.items);
-        _page = res.page;
-        _total = res.total;
-      });
+      setState(() => _karya = hasil);
     } catch (e) {
       if (!mounted) return;
       setState(() => _error = 'Gagal memuat karya: $e');
@@ -93,54 +74,65 @@ class _KaryaSayaScreenState extends State<KaryaSayaScreen> {
     }
   }
 
-  void _pilihFilter(bool milikSaya) {
-    if (milikSaya && widget.senimanId == null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Filter "Milik saya" aktif setelah Anda login sebagai seniman.'),
-        ),
-      );
-      return;
+  List<Karya> get _tampil {
+    final q = _searchCtrl.text.trim().toLowerCase();
+    return _karya.where((k) {
+      if (_filter != 'semua' && k.statusVerifikasi != _filter) return false;
+      return q.isEmpty || k.title.toLowerCase().contains(q) || k.styleName.toLowerCase().contains(q);
+    }).toList();
+  }
+
+  Future<void> _hapus(Karya karya) async {
+    final ya = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Hapus karya?'),
+        content: Text('"${karya.title}" akan dihapus dari daftarmu. Tindakan ini tidak bisa dibatalkan.'),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Batal')),
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, true),
+            child: const Text('Hapus', style: TextStyle(color: AppColors.error)),
+          ),
+        ],
+      ),
+    );
+    if (ya != true || !mounted) return;
+    try {
+      await _service.hapusKarya(karya.id);
+      if (!mounted) return;
+      setState(() => _karya = _karya.where((k) => k.id != karya.id).toList());
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Karya dihapus.')));
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Gagal menghapus: $e')));
     }
-    if (_milikSaya == milikSaya) return;
-    setState(() => _milikSaya = milikSaya);
-    _load(reset: true);
   }
 
   @override
   Widget build(BuildContext context) {
-    final bisaMuatLagi = _karya.length < _total;
+    final tampil = _tampil;
     return Scaffold(
       backgroundColor: AppColors.surface,
       appBar: AppBar(
         leading: IconButton(onPressed: widget.onBack, icon: const Icon(Icons.arrow_back)),
-        title: Text('Karya', style: AppTextStyles.headlineSm),
+        title: Text('Karya Saya', style: AppTextStyles.headlineSm),
         actions: [
-          IconButton(onPressed: widget.onUploadKarya, icon: const Icon(Icons.add)),
+          IconButton(onPressed: widget.onUploadKarya, icon: const Icon(Icons.add), tooltip: 'Unggah karya'),
         ],
       ),
       body: RefreshIndicator(
-        onRefresh: () => _load(reset: true),
+        onRefresh: _load,
         child: ListView(
           physics: const AlwaysScrollableScrollPhysics(),
           padding: const EdgeInsets.all(AppSpacing.screenGutter),
           children: [
             TextField(
               controller: _searchCtrl,
-              textInputAction: TextInputAction.search,
-              onSubmitted: (_) => _load(reset: true),
+              onChanged: (_) => setState(() {}),
               decoration: InputDecoration(
-                hintText: 'Cari judul, seniman, atau galeri',
+                hintText: 'Cari judul atau aliran',
                 prefixIcon: const Icon(Icons.search),
-                suffixIcon: _searchCtrl.text.isEmpty
-                    ? null
-                    : IconButton(
-                        icon: const Icon(Icons.close),
-                        onPressed: () {
-                          _searchCtrl.clear();
-                          _load(reset: true);
-                        },
-                      ),
                 filled: true,
                 fillColor: Colors.white,
                 isDense: true,
@@ -151,99 +143,70 @@ class _KaryaSayaScreenState extends State<KaryaSayaScreen> {
               ),
             ),
             const SizedBox(height: AppSpacing.sm),
-            Wrap(
-              spacing: AppSpacing.xs,
-              children: [
-                ChoiceChip(
-                  label: const Text('Semua terverifikasi'),
-                  selected: !_milikSaya,
-                  onSelected: (_) => _pilihFilter(false),
-                ),
-                ChoiceChip(
-                  avatar: widget.senimanId == null
-                      ? const Icon(Icons.lock_outline, size: 14)
-                      : null,
-                  label: const Text('Milik saya'),
-                  selected: _milikSaya,
-                  onSelected: (_) => _pilihFilter(true),
-                ),
-              ],
+            SingleChildScrollView(
+              scrollDirection: Axis.horizontal,
+              child: Row(
+                children: [
+                  for (final f in _filters)
+                    Padding(
+                      padding: const EdgeInsets.only(right: AppSpacing.xs),
+                      child: ChoiceChip(
+                        label: Text(f.$2),
+                        selected: _filter == f.$1,
+                        onSelected: (_) => setState(() => _filter = f.$1),
+                      ),
+                    ),
+                ],
+              ),
             ),
-            if (widget.senimanId == null) ...[
-              const SizedBox(height: AppSpacing.xs),
-              Text(
-                'Filter "Milik saya" akan aktif setelah fitur Login tersedia.',
-                style: AppTextStyles.bodySm.copyWith(fontSize: 11.5, color: AppColors.muted),
-              ),
-            ],
             const SizedBox(height: AppSpacing.sm),
-            if (_total > 0)
-              Text(
-                '$_total karya terverifikasi',
-                style: AppTextStyles.labelSm.copyWith(color: AppColors.muted),
-              ),
-            const SizedBox(height: AppSpacing.xs),
             if (_error != null)
-              Padding(
-                padding: const EdgeInsets.symmetric(vertical: AppSpacing.lg),
-                child: Column(
-                  children: [
-                    Text(
-                      _error!,
-                      textAlign: TextAlign.center,
-                      style: AppTextStyles.bodySm.copyWith(color: AppColors.error),
-                    ),
-                    const SizedBox(height: AppSpacing.sm),
-                    OutlinedButton.icon(
-                      onPressed: () => _load(reset: _karya.isEmpty),
-                      icon: const Icon(Icons.refresh, size: 16),
-                      label: const Text('Coba Lagi'),
-                    ),
-                  ],
+              _pesan(
+                _error!,
+                warna: AppColors.error,
+                aksi: OutlinedButton.icon(
+                  onPressed: _load,
+                  icon: const Icon(Icons.refresh, size: 16),
+                  label: const Text('Coba Lagi'),
                 ),
               )
-            else if (_karya.isEmpty && _loading)
+            else if (_loading && _karya.isEmpty)
               const Padding(
                 padding: EdgeInsets.symmetric(vertical: AppSpacing.xxl),
                 child: Center(child: CircularProgressIndicator()),
               )
             else if (_karya.isEmpty)
-              Padding(
-                padding: const EdgeInsets.symmetric(vertical: AppSpacing.xxl),
-                child: Center(
-                  child: Text(
-                    'Belum ada karya terverifikasi.',
-                    style: AppTextStyles.bodySm.copyWith(color: AppColors.muted),
-                  ),
+              _pesan(
+                'Kamu belum mengunggah karya. Unggah karya pertamamu, lalu karya akan diperiksa keaslian dan tampil di katalog kolektor setelah terverifikasi.',
+                aksi: FilledButton.icon(
+                  onPressed: widget.onUploadKarya,
+                  icon: const Icon(Icons.add, size: 18),
+                  label: const Text('Unggah karya'),
                 ),
               )
+            else if (tampil.isEmpty)
+              _pesan('Tidak ada karya yang cocok dengan filter ini.')
             else
               GridView.builder(
                 shrinkWrap: true,
                 physics: const NeverScrollableScrollPhysics(),
-                itemCount: _karya.length,
+                itemCount: tampil.length,
                 gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
                   crossAxisCount: 2,
                   crossAxisSpacing: AppSpacing.sm,
                   mainAxisSpacing: AppSpacing.sm,
                   childAspectRatio: 0.58,
                 ),
-                itemBuilder: (context, i) => _KaryaSayaCard(
-                  karya: _karya[i],
-                  onTap: widget.onKaryaTap == null ? null : () => widget.onKaryaTap!(_karya[i]),
-                ),
-              ),
-            if (_error == null && bisaMuatLagi)
-              Padding(
-                padding: const EdgeInsets.only(top: AppSpacing.md),
-                child: Center(
-                  child: _loading
-                      ? const CircularProgressIndicator()
-                      : OutlinedButton(
-                          onPressed: _load,
-                          child: const Text('Muat lebih banyak'),
-                        ),
-                ),
+                itemBuilder: (context, i) {
+                  final k = tampil[i];
+                  return _KaryaSayaCard(
+                    karya: k,
+                    onTap: k.statusVerifikasi == 'terverifikasi' && widget.onKaryaTap != null
+                        ? () => widget.onKaryaTap!(k)
+                        : null,
+                    onHapus: () => _hapus(k),
+                  );
+                },
               ),
             const SizedBox(height: AppSpacing.lg),
           ],
@@ -251,17 +214,40 @@ class _KaryaSayaScreenState extends State<KaryaSayaScreen> {
       ),
     );
   }
+
+  Widget _pesan(String teks, {Color? warna, Widget? aksi}) => Padding(
+        padding: const EdgeInsets.symmetric(vertical: AppSpacing.xl),
+        child: Column(
+          children: [
+            Text(
+              teks,
+              textAlign: TextAlign.center,
+              style: AppTextStyles.bodySm.copyWith(color: warna ?? AppColors.muted),
+            ),
+            if (aksi != null) ...[const SizedBox(height: AppSpacing.sm), aksi],
+          ],
+        ),
+      );
 }
 
+({String label, Color warna, IconData ikon}) _infoStatus(String? status) => switch (status) {
+      'terverifikasi' => (label: 'Terverifikasi', warna: AppColors.accent, ikon: Icons.verified),
+      'perlu_ditinjau' => (label: 'Perlu ditinjau', warna: const Color(0xFFB26A00), ikon: Icons.hourglass_top),
+      'ditolak' => (label: 'Ditolak', warna: AppColors.error, ikon: Icons.block),
+      _ => (label: 'Menunggu', warna: AppColors.muted, ikon: Icons.schedule),
+    };
+
 class _KaryaSayaCard extends StatelessWidget {
-  const _KaryaSayaCard({required this.karya, this.onTap});
+  const _KaryaSayaCard({required this.karya, this.onTap, this.onHapus});
 
   final Karya karya;
   final VoidCallback? onTap;
+  final VoidCallback? onHapus;
 
   @override
   Widget build(BuildContext context) {
     final ai = karya.aiGeneratedProbability;
+    final info = _infoStatus(karya.statusVerifikasi);
     return GestureDetector(
       onTap: onTap,
       child: Container(
@@ -279,10 +265,29 @@ class _KaryaSayaCard extends StatelessWidget {
                 fit: StackFit.expand,
                 children: [
                   KaryaImage(karya: karya),
+                  Positioned(
+                    top: 8,
+                    left: 8,
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                      decoration: BoxDecoration(color: info.warna, borderRadius: BorderRadius.circular(AppRadius.full)),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(info.ikon, size: 11, color: Colors.white),
+                          const SizedBox(width: 3),
+                          Text(
+                            info.label,
+                            style: const TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.w600),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
                   if (StudioStore.instance.sedangDipromosikan(karya))
                     Positioned(
-                      top: 8,
-                      right: 8,
+                      bottom: 8,
+                      left: 8,
                       child: Container(
                         padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
                         decoration: BoxDecoration(
@@ -296,29 +301,14 @@ class _KaryaSayaCard extends StatelessWidget {
                       ),
                     ),
                   Positioned(
-                    top: 8,
-                    left: 8,
-                    child: Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                      decoration: BoxDecoration(
-                        color: AppColors.accent,
-                        borderRadius: BorderRadius.circular(AppRadius.full),
-                      ),
-                      child: const Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Icon(Icons.verified, size: 11, color: Colors.white),
-                          SizedBox(width: 3),
-                          Text(
-                            'Terverifikasi',
-                            style: TextStyle(
-                              color: Colors.white,
-                              fontSize: 10,
-                              fontWeight: FontWeight.w600,
-                            ),
-                          ),
-                        ],
-                      ),
+                    top: 2,
+                    right: 2,
+                    child: IconButton(
+                      onPressed: onHapus,
+                      tooltip: 'Hapus karya',
+                      visualDensity: VisualDensity.compact,
+                      style: IconButton.styleFrom(backgroundColor: Colors.black38),
+                      icon: const Icon(Icons.delete_outline, size: 16, color: Colors.white),
                     ),
                   ),
                 ],
@@ -336,7 +326,7 @@ class _KaryaSayaCard extends StatelessWidget {
                     overflow: TextOverflow.ellipsis,
                   ),
                   Text(
-                    karya.artistName,
+                    karya.styleName,
                     style: AppTextStyles.bodySm.copyWith(color: AppColors.muted, fontSize: 11),
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
@@ -347,9 +337,7 @@ class _KaryaSayaCard extends StatelessWidget {
                   ),
                   const SizedBox(height: 2),
                   Text(
-                    ai == null
-                        ? 'Belum dicek engine'
-                        : 'Skor AI-generated ${(ai * 100).round()}%',
+                    ai == null ? 'Belum dicek engine' : 'Skor AI-generated ${(ai * 100).round()}%',
                     style: AppTextStyles.bodySm.copyWith(color: AppColors.muted, fontSize: 10),
                   ),
                 ],

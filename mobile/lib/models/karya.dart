@@ -20,6 +20,7 @@ class Karya {
     this.aiGeneratedProbability,
     this.lebarCm,
     this.tinggiCm,
+    this.statusVerifikasi,
   });
 
   /// UUID dari database -- kosong ('') untuk [sampleKarya] lokal (belum
@@ -58,6 +59,9 @@ class Karya {
   /// Skor Art-to-AI (0..1, kemungkinan AI-generated) dari verification
   /// engine. `null` = karya belum pernah dicek engine (mis. karya seed).
   final double? aiGeneratedProbability;
+
+  /// menunggu / terverifikasi / ditolak / perlu_ditinjau (dari server); null untuk data lokal.
+  final String? statusVerifikasi;
   /// Ukuran fisik karya (cm) -- dipakai AR supaya lukisan tampil dgn skala asli.
   /// `null` = belum diisi seniman; AR memakai ukuran perkiraan dan melabelinya begitu.
   final double? lebarCm;
@@ -117,6 +121,7 @@ class Karya {
           (json['ai_generated_probability'] as num?)?.toDouble(),
       lebarCm: (json['lebar_cm'] as num?)?.toDouble(),
       tinggiCm: (json['tinggi_cm'] as num?)?.toDouble(),
+      statusVerifikasi: json['status_verifikasi'] as String?,
     );
   }
 }

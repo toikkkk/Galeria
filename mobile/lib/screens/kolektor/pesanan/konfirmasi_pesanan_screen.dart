@@ -1,3 +1,4 @@
+import '../../../services/auth_service.dart';
 import 'package:flutter/material.dart';
 
 import '../../../models/karya.dart';
@@ -82,7 +83,7 @@ class _KonfirmasiPesananScreenState extends State<KonfirmasiPesananScreen> {
                 children: [
                   Row(
                     children: [
-                      Text('Rani Paramita', style: AppTextStyles.labelMd),
+                      Text(AuthService.instance.user?.displayName ?? '-', style: AppTextStyles.labelMd),
                       const SizedBox(width: 6),
                       Container(
                         padding: const EdgeInsets.symmetric(
@@ -101,7 +102,7 @@ class _KonfirmasiPesananScreenState extends State<KonfirmasiPesananScreen> {
                     ],
                   ),
                   Text(
-                    '+62 812-3456-7890',
+                    AuthService.instance.user?.email ?? '',
                     style: AppTextStyles.bodySm.copyWith(
                       color: AppColors.muted,
                     ),

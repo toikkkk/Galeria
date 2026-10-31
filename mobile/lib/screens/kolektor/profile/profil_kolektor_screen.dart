@@ -1,3 +1,4 @@
+import '../../../services/auth_service.dart';
 import 'package:flutter/material.dart';
 
 import '../../../theme/app_theme.dart';
@@ -24,6 +25,7 @@ class ProfilKolektorScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final user = AuthService.instance.user;
     return Scaffold(
       backgroundColor: AppColors.surface,
       appBar: AppBar(
@@ -58,32 +60,35 @@ class ProfilKolektorScreen extends StatelessWidget {
                   children: [
                     Stack(
                       children: [
-                        const CircleAvatar(
+                        CircleAvatar(
                           radius: 32,
                           backgroundColor: AppColors.primary,
-                          child: Icon(
-                            Icons.person,
-                            color: Colors.white,
-                            size: 30,
-                          ),
-                        ),
-                        Positioned(
-                          right: -2,
-                          bottom: -2,
-                          child: Container(
-                            width: 20,
-                            height: 20,
-                            decoration: const BoxDecoration(
-                              shape: BoxShape.circle,
-                              color: AppColors.accent,
-                            ),
-                            child: const Icon(
-                              Icons.verified,
-                              size: 12,
+                          child: Text(
+                            user?.inisial ?? '?',
+                            style: AppTextStyles.headlineMd.copyWith(
                               color: Colors.white,
+                              fontSize: 22,
                             ),
                           ),
                         ),
+                        if (user?.emailVerified ?? false)
+                          Positioned(
+                            right: -2,
+                            bottom: -2,
+                            child: Container(
+                              width: 20,
+                              height: 20,
+                              decoration: const BoxDecoration(
+                                shape: BoxShape.circle,
+                                color: AppColors.accent,
+                              ),
+                              child: const Icon(
+                                Icons.verified,
+                                size: 12,
+                                color: Colors.white,
+                              ),
+                            ),
+                          ),
                       ],
                     ),
                     const SizedBox(width: AppSpacing.sm),
@@ -105,7 +110,7 @@ class ProfilKolektorScreen extends StatelessWidget {
                               ),
                             ),
                             child: Text(
-                              'KOLEKTOR TERVERIFIKASI',
+                              (user?.emailVerified ?? false) ? 'KOLEKTOR TERVERIFIKASI' : 'KOLEKTOR',
                               style: AppTextStyles.overline.copyWith(
                                 fontSize: 8,
                                 color: AppColors.accent,
@@ -114,20 +119,20 @@ class ProfilKolektorScreen extends StatelessWidget {
                           ),
                           const SizedBox(height: 4),
                           Text(
-                            'Rani Paramitha',
+                            user?.displayName ?? 'Tamu',
                             style: AppTextStyles.headlineMd.copyWith(
                               fontSize: 18,
                             ),
                           ),
                           Text(
-                            'Patron Seni Kontemporer & Modern',
+                            user?.email ?? '',
                             style: AppTextStyles.bodySm.copyWith(
                               color: AppColors.muted,
                               fontSize: 11,
                             ),
                           ),
                           Text(
-                            'ID Kolektor: #GAL-8829-ID',
+                            'ID Kolektor: ${user?.kodeAkun ?? '-'}',
                             style: AppTextStyles.overline.copyWith(
                               fontSize: 9,
                               color: AppColors.outline,
@@ -301,7 +306,7 @@ class ProfilKolektorScreen extends StatelessWidget {
                     borderRadius: BorderRadius.circular(AppRadius.full),
                   ),
                   child: Text(
-                    'UTAMA · PENGIRIMAN KURATORIAL',
+                    'BELUM DIATUR',
                     style: AppTextStyles.overline.copyWith(
                       fontSize: 8,
                       color: AppColors.accent,
@@ -310,15 +315,15 @@ class ProfilKolektorScreen extends StatelessWidget {
                 ),
                 const SizedBox(height: 4),
                 Text(
-                  'Apartemen & Galeri Pribadi (Jakarta)',
+                  'Alamat pengiriman',
                   style: AppTextStyles.labelMd,
                 ),
                 Text(
-                  'Rani Paramitha · +62 812-3456-7890',
+                  '${user?.displayName ?? '-'} · ${user?.email ?? ''}',
                   style: AppTextStyles.bodySm.copyWith(fontSize: 11),
                 ),
                 Text(
-                  'Apartemen Senopati Suites, Tower 2 Lt. 18, Jl. Senopati No. 41, Kebayoran Baru, Jakarta Selatan',
+                  'Alamat belum diatur. Kamu bisa mengisinya saat checkout.',
                   style: AppTextStyles.bodySm.copyWith(
                     color: AppColors.muted,
                     fontSize: 11,

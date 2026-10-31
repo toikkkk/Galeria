@@ -24,6 +24,23 @@ class AuthUser {
 
   bool get isSeniman => role == 'seniman';
 
+  /// Kata pertama nama tampilan ("Rani Paramitha" -> "Rani").
+  String get namaDepan {
+    final kata = displayName.trim().split(RegExp(r'\s+'));
+    return kata.first.isEmpty ? displayName : kata.first;
+  }
+
+  /// Maksimal dua huruf awal untuk avatar ("Rani Paramitha" -> "RP").
+  String get inisial {
+    final kata = displayName.trim().split(RegExp(r'\s+')).where((k) => k.isNotEmpty).toList();
+    if (kata.isEmpty) return '?';
+    final dua = kata.length == 1 ? kata.first.substring(0, 1) : kata.first.substring(0, 1) + kata.last.substring(0, 1);
+    return dua.toUpperCase();
+  }
+
+  /// Kode pendek yang stabil dari UUID, untuk tampilan ("#GAL-3F9A21C4").
+  String get kodeAkun => '#GAL-${id.replaceAll('-', '').substring(0, 8).toUpperCase()}';
+
   factory AuthUser.fromJson(Map<String, dynamic> j) => AuthUser(
         id: j['id'] as String,
         email: j['email'] as String,

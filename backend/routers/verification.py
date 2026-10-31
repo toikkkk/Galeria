@@ -23,6 +23,8 @@ from PIL import Image, ImageOps
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from database import get_db
+from models.user import User
+from services.auth_deps import butuh_role
 from models.karya import Karya, StatusVerifikasiKarya
 from schemas.verification import VerificationResult
 
@@ -60,6 +62,7 @@ async def verify_karya(
     karya_id: str,
     request: Request,
     file: UploadFile = File(...),
+    user: User = Depends(butuh_role("seniman")),
     db: AsyncSession = Depends(get_db),
 ):
     """Verifikasi RESMI karya yang sudah ada di tabel ``karya`` -- hasil
@@ -79,8 +82,10 @@ async def verify_karya(
         raise HTTPException(404, "Karya tidak ditemukan")
 
     karya = await db.get(Karya, karya_uuid)
-    if karya is None:
-        raise HTTPException(404, "Karya tidak ditemukan")
+    if karya is None or karya.deleted_at is not None or karya.seniman_id != user.id:
+        raise HTTPException(404, "Karya tidak ditemukan")  # bukan 403: jangan bocorkan karya orang lain
+    if karya.status_verifikasi != StatusVerifikasiKarya.MENUNGGU:
+        raise HTTPException(409, "Karya ini sudah diverifikasi, tidak bisa diverifikasi ulang.")
 
     image = await _read_image(file)
     service = request.app.state.digital_art_identity_service

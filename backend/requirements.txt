@@ -20,3 +20,4 @@ pgvector>=0.2.5              # tipe kolom Vector(768) + operator cosine distance
 pyjwt>=2.8
 bcrypt>=4.1                  # hash password login admin dashboard (services/admin_auth.py)
 google-auth>=2.29             # verifikasi ID token Google Sign-In (services/auth_service.py::verifikasi_google)
+boto3>=1.34                  # Cloudflare R2 (S3-compatible), services/storage.py

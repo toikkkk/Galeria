@@ -37,6 +37,20 @@ class ApiException implements Exception {
   String toString() => message;
 }
 
+/// Pesan error dari server: `detail` (sudah Bahasa Indonesia, aman ditampilkan) bila ada, selain itu status + isi.
+String _pesanServer(http.Response r) {
+  try {
+    final j = jsonDecode(r.body);
+    final d = j is Map ? j['detail'] : null;
+    if (d is String && d.isNotEmpty) return d;
+    if (d is List && d.isNotEmpty && d.first is Map && (d.first as Map)['msg'] is String) {
+      final loc = ((d.first as Map)['loc'] as List?)?.last;
+      return 'Data tidak valid${loc != null ? ' ($loc)' : ''}: ${(d.first as Map)['msg']}';
+    }
+  } catch (_) {}
+  return 'Server error ${r.statusCode}: ${r.body}';
+}
+
 /// HTTP client tipis ke backend GALERIA. Cuma dua bentuk request yang
 /// dipakai backend saat ini: GET JSON biasa, dan POST multipart (upload
 /// gambar utk Visual Search).
@@ -66,7 +80,7 @@ class ApiClient {
             .timeout(const Duration(seconds: 15));
       }
       if (response.statusCode < 200 || response.statusCode >= 300) {
-        throw ApiException('Server error ${response.statusCode}: ${response.body}');
+        throw ApiException(_pesanServer(response));
       }
       return jsonDecode(response.body);
     } on ApiException {
@@ -88,7 +102,7 @@ class ApiClient {
             .timeout(const Duration(seconds: 15));
       }
       if (response.statusCode < 200 || response.statusCode >= 300) {
-        throw ApiException('Server error ${response.statusCode}: ${response.body}');
+        throw ApiException(_pesanServer(response));
       }
       return jsonDecode(response.body);
     } on ApiException {
@@ -105,39 +119,52 @@ class ApiClient {
     String filename = 'upload.jpg',
     Map<String, String>? fields,
     MediaType? contentType,
+    bool auth = false,
   }) async {
     assert(file != null || bytes != null, 'butuh file atau bytes');
     final Uri uri = Uri.parse('$kApiBaseUrl$path').replace(
       queryParameters: fields,
     );
     try {
-      final request = http.MultipartRequest('POST', uri)
-        ..files.add(
-          bytes != null
-              ? http.MultipartFile.fromBytes(
-                  'file',
-                  bytes,
-                  filename: filename,
-                  contentType: contentType,
-                )
-              : await http.MultipartFile.fromPath(
-            'file',
-            file!.path,
-            // Tanpa ini, http.MultipartFile.fromPath NEBAK content-type dari
-            // ekstensi file -- file temp dari CameraController.takePicture()
-            // kadang tidak punya ekstensi yang dikenali, jadi fallback ke
-            // "application/octet-stream" dan DITOLAK backend (validasi
-            // `file.content_type.startswith("image/")` di
-            // backend/routers/visual_search.py). Paksa eksplisit dari caller.
-            contentType: contentType,
-          ),
-        );
-      final streamed = await request.send().timeout(const Duration(seconds: 30));
-      final response = await http.Response.fromStream(streamed);
+      // Request multipart hanya bisa dikirim sekali, jadi dibangun ulang tiap percobaan.
+      Future<http.Response> kirim({bool paksa = false}) async {
+        final request = http.MultipartRequest('POST', uri)
+          ..headers.addAll(await _header(auth: auth, paksa: paksa))
+          ..files.add(
+            bytes != null
+                ? http.MultipartFile.fromBytes('file', bytes, filename: filename, contentType: contentType)
+                // Tanpa contentType eksplisit, fromPath menebak dari ekstensi -- file temp kamera kadang
+                // tak punya ekstensi dikenali -> "application/octet-stream" -> ditolak backend.
+                : await http.MultipartFile.fromPath('file', file!.path, contentType: contentType),
+          );
+        final streamed = await request.send().timeout(const Duration(seconds: 60));
+        return http.Response.fromStream(streamed);
+      }
+
+      var response = await kirim();
+      if (auth && response.statusCode == 401) response = await kirim(paksa: true);
       if (response.statusCode < 200 || response.statusCode >= 300) {
-        throw ApiException('Server error ${response.statusCode}: ${response.body}');
+        throw ApiException(_pesanServer(response));
       }
       return jsonDecode(response.body);
+    } on ApiException {
+      rethrow;
+    } catch (e) {
+      throw ApiException('Gagal terhubung ke backend ($path): $e');
+    }
+  }
+
+  /// `DELETE` ber-auth; sukses (2xx) tidak mengembalikan isi.
+  Future<void> delete(String path) async {
+    final Uri uri = Uri.parse('$kApiBaseUrl$path');
+    try {
+      var response = await http.delete(uri, headers: await _header(auth: true)).timeout(const Duration(seconds: 15));
+      if (response.statusCode == 401) {
+        response = await http.delete(uri, headers: await _header(auth: true, paksa: true)).timeout(const Duration(seconds: 15));
+      }
+      if (response.statusCode < 200 || response.statusCode >= 300) {
+        throw ApiException(_pesanServer(response));
+      }
     } on ApiException {
       rethrow;
     } catch (e) {

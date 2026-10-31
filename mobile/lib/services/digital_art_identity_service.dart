@@ -140,6 +140,7 @@ class DigitalArtIdentityService {
       bytes: image.bytes,
       filename: image.name,
       contentType: MediaType('image', 'jpeg'),
+      auth: true,
     );
     return VerificationResult.fromJson(data as Map<String, dynamic>);
   }

@@ -1,3 +1,4 @@
+import '../../services/auth_service.dart';
 import 'package:flutter/material.dart';
 
 import '../../theme/app_theme.dart';
@@ -31,6 +32,7 @@ class ProfilScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final user = AuthService.instance.user;
     return Scaffold(
       backgroundColor: AppColors.surface,
       body: ListView(
@@ -75,10 +77,11 @@ class ProfilScreen extends StatelessWidget {
                             borderRadius: BorderRadius.circular(AppRadius.md),
                           ),
                           alignment: Alignment.center,
-                          child: Text('SR',
+                          child: Text(user?.inisial ?? '?',
                               style: AppTextStyles.displayMd
                                   .copyWith(color: const Color(0xFFECC246), fontSize: 28)),
                         ),
+                        if (user?.emailVerified ?? false)
                         Positioned(
                           right: -2,
                           bottom: -2,
@@ -100,15 +103,17 @@ class ProfilScreen extends StatelessWidget {
                           Row(
                             children: [
                               Flexible(
-                                child: Text('Sanggar Rupa Nusantara',
+                                child: Text(user?.displayName ?? 'Seniman',
                                     style: AppTextStyles.headlineSm,
                                     overflow: TextOverflow.ellipsis),
                               ),
-                              const SizedBox(width: 4),
-                              const Icon(Icons.check_circle, size: 16, color: AppColors.accent),
+                              if (user?.emailVerified ?? false) ...[
+                                const SizedBox(width: 4),
+                                const Icon(Icons.check_circle, size: 16, color: AppColors.accent),
+                              ],
                             ],
                           ),
-                          Text('Kurator Terakreditasi · Salon Utama',
+                          Text(user?.email ?? '',
                               style: AppTextStyles.bodySm.copyWith(color: AppColors.muted)),
                           const SizedBox(height: 6),
                           Container(
@@ -122,7 +127,7 @@ class ProfilScreen extends StatelessWidget {
                               children: [
                                 const Icon(Icons.verified_user, size: 12, color: Color(0xFF584400)),
                                 const SizedBox(width: 4),
-                                Text('Identitas Terverifikasi',
+                                Text((user?.emailVerified ?? false) ? 'Email Terverifikasi' : 'Email Belum Diverifikasi',
                                     style: AppTextStyles.labelSm
                                         .copyWith(fontSize: 10.5, color: const Color(0xFF584400))),
                               ],
@@ -170,7 +175,7 @@ class ProfilScreen extends StatelessWidget {
           const SizedBox(height: AppSpacing.sm),
           _group(context, 'AKUN', [
             _MenuItemData(Icons.badge_outlined, 'Data Diri & KTP',
-                badge: 'Terverifikasi', badgeColor: AppColors.success, onTap: onDataDiri),
+                onTap: onDataDiri),
             _MenuItemData(Icons.lock_outline, 'Ubah Password'),
             _MenuItemData(Icons.notifications_outlined, 'Notifikasi'),
             _MenuItemData(Icons.translate_outlined, 'Bahasa', trailingText: 'Indonesia'),
@@ -315,12 +320,12 @@ class ProfilScreen extends StatelessWidget {
                   margin: const EdgeInsets.only(left: 6),
                   padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
                   decoration: BoxDecoration(
-                    color: (d.badgeColor ?? AppColors.accent).withValues(alpha: 0.15),
+                    color: AppColors.accent.withValues(alpha: 0.15),
                     borderRadius: BorderRadius.circular(AppRadius.full),
                   ),
                   child: Text(d.badge!,
                       style: AppTextStyles.labelSm.copyWith(
-                          fontSize: 10, color: d.badgeColor ?? AppColors.accent)),
+                          fontSize: 10, color: AppColors.accent)),
                 ),
               const SizedBox(width: 4),
               const Icon(Icons.chevron_right, size: 20, color: AppColors.muted),
@@ -349,14 +354,13 @@ class ProfilScreen extends StatelessWidget {
 
 class _MenuItemData {
   _MenuItemData(this.icon, this.label,
-      {this.trailingText, this.trailingColor, this.badge, this.badgeColor, this.onTap});
+      {this.trailingText, this.trailingColor, this.badge, this.onTap});
 
   final IconData icon;
   final String label;
   final String? trailingText;
   final Color? trailingColor;
   final String? badge;
-  final Color? badgeColor;
 
   /// Null = belum ada layar tujuan -- [_menuTile] fallback ke
   /// [showComingSoon].

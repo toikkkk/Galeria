@@ -191,8 +191,43 @@ Future<void> _keluar(BuildContext context) async {
   if (context.mounted) context.go('/welcome');
 }
 
+/// Halaman yang HANYA boleh dibuka akun seniman yang sudah masuk.
+const _rutePrivatSeniman = [
+  '/dashboard', '/notifikasi-seniman', '/riwayat-penarikan', '/profil',
+  '/karya-saya', '/komunitas', '/buat-lelang', '/unggah-karya',
+  '/memverifikasi-keaslian', '/karya-terverifikasi', '/karya-ditolak',
+  '/karya-perlu-ditinjau', '/pesanan-seniman', '/promosikan-karya',
+  '/buat-event', '/event-berhasil',
+];
+
+/// Halaman terikat akun kolektor (tamu boleh jelajah katalog/lelang/event, tapi tidak halaman ini).
+const _rutePrivatKolektor = [
+  '/profil-kolektor', '/pesanan', '/koleksi-saya', '/notifikasi',
+  '/event/tiket', '/event/e-tiket',
+];
+
+bool _cocok(String path, List<String> daftar) =>
+    daftar.any((p) => path == p || path.startsWith('$p/'));
+
+/// Penjaga rute: belum masuk -> /login; salah peran -> beranda perannya sendiri.
+String? _jagaRute(BuildContext context, GoRouterState state) {
+  final path = state.uri.path;
+  final auth = AuthService.instance;
+  final user = auth.user;
+  final masuk = auth.loggedIn && user != null;
+  final privatSeniman = _cocok(path, _rutePrivatSeniman);
+  final privatKolektor = _cocok(path, _rutePrivatKolektor);
+
+  if (!masuk) return (privatSeniman || privatKolektor) ? '/login' : null;
+  if (privatSeniman && !user.isSeniman) return '/beranda-kolektor';
+  if (privatKolektor && user.isSeniman) return '/dashboard';
+  return null;
+}
+
 final _router = GoRouter(
   initialLocation: '/splash',
+  refreshListenable: AuthService.instance,
+  redirect: _jagaRute,
   routes: [
     GoRoute(
       path: '/splash',

@@ -2,6 +2,8 @@ import '../../state/upload_preview.dart';
 import '../../models/picked_image.dart';
 
 import 'package:flutter/material.dart';
+
+import '../../services/auth_service.dart';
 import 'package:image_picker/image_picker.dart';
 
 import '../../services/katalog_service.dart';
@@ -20,11 +22,9 @@ import '../../utils/coming_soon.dart';
 /// [MemverifikasiKeaslianScreen] utk verifikasi RESMI
 /// (`POST /api/karya/{id}/verify`) -- bukan lagi mode pratinjau.
 ///
-/// CATATAN JUJUR (lihat backend/routers/karya_upload.py): "Seniman Demo"/
-/// "Studio Pribadi Anda" di bawah adalah PLACEHOLDER pengganti identitas
-/// user login -- Auth belum dibangun (lihat CLAUDE.md). Field lain (media,
-/// tahun, cerita, harga lelang) masih UI-only, belum dikirim ke backend
-/// (skema `karya` saat ini belum punya kolom-kolom itu).
+/// Pemilik karya & nama seniman diambil server dari akun yang login (bukan dari form). Field
+/// media, tahun, cerita, dan harga lelang masih UI-only, belum dikirim ke backend (skema `karya`
+/// belum punya kolom-kolom itu).
 class UnggahKaryaScreen extends StatefulWidget {
   const UnggahKaryaScreen({super.key, required this.onBack, required this.onSubmitted});
 
@@ -52,9 +52,9 @@ class _UnggahKaryaScreenState extends State<UnggahKaryaScreen> {
   // `karya.tinggi_cm`/`karya.lebar_cm` (lihat CLAUDE.md) -- dipetakan
   // "Panjang" -> tinggi_cm, "Lebar" -> lebar_cm, lihat pemanggilan
   // createKarya() di _submit().
-  final _panjangCtrl = TextEditingController(text: '120');
-  final _lebarCtrl = TextEditingController(text: '90');
-  final _hargaCtrl = TextEditingController(text: '120.000.000');
+  final _panjangCtrl = TextEditingController();
+  final _lebarCtrl = TextEditingController();
+  final _hargaCtrl = TextEditingController();
 
   @override
   void dispose() {
@@ -89,10 +89,6 @@ class _UnggahKaryaScreenState extends State<UnggahKaryaScreen> {
       final karyaId = await KatalogService().createKarya(
         image: _mainPhoto!,
         title: _titleCtrl.text.trim(),
-        // PLACEHOLDER -- lihat catatan jujur di docstring kelas ini (Auth
-        // belum ada, belum tahu siapa seniman yang sedang login).
-        artistName: 'Sanggar Rupa Nusantara',
-        galleryName: 'Sanggar Rupa Nusantara',
         styleName: _genre,
         priceIdr: harga,
         // "Panjang" (UI) -> tinggi_cm, "Lebar" (UI) -> lebar_cm (lihat
@@ -104,7 +100,7 @@ class _UnggahKaryaScreenState extends State<UnggahKaryaScreen> {
       UploadPreview.last = UploadPreview(
         image: _mainPhoto!,
         title: _titleCtrl.text.trim(),
-        artist: 'Sanggar Rupa Nusantara',
+        artist: AuthService.instance.user?.displayName ?? '',
         style: _genre,
       );
       widget.onSubmitted((image: _mainPhoto!, karyaId: karyaId));

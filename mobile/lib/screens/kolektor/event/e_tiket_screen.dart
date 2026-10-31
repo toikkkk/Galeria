@@ -1,3 +1,4 @@
+import '../../../services/auth_service.dart';
 import 'package:flutter/material.dart';
 
 import '../../../theme/app_theme.dart';
@@ -150,7 +151,7 @@ class ETiketScreen extends StatelessWidget {
                       Row(
                         children: [
                           Expanded(
-                            child: _detail('Nama Kolektor', 'Rani Paramita'),
+                            child: _detail('Nama Kolektor', AuthService.instance.user?.displayName ?? '-'),
                           ),
                           Expanded(child: _detail('Alokasi', 'VIP-A12')),
                         ],

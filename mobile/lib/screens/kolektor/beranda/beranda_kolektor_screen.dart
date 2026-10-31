@@ -1,3 +1,4 @@
+import '../../../services/auth_service.dart';
 import 'dart:async';
 
 import 'package:flutter/material.dart';
@@ -82,12 +83,23 @@ class _BerandaKolektorScreenState extends State<BerandaKolektorScreen> {
     try {
       final service = KatalogService();
       final karya = kPakaiDataDummy
-          ? (await service.fetchKatalogDummy()).items
+          ? [...await _karyaSeniman(service), ...(await service.fetchKatalogDummy()).items]
           : await service.fetchKatalog();
       if (!mounted || karya.isEmpty) return;
       setState(() => _karya = karya);
     } catch (_) {
       // Diam-diam tetap pakai sampleKarya -- lihat komentar kelas di atas.
+    }
+  }
+
+  /// Karya yang diunggah seniman sungguhan dan sudah terverifikasi (bukan 8 karya seed / data dummy),
+  /// ditaruh paling depan. Gagal memuat -> kosong, katalog dummy tetap tampil.
+  Future<List<Karya>> _karyaSeniman(KatalogService service, {String? q}) async {
+    try {
+      final halaman = await service.fetchKatalogTerverifikasi(pageSize: 40, q: q);
+      return halaman.items.where((k) => k.senimanId != null).toList();
+    } catch (_) {
+      return const [];
     }
   }
 
@@ -115,11 +127,13 @@ class _BerandaKolektorScreenState extends State<BerandaKolektorScreen> {
     }
     _debounce = Timer(const Duration(milliseconds: 300), () async {
       try {
-        final page = await KatalogService().fetchKatalogDummy(q: v);
+        final service = KatalogService();
+        final nyata = await _karyaSeniman(service, q: v);
+        final page = await service.fetchKatalogDummy(q: v);
         if (!mounted || _query != v) return;
         setState(() {
-          _hasilServer = page.items;
-          _totalServer = page.total;
+          _hasilServer = [...nyata, ...page.items];
+          _totalServer = page.total + nyata.length;
         });
       } catch (_) {
         if (mounted) setState(() => _hasilServer = null); // jatuh ke filter lokal
@@ -201,7 +215,7 @@ class _BerandaKolektorScreenState extends State<BerandaKolektorScreen> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text('Halo, Rani', style: AppTextStyles.headlineLg),
+                  Text('Halo, ${AuthService.instance.user?.namaDepan ?? 'Kolektor'}', style: AppTextStyles.headlineLg),
                   Text(
                     'KOLEKTOR TERDAFTAR',
                     style: AppTextStyles.overline.copyWith(

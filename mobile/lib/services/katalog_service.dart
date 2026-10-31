@@ -78,21 +78,12 @@ class KatalogService {
     );
   }
 
-  /// Buat baris `karya` baru (status awal "menunggu", BELUM tampil di
-  /// katalog publik -- lihat docstring `POST /api/karya` di backend).
-  /// Kembalikan `karya_id` baru, dipakai caller utk memanggil
-  /// `DigitalArtIdentityService.verifyKarya()` selanjutnya.
-  ///
-  /// CATATAN JUJUR (lihat routers/karya_upload.py): `artistName`/
-  /// `galleryName` sekarang input form bebas -- BUKAN identitas user
-  /// terautentikasi (Auth belum dibangun, lihat CLAUDE.md). Begitu Auth
-  /// ada, dua parameter ini harus dihapus dari sini, diambil dari token
-  /// login di backend.
+  /// Buat karya baru milik seniman yang login (status awal "menunggu", BELUM tampil di katalog
+  /// publik). Pemilik & nama seniman diambil server dari akun, bukan dari form. Mengembalikan
+  /// `karya_id`, dipakai caller untuk `DigitalArtIdentityService.verifyKarya()`.
   Future<String> createKarya({
     required PickedImage image,
     required String title,
-    required String artistName,
-    required String galleryName,
     required String styleName,
     required int priceIdr,
     required double lebarCm,
@@ -104,15 +95,23 @@ class KatalogService {
       filename: image.name,
       fields: {
         'title': title,
-        'artist_name': artistName,
-        'gallery_name': galleryName,
         'style_name': styleName,
         'price_idr': '$priceIdr',
         'lebar_cm': '$lebarCm',
         'tinggi_cm': '$tinggiCm',
       },
       contentType: MediaType('image', 'jpeg'),
+      auth: true,
     );
     return data['id'] as String;
   }
+
+  /// `GET /api/karya-saya`: semua karya milikmu, termasuk yang masih menunggu / ditolak / perlu ditinjau.
+  Future<List<Karya>> fetchKaryaSaya() async {
+    final data = await _client.getJson('/api/karya-saya?page_size=100', auth: true);
+    return (data['items'] as List).cast<Map<String, dynamic>>().map(Karya.fromJson).toList();
+  }
+
+  /// Hapus karya milikmu (soft-delete di server).
+  Future<void> hapusKarya(String karyaId) => _client.delete('/api/karya/$karyaId');
 }

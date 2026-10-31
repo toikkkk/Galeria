@@ -15,12 +15,13 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from database import get_db
 from models.karya import Karya, StatusVerifikasiKarya
 from models.verification import KaryaFingerprint
+from services import storage
 from schemas.katalog import KaryaDetail, KaryaListItem, KatalogPage
 
 router = APIRouter(prefix="/api", tags=["katalog"])
 
 
-def _to_list_item(karya: Karya, fp: KaryaFingerprint | None = None) -> KaryaListItem:
+def to_list_item(karya: Karya, fp: KaryaFingerprint | None = None) -> KaryaListItem:
     return KaryaListItem(
         seniman_id=str(karya.seniman_id) if karya.seniman_id else None,
         ai_generated_probability=fp.ai_generated_probability if fp else None,
@@ -37,7 +38,8 @@ def _to_list_item(karya: Karya, fp: KaryaFingerprint | None = None) -> KaryaList
         # image_key diisi relatif (mis. "uploads/karya/<uuid>.jpg") oleh
         # POST /api/karya -- jadikan path absolut "/uploads/..." di sini,
         # client (mobile) yang prepend base URL (lihat schemas/katalog.py).
-        image_url=f"/{karya.image_key}" if karya.image_key else None,
+        image_url=storage.url_gambar(karya.image_key),
+        status_verifikasi=karya.status_verifikasi.value,
         lebar_cm=karya.lebar_cm,
         tinggi_cm=karya.tinggi_cm,
     )
@@ -91,7 +93,7 @@ async def list_katalog(
     ).all()
 
     return KatalogPage(
-        items=[_to_list_item(k, fp) for k, fp in rows],
+        items=[to_list_item(k, fp) for k, fp in rows],
         page=page,
         page_size=page_size,
         total=total,
@@ -107,9 +109,13 @@ async def get_karya(karya_id: str, db: AsyncSession = Depends(get_db)):
         raise HTTPException(404, "Karya tidak ditemukan")
 
     karya = await db.get(Karya, karya_uuid)
-    if karya is None:
+    if (
+        karya is None
+        or karya.deleted_at is not None
+        or karya.status_verifikasi != StatusVerifikasiKarya.TERVERIFIKASI
+    ):
         raise HTTPException(404, "Karya tidak ditemukan")
 
     fp = await db.get(KaryaFingerprint, karya_uuid)
-    item = _to_list_item(karya, fp)
+    item = to_list_item(karya, fp)
     return KaryaDetail(**item.model_dump())
