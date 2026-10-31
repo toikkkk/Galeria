@@ -23,6 +23,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from models.event import Event, EventKarya, EventPesanan, EventTiket, EventTiketPembelian, StatusEvent as SE
 from models.karya import Karya, StatusVerifikasiKarya
+from models.komunitas import Komunitas
 from models.user import User
 from schemas.event import (
     CheckinOut, ETiket, EventBuat, EventOut, EventRingkas, KaryaEvent, PesananTiketOut, PesertaItem, TiketOut,
@@ -99,6 +100,8 @@ async def ke_out_banyak(db: AsyncSession, daftar: list[Event], user: User | None
         if k.deleted_at is None:
             karya_per.setdefault(eid, []).append(k)
     nama = {u.id: u.display_name for u in (await db.execute(select(User).where(User.id.in_({e.komunitas_id for e in daftar})))).scalars()}
+    refs = {e.komunitas_ref_id for e in daftar if e.komunitas_ref_id}
+    nama_kom = {k.id: k.nama for k in (await db.execute(select(Komunitas).where(Komunitas.id.in_(refs)))).scalars()} if refs else {}
     punya: set[uuid.UUID] = set()
     if user is not None:
         punya = set((await db.execute(
@@ -136,6 +139,7 @@ async def ke_out_banyak(db: AsyncSession, daftar: list[Event], user: User | None
             karya=[KaryaEvent(id=str(k.id), title=k.title, artist_name=k.artist_name, style_name=k.style_name, price_idr=k.price_idr,
                               image_url=storage.url_gambar(k.image_key), image_filename=k.image_filename) for k in karya_per.get(e.id, [])],
             server_now=now, saya_punya_tiket=e.id in punya, saya_penyelenggara=penyelenggara,
+            komunitas_id=str(e.komunitas_ref_id) if e.komunitas_ref_id else None, komunitas_nama=nama_kom.get(e.komunitas_ref_id),
             tiket_terjual=terj if penyelenggara else None, pendapatan_idr=pend if penyelenggara else None,
             sudah_checkin=cek if penyelenggara else None,
             bisa_dibatalkan=penyelenggara and st in ("akan_datang", "berlangsung") and terj == 0,
@@ -172,8 +176,14 @@ async def buat(db: AsyncSession, user: User, b: EventBuat) -> Event:
         ))).scalar_one()
         if ok != len(kids):
             raise HTTPException(422, "Karya yang dipamerkan harus karya terverifikasi milikmu sendiri.")
+    kom_id = None
+    if b.komunitas_id:
+        kom = await db.get(Komunitas, _parse(b.komunitas_id, "Komunitas tidak ditemukan"))
+        if kom is None or kom.pemilik_id != user.id:
+            raise HTTPException(422, "Event atas nama komunitas hanya bisa dibuat oleh pemilik komunitas itu.")
+        kom_id = kom.id
     e = Event(
-        id=uuid.uuid4(), komunitas_id=user.id, judul=b.judul, deskripsi=b.deskripsi, tema=b.tema, format=b.format,
+        id=uuid.uuid4(), komunitas_ref_id=kom_id, komunitas_id=user.id, judul=b.judul, deskripsi=b.deskripsi, tema=b.tema, format=b.format,
         nama_lokasi=b.nama_lokasi, alamat=b.alamat, kota=b.kota, link_online=b.link_online,
         lokasi=b.nama_lokasi if b.format == "offline" else "Online", mulai_at=b.mulai_at, selesai_at=b.selesai_at,
         status=SE.DIPUBLIKASIKAN,

@@ -1,7 +1,7 @@
 """Penyaji gambar karya yang tersimpan di Cloudflare R2 (``GET /api/media/karya/<uuid>.jpg``).
 
 Backend mengambil objek lewat API S3 R2 (bukan ``r2.dev``, yang terblokir DNS di sebagian provider
-Indonesia) lalu menyajikannya ke aplikasi. Hanya key ``karya/<uuid>.jpg`` yang dilayani, jadi
+Indonesia) lalu menyajikannya ke aplikasi. Hanya key ``karya/<uuid>.jpg`` dan ``komunitas/<uuid>.jpg`` yang dilayani, jadi
 endpoint ini tidak bisa dipakai membaca objek lain di bucket. Nama file tidak bisa ditebak (UUID)
 dan gambar karya memang tampil publik di katalog, jadi tidak perlu login.
 """
@@ -17,7 +17,7 @@ from services import storage
 
 router = APIRouter(prefix="/api", tags=["media"])
 
-_KEY_OK = re.compile(r"^karya/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}\.jpg$")
+_KEY_OK = re.compile(r"^(karya|komunitas)/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}\.jpg$")
 
 
 @router.get("/media/{key:path}")

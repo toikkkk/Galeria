@@ -23,24 +23,6 @@ class PromosiKarya {
   DateTime get berakhir => mulai.add(Duration(days: durasiHari));
 }
 
-class KomunitasSeniman {
-  const KomunitasSeniman({
-    required this.nama,
-    required this.deskripsi,
-    required this.aliran,
-    required this.terbuka,
-    this.aturan = '',
-  });
-
-  final String nama;
-  final String deskripsi;
-  final List<String> aliran;
-
-  /// true = siapa pun boleh bergabung; false = anggota perlu disetujui.
-  final bool terbuka;
-  final String aturan;
-}
-
 class JenisTiket {
   JenisTiket({
     required this.nama,
@@ -74,6 +56,9 @@ class EventPameran {
   String kota = '';
   String linkOnline = '';
 
+  /// Bila diisi, event terbit atas nama komunitas ini (pemilik komunitas).
+  String? komunitasId;
+
   List<JenisTiket> tiket = [
     JenisTiket(nama: 'Tiket Reguler', hargaIdr: 50000, kuota: 100),
   ];
@@ -98,7 +83,6 @@ class StudioStore extends ChangeNotifier {
   bool get isPro => _isPro;
 
   final List<PromosiKarya> promosi = [];
-  KomunitasSeniman? komunitas;
 
   /// Draft event yang sedang diisi di wizard 3 langkah.
   EventPameran draftEvent = EventPameran();
@@ -120,11 +104,6 @@ class StudioStore extends ChangeNotifier {
 
   static bool _sama(Karya a, Karya b) =>
       a.id.isNotEmpty && b.id.isNotEmpty ? a.id == b.id : a.title == b.title;
-
-  void buatKomunitas(KomunitasSeniman k) {
-    komunitas = k;
-    notifyListeners();
-  }
 
   void mulaiDraftEvent() {
     draftEvent = EventPameran();

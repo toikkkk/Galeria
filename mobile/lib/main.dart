@@ -235,10 +235,11 @@ ETiketArgs _argsETiket(PesananTiket p) =>
     ETiketArgs(event: p.event, tiketNama: p.tiketNama, etiket: p.etiket);
 
 /// Mulai wizard "Buat Event" (butuh Pro, lihat widgets/pro_gate.dart).
-Future<void> _mulaiBuatEvent(BuildContext context) async {
+Future<void> _mulaiBuatEvent(BuildContext context, {String? komunitasId}) async {
   if (await ensurePro(context, fitur: 'Membuat event pameran')) {
     if (context.mounted) {
       StudioStore.instance.mulaiDraftEvent();
+      StudioStore.instance.draftEvent.komunitasId = komunitasId;
       context.push('/buat-event/1');
     }
   }
@@ -408,21 +409,22 @@ final _router = GoRouter(
       path: '/komunitas',
       builder: (context, state) => KomunitasSenimanScreen(
         onBack: () => _kembali(context),
-        onLihatKomunitas: () => context.push('/komunitas/detail'),
-        onBuatEvent: () async {
-          if (await ensurePro(context, fitur: 'Membuat event pameran')) {
-            if (context.mounted) {
-              StudioStore.instance.mulaiDraftEvent();
-              context.push('/buat-event/1');
-            }
-          }
-        },
+        onBuka: (k) => context.push('/komunitas/detail', extra: k.id),
       ),
     ),
     GoRoute(
       path: '/komunitas/detail',
-      builder: (context, state) =>
-          CommunityDetailScreen(onBack: () => _kembali(context)),
+      builder: (context, state) {
+        final id = state.extra as String?;
+        if (id == null) return const _LayarKosong('Komunitas tidak ditemukan.');
+        return CommunityDetailScreen(
+          komunitasId: id,
+          onBack: () => _kembali(context),
+          onBuatEvent: (k) => _mulaiBuatEvent(context, komunitasId: k.id),
+          onEventTap: (e) => context.push('/event/detail', extra: e.id),
+          onKaryaTap: (karya) => context.push('/karya/detail', extra: karya),
+        );
+      },
     ),
     GoRoute(
       path: '/buat-lelang',

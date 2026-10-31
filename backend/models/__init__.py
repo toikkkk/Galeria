@@ -16,12 +16,13 @@ daftar modul di bawah ini satu-satu.
 
 from __future__ import annotations
 
-from . import engagement, event, karya, lelang, sertifikat, transaksi, ulasan, user, verification
+from . import engagement, event, karya, komunitas, lelang, sertifikat, transaksi, ulasan, user, verification
 
 __all__ = [
     "engagement",
     "event",
     "karya",
+    "komunitas",
     "lelang",
     "sertifikat",
     "transaksi",

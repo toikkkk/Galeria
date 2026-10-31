@@ -53,6 +53,8 @@ class Event(Base):
     alamat: Mapped[str | None] = mapped_column(Text, nullable=True)
     kota: Mapped[str | None] = mapped_column(Text, nullable=True)
     link_online: Mapped[str | None] = mapped_column(Text, nullable=True)
+    # event atas nama sebuah komunitas (migrasi 0013); NULL = event pribadi penyelenggara
+    komunitas_ref_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), ForeignKey("komunitas.id", ondelete="SET NULL"), nullable=True)
     mulai_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
     selesai_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
     status: Mapped[StatusEvent] = mapped_column(

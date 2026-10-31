@@ -36,6 +36,7 @@ class EventBuat(BaseModel):
     selesai_at: datetime
     tiket: list[TiketIn] = Field(min_length=1, max_length=6)
     karya_ids: list[str] = Field(default_factory=list, max_length=20)
+    komunitas_id: str | None = None  # atas nama komunitas yang kamu miliki
 
     @field_validator("judul", "tema", "nama_lokasi", "kota")
     @classmethod
@@ -94,6 +95,8 @@ class EventOut(BaseModel):
     server_now: datetime
     saya_punya_tiket: bool = False
     saya_penyelenggara: bool = False
+    komunitas_id: str | None = None
+    komunitas_nama: str | None = None
     # statistik, hanya untuk penyelenggara
     tiket_terjual: int | None = None
     pendapatan_idr: int | None = None

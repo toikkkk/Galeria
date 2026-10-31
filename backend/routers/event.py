@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import uuid
+
 from fastapi import APIRouter, Depends, Query
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -33,6 +35,7 @@ async def buat_event(body: EventBuat, user: User = Depends(_penyelenggara), db: 
 async def daftar_event(
     waktu: str = Query("mendatang", pattern="^(mendatang|selesai|semua)$"),
     q: str | None = Query(None, max_length=80),
+    komunitas_id: str | None = Query(None, description="hanya event atas nama komunitas ini"),
     page: int = Query(1, ge=1),
     page_size: int = Query(30, ge=1, le=100),
     user: User | None = Depends(get_user_opsional),
@@ -47,6 +50,11 @@ async def daftar_event(
     if q and q.strip():
         like = f"%{q.strip()}%"
         filt = filt & (Event.judul.ilike(like) | Event.kota.ilike(like) | Event.tema.ilike(like))
+    if komunitas_id:
+        try:
+            filt = filt & (Event.komunitas_ref_id == uuid.UUID(komunitas_id))
+        except ValueError:
+            raise HTTPException(404, "Komunitas tidak ditemukan")
     total = (await db.execute(select(func.count()).select_from(Event).where(filt))).scalar_one()
     urut = Event.mulai_at.desc() if waktu == "selesai" else Event.mulai_at.asc()
     rows = (await db.execute(select(Event).where(filt).order_by(urut).offset((page - 1) * page_size).limit(page_size))).scalars().all()

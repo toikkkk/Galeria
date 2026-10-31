@@ -20,7 +20,7 @@ import asyncio
 import os
 from functools import lru_cache
 
-KUNCI_DIDUKUNG = ("karya/",)  # prefix key yang boleh dilayani /api/media
+KUNCI_DIDUKUNG = ("karya/", "komunitas/")  # prefix key yang boleh dilayani /api/media
 
 
 class StorageBelumDiatur(RuntimeError):

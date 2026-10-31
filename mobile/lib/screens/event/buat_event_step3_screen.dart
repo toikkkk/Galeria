@@ -139,6 +139,7 @@ class _BuatEventStep3ScreenState extends State<BuatEventStep3Screen> {
           {'nama': t.nama, 'harga_idr': t.hargaIdr, 'kuota': t.kuota, if (t.keterangan.isNotEmpty) 'keterangan': t.keterangan},
       ],
       'karya_ids': [for (final k in d.karya) if (k.id.isNotEmpty) k.id],
+      if (d.komunitasId != null) 'komunitas_id': d.komunitasId,
     };
   }
 
