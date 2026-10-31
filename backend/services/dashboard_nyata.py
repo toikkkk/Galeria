@@ -229,6 +229,23 @@ async def notifikasi(db: AsyncSession, user: User, limit: int = 20) -> list[dict
     for r in ulasan:
         out.append({"id": f"ulasan-{r['id']}", "tipe": "pembelian", "judul": f'Ulasan baru ({r["rating"]}/5)',
                     "deskripsi": f'"{r["title"]}": {r["teks"][:90]}', "waktu": r["created_at"].isoformat(), "nominal_idr": None})
+    lelang = (
+        await db.execute(
+            text(
+                """SELECT l.id, l.selesai_at, k.title, mx.jumlah, u.display_name AS pemenang
+                   FROM lelang l JOIN karya k ON k.id = l.karya_id
+                   JOIN users u ON u.id = l.pemenang_id
+                   JOIN LATERAL (SELECT max(jumlah_idr) AS jumlah FROM lelang_bids b WHERE b.lelang_id = l.id) mx ON true
+                   WHERE k.seniman_id = :sid AND l.status = 'selesai' AND l.pemenang_id IS NOT NULL
+                   ORDER BY l.selesai_at DESC LIMIT :n"""
+            ),
+            {"sid": user.id, "n": limit},
+        )
+    ).mappings().all()
+    for r in lelang:
+        out.append({"id": f"lelang-{r['id']}", "tipe": "lelang", "judul": "Lelang berakhir dengan pemenang",
+                    "deskripsi": f'"{r["title"]}" dimenangkan {r["pemenang"]}. Pesanan dibuat otomatis, menunggu pembayaran.',
+                    "waktu": r["selesai_at"].isoformat(), "nominal_idr": int(r["jumlah"])})
     out.sort(key=lambda x: x["waktu"], reverse=True)
     return out[:limit]
 

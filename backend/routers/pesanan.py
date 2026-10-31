@@ -10,7 +10,7 @@ from database import get_db
 from models.transaksi import StatusTransaksi as S
 from models.transaksi import Transaksi
 from models.user import User
-from schemas.pesanan import BayarReq, KirimReq, PesananBuat, PesananList, PesananOut
+from schemas.pesanan import BayarReq, KirimReq, PesananBuat, PesananList, PesananOut, PilihAlamat
 from services import pembayaran, pesanan_service as svc
 from services.auth_deps import butuh_role, get_current_user
 
@@ -62,6 +62,18 @@ async def detail(pesanan_id: str, user: User = Depends(get_current_user), db: As
     t = await svc.kunci(db, pesanan_id)
     if user.id not in (t.pembeli_id, t.penjual_id):
         raise HTTPException(404, "Pesanan tidak ditemukan")
+    return await svc.muat_out(db, t, user.id)
+
+
+@router.post("/pesanan/{pesanan_id}/alamat", response_model=PesananOut)
+async def pilih_alamat(
+    pesanan_id: str, body: PilihAlamat, user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)
+):
+    """Pilih/ganti alamat pengiriman selama pesanan belum dibayar (wajib untuk pesanan dari lelang)."""
+    t = await svc.kunci(db, pesanan_id)
+    svc.pastikan_pihak(t, user, sebagai="pembeli")
+    svc.pastikan_status(t, S.MENUNGGU_PEMBAYARAN, pesan="Alamat tidak bisa diubah setelah pesanan dibayar.")
+    await svc.pilih_alamat(db, t, user, body.alamat_id)
     return await svc.muat_out(db, t, user.id)
 
 

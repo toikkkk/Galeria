@@ -11,7 +11,6 @@ import 'services/auth_service.dart';
 import 'services/digital_art_identity_service.dart';
 
 import 'models/karya.dart';
-import 'models/lelang.dart';
 import 'screens/auth/daftar_seniman_screen.dart';
 import 'screens/auth/login_screen.dart';
 import 'screens/auth/verifikasi_identitas_screen.dart';
@@ -23,6 +22,7 @@ import 'screens/event/buat_event_step3_screen.dart';
 import 'screens/event/event_berhasil_screen.dart';
 import 'screens/community/komunitas_seniman_screen.dart';
 import 'screens/lelang/buat_lelang_screen.dart';
+import 'screens/lelang/lelang_saya_screen.dart';
 import 'state/studio_store.dart';
 import 'widgets/pro_gate.dart';
 import 'screens/dashboard/notifikasi_seniman_screen.dart';
@@ -153,7 +153,7 @@ const _prefixSeniman = [
   '/dashboard', '/notifikasi-seniman', '/riwayat-penarikan', '/profil', '/karya-saya', '/komunitas',
   '/buat-lelang', '/unggah-karya', '/memverifikasi-keaslian', '/karya-terverifikasi', '/karya-ditolak',
   '/karya-perlu-ditinjau', '/pesanan-seniman', '/promosikan-karya', '/buat-event', '/event-berhasil',
-  '/daftar-seniman', '/verifikasi-identitas',
+  '/daftar-seniman', '/verifikasi-identitas', '/lelang-saya',
 ];
 const _prefixKolektor = [
   '/beranda-kolektor', '/notifikasi', '/karya/', '/lelang', '/koleksi-saya', '/event', '/toko', '/pesanan',
@@ -198,7 +198,7 @@ const _rutePrivatSeniman = [
   '/karya-saya', '/komunitas', '/buat-lelang', '/unggah-karya',
   '/memverifikasi-keaslian', '/karya-terverifikasi', '/karya-ditolak',
   '/karya-perlu-ditinjau', '/pesanan-seniman', '/promosikan-karya',
-  '/buat-event', '/event-berhasil',
+  '/buat-event', '/event-berhasil', '/lelang-saya',
 ];
 
 /// Halaman terikat akun kolektor (tamu boleh jelajah katalog/lelang/event, tapi tidak halaman ini).
@@ -408,7 +408,29 @@ final _router = GoRouter(
       builder: (context, state) => BuatLelangScreen(
         onBack: () => _kembali(context),
         onUnggahKarya: () => context.push('/unggah-karya'),
+        onLelangSaya: () => context.push('/lelang-saya'),
+        onBerhasil: (l) => context.pushReplacement('/lelang-saya/detail', extra: l.id),
       ),
+    ),
+    GoRoute(
+      path: '/lelang-saya',
+      builder: (context, state) => LelangSayaScreen(
+        onBack: () => _kembali(context),
+        onBuat: () => context.push('/buat-lelang'),
+        onDetail: (l) => context.push('/lelang-saya/detail', extra: l.id),
+      ),
+    ),
+    GoRoute(
+      path: '/lelang-saya/detail',
+      builder: (context, state) {
+        final id = state.extra as String?;
+        if (id == null) return const _LayarKosong('Lelang tidak ditemukan.');
+        return DetailLelangScreen(
+          lelangId: id,
+          onBack: () => _kembali(context),
+          onLihatPesanan: (pid) => context.push('/pesanan-seniman/detail', extra: pid),
+        );
+      },
     ),
     GoRoute(
       path: '/unggah-karya',
@@ -570,15 +592,23 @@ final _router = GoRouter(
         onBack: () => _kembali(context),
         onNavTap: (i) => _goKolektorTab(context, i),
         onPindai: () => context.push('/pindai'),
-        onDetailTap: (lot) => context.push('/lelang/detail', extra: lot),
+        onDetailTap: (l) => context.push('/lelang/detail', extra: l.id),
       ),
     ),
     GoRoute(
       path: '/lelang/detail',
-      builder: (context, state) => DetailLelangScreen(
-        lot: (state.extra as LelangLot?) ?? sampleLelang.first,
-        onBack: () => _kembali(context),
-      ),
+      builder: (context, state) {
+        final id = state.extra as String?;
+        if (id == null) return const _LayarKosong('Lelang tidak ditemukan.');
+        return DetailLelangScreen(
+          lelangId: id,
+          onBack: () => _kembali(context),
+          onLogin: () => context.push('/login'),
+          onLihatPesanan: (pid) => AuthService.instance.user?.isSeniman ?? false
+              ? context.push('/pesanan-seniman/detail', extra: pid)
+              : context.push('/pesanan/detail', extra: pid),
+        );
+      },
     ),
     GoRoute(
       path: '/koleksi-saya',
@@ -615,6 +645,7 @@ final _router = GoRouter(
           onBack: () => _kembali(context),
           onArTap: () => context.push('/pindai/ar', extra: karya),
           onBeliTap: () => _beli(context, karya),
+          onLelangTap: (id) => context.push('/lelang/detail', extra: id),
           onTokoTap: () => context.push('/toko'),
         );
       },

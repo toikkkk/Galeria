@@ -55,3 +55,20 @@ def butuh_role(*role: str):
         return user
 
     return _cek
+
+
+async def get_user_opsional(
+    cred: HTTPAuthorizationCredentials | None = Depends(_bearer),
+    db: AsyncSession = Depends(get_db),
+) -> User | None:
+    """Pengguna yang login bila ada token valid; selain itu None (tamu). Token rusak = tamu, bukan error."""
+    if cred is None or not auth_service.terkonfigurasi():
+        return None
+    payload = auth_service.baca_access_token(cred.credentials)
+    if payload is None:
+        return None
+    try:
+        user = await db.get(User, uuid.UUID(payload["sub"]))
+    except (ValueError, KeyError):
+        return None
+    return user if user is not None and user.is_active else None

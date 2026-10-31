@@ -34,6 +34,8 @@ class KaryaListItem(BaseModel):
     artwork_id: str | None = None
     # True bila karya sudah terjual / sedang dipesan (ada pesanan yang belum dibatalkan).
     terjual: bool = False
+    # True bila karya sedang dalam lelang aktif (tidak bisa dibeli langsung); isi lelang_id utk membukanya.
+    lelang_id: str | None = None
     # Ringkasan hasil verification engine (Art-to-Art + Art-to-AI) dari
     # tabel `karya_fingerprints`. NULL = karya belum pernah dicek engine
     # (mis. 8 karya seed lama).

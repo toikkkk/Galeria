@@ -84,6 +84,10 @@ class Transaksi(Base):
     dikirim_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     selesai_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     dibatalkan_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    # Pesanan yang lahir dari pemenang lelang (NULL = pembelian langsung). Migrasi 0011.
+    lelang_id: Mapped[uuid.UUID | None] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("lelang.id", ondelete="RESTRICT"), nullable=True, unique=True
+    )
     kurir: Mapped[str | None] = mapped_column(Text, nullable=True)
     no_resi: Mapped[str | None] = mapped_column(Text, nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())

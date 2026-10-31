@@ -59,7 +59,11 @@ def _now() -> datetime:
 
 
 async def kedaluwarsakan(db: AsyncSession) -> None:
-    """Batalkan pesanan yang melewati batas bayar (dipanggil lazy tiap ada akses, tanpa job terjadwal)."""
+    """Batalkan pesanan yang melewati batas bayar (dipanggil lazy tiap ada akses, tanpa job terjadwal).
+    Sekaligus menutup lelang yang waktunya habis, karena pemenang lelang melahirkan pesanan."""
+    from services import lelang_service  # impor di sini: lelang_service memakai konstanta modul ini
+
+    await lelang_service.finalisasi(db)
     await db.execute(
         update(Transaksi)
         .where(Transaksi.status == S.MENUNGGU_PEMBAYARAN, Transaksi.batas_bayar_at < _now())
@@ -117,6 +121,8 @@ def ke_out(
         no_resi=t.no_resi,
         sudah_dikirim=t.dikirim_at is not None,
         sudah_diulas=sudah_diulas,
+        dari_lelang=t.lelang_id is not None,
+        perlu_alamat=(t.status == S.MENUNGGU_PEMBAYARAN and t.alamat_snapshot is None),
         created_at=t.created_at,
         batas_bayar_at=t.batas_bayar_at,
         dibayar_at=t.dibayar_at,
@@ -165,6 +171,10 @@ async def buat_pesanan(db: AsyncSession, pembeli: User, karya_id: str, alamat_id
     if karya.seniman_id == pembeli.id:
         raise HTTPException(400, "Kamu tidak bisa membeli karyamu sendiri.")
 
+    from models.lelang import Lelang, StatusLelang
+
+    if await db.scalar(select(Lelang.id).where(Lelang.karya_id == kid, Lelang.status.in_([StatusLelang.AKAN_DATANG, StatusLelang.BERLANGSUNG]))) is not None:
+        raise HTTPException(409, "Karya ini sedang dilelang. Ikuti lelangnya untuk mendapatkannya.")
     sudah = await db.scalar(select(Transaksi.id).where(Transaksi.karya_id == kid, Transaksi.status != S.DIBATALKAN))
     if sudah is not None:
         raise HTTPException(409, "Karya ini sudah terjual atau sedang dipesan orang lain.")
@@ -212,7 +222,20 @@ def pastikan_status(t: Transaksi, *boleh: S, pesan: str) -> None:
         raise HTTPException(409, pesan)
 
 
+async def pilih_alamat(db: AsyncSession, t: Transaksi, user: User, alamat_id: str) -> None:
+    alamat = await db.get(AlamatPengiriman, _parse_uuid(alamat_id, "Alamat tidak ditemukan"))
+    if alamat is None or alamat.user_id != user.id:
+        raise HTTPException(404, "Alamat tidak ditemukan")
+    t.alamat_snapshot = {
+        "label": alamat.label, "nama_penerima": alamat.nama_penerima, "telepon": alamat.telepon,
+        "alamat_lengkap": alamat.alamat_lengkap, "kota": alamat.kota, "kode_pos": alamat.kode_pos,
+    }
+    await db.commit()
+
+
 async def pilih_metode(db: AsyncSession, t: Transaksi, metode: str) -> None:
+    if t.alamat_snapshot is None:
+        raise HTTPException(409, "Pilih alamat pengiriman dulu sebelum membayar.")
     nama, nomor = pembayaran.buat_instruksi(metode, t.id)
     t.metode_pembayaran = metode
     t.referensi_pembayaran = nomor

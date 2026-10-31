@@ -32,8 +32,19 @@ async def tandai_terjual(db: AsyncSession, items: list[KaryaListItem]) -> None:
         select(Transaksi.karya_id).where(Transaksi.karya_id.in_(ids), Transaksi.status != StatusTransaksi.DIBATALKAN)
     )
     terjual = {str(r[0]) for r in rows}
+    from models.lelang import Lelang, StatusLelang
+
+    aktif = {
+        str(r[0]): str(r[1])
+        for r in await db.execute(
+            select(Lelang.karya_id, Lelang.id).where(
+                Lelang.karya_id.in_(ids), Lelang.status.in_([StatusLelang.AKAN_DATANG, StatusLelang.BERLANGSUNG])
+            )
+        )
+    }
     for i in items:
         i.terjual = i.id in terjual
+        i.lelang_id = aktif.get(i.id)
 
 
 def to_list_item(karya: Karya, fp: KaryaFingerprint | None = None) -> KaryaListItem:

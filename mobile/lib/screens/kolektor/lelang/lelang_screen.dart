@@ -1,14 +1,13 @@
 import 'package:flutter/material.dart';
 
 import '../../../models/lelang.dart';
+import '../../../services/auth_service.dart';
+import '../../../services/lelang_service.dart';
 import '../../../theme/app_theme.dart';
 import '../../../widgets/kolektor/kolektor_bottom_nav.dart';
-import '../../../utils/coming_soon.dart';
+import '../../../widgets/lelang_widgets.dart';
 
-/// Konversi dari
-/// docs/KOLEKTOR FITUR UTAMA/.../galeria_lelang_karya/code.html
-///
-/// Data lot & countdown di sini contoh (placeholder) -- lihat models/lelang.dart.
+/// Daftar lelang dari server (`GET /api/lelang`). Tamu boleh melihat; filter "Diikuti" butuh login.
 class LelangScreen extends StatefulWidget {
   const LelangScreen({
     super.key,
@@ -16,47 +15,79 @@ class LelangScreen extends StatefulWidget {
     this.onNavTap,
     this.onPindai,
     this.onDetailTap,
-  });
+    LelangService? service,
+  }) : _service = service;
 
   final VoidCallback onBack;
   final ValueChanged<int>? onNavTap;
   final VoidCallback? onPindai;
-  final ValueChanged<LelangLot>? onDetailTap;
+  final ValueChanged<Lelang>? onDetailTap;
+  final LelangService? _service;
 
   @override
   State<LelangScreen> createState() => _LelangScreenState();
 }
 
 class _LelangScreenState extends State<LelangScreen> {
-  int _filter = 0; // 0=semua, 1=berlangsung, 2=segera, 3=selesai
+  late final LelangService _service = widget._service ?? LelangService();
+  static const _filter = [
+    ('semua', 'Semua Lot'),
+    ('berlangsung', 'Berlangsung'),
+    ('akan_datang', 'Segera Dimulai'),
+    ('selesai', 'Selesai'),
+    ('ikut', 'Diikuti'),
+  ];
+  String _aktif = 'semua';
+  List<Lelang> _data = [];
+  bool _memuat = true;
+  String? _error;
+
+  @override
+  void initState() {
+    super.initState();
+    _muat();
+  }
+
+  Future<void> _muat() async {
+    setState(() {
+      _memuat = true;
+      _error = null;
+    });
+    try {
+      final ikut = _aktif == 'ikut';
+      final d = await _service.daftar(status: ikut ? 'semua' : _aktif, ikut: ikut);
+      if (mounted) setState(() => _data = d);
+    } catch (e) {
+      if (mounted) setState(() => _error = 'Gagal memuat lelang: $e');
+    } finally {
+      if (mounted) setState(() => _memuat = false);
+    }
+  }
+
+  void _pilih(String f) {
+    if (f == 'ikut' && !AuthService.instance.loggedIn) {
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Masuk dulu untuk melihat lelang yang kamu ikuti.')));
+      return;
+    }
+    setState(() => _aktif = f);
+    _muat();
+  }
+
+  Widget? _catatan(Lelang l) {
+    if (l.sayaPemenang) return Text('Kamu pemenangnya', style: AppTextStyles.labelSm.copyWith(color: AppColors.accent, fontSize: 11));
+    if (l.berlangsung && l.sayaTertinggi) return Text('Kamu penawar tertinggi', style: AppTextStyles.labelSm.copyWith(color: AppColors.accent, fontSize: 11));
+    if (_aktif == 'ikut' && l.berlangsung) return Text('Tawaranmu terlampaui', style: AppTextStyles.labelSm.copyWith(color: AppColors.error, fontSize: 11));
+    return null;
+  }
 
   @override
   Widget build(BuildContext context) {
-    final filtered = sampleLelang.where((l) {
-      switch (_filter) {
-        case 1:
-          return l.status == StatusLelang.berlangsung;
-        case 2:
-          return l.status == StatusLelang.segeraDimulai;
-        case 3:
-          return l.status == StatusLelang.selesai;
-        default:
-          return true;
-      }
-    }).toList();
-
     return Scaffold(
       backgroundColor: AppColors.surface,
       appBar: AppBar(
-        leading: IconButton(
-          onPressed: widget.onBack,
-          icon: const Icon(Icons.arrow_back),
-        ),
+        leading: IconButton(onPressed: widget.onBack, icon: const Icon(Icons.arrow_back)),
         title: Text('Lelang Karya', style: AppTextStyles.headlineMd),
-        actions: [
-          IconButton(onPressed: () => showComingSoon(context, 'Bantuan'), icon: const Icon(Icons.help_outline)),
-          IconButton(onPressed: () => showComingSoon(context, 'Bantuan'), icon: const Icon(Icons.tune)),
-        ],
+        actions: [IconButton(onPressed: _memuat ? null : _muat, icon: const Icon(Icons.refresh))],
       ),
       body: Column(
         children: [
@@ -64,65 +95,53 @@ class _LelangScreenState extends State<LelangScreen> {
             height: 44,
             child: ListView.separated(
               scrollDirection: Axis.horizontal,
-              padding: const EdgeInsets.symmetric(
-                horizontal: AppSpacing.screenGutter,
-                vertical: AppSpacing.xs,
-              ),
-              itemCount: 4,
-              separatorBuilder: (context, i) =>
-                  const SizedBox(width: AppSpacing.xs),
+              padding: const EdgeInsets.symmetric(horizontal: AppSpacing.screenGutter, vertical: AppSpacing.xs),
+              itemCount: _filter.length,
+              separatorBuilder: (context, i) => const SizedBox(width: AppSpacing.xs),
               itemBuilder: (context, i) {
-                const labels = [
-                  'Semua Lot',
-                  'Berlangsung',
-                  'Segera Dimulai',
-                  'Selesai',
-                ];
-                final active = i == _filter;
+                final aktif = _filter[i].$1 == _aktif;
                 return ChoiceChip(
-                  label: Text(labels[i]),
-                  selected: active,
-                  onSelected: (_) => setState(() => _filter = i),
+                  label: Text(_filter[i].$2),
+                  selected: aktif,
+                  onSelected: (_) => _pilih(_filter[i].$1),
                   selectedColor: AppColors.primary,
                   backgroundColor: Colors.white,
-                  labelStyle: AppTextStyles.labelMd.copyWith(
-                    color: active ? Colors.white : AppColors.onSurfaceVariant,
-                    fontSize: 12.5,
-                  ),
-                  shape: StadiumBorder(
-                    side: BorderSide(
-                      color: active ? AppColors.primary : AppColors.border,
-                    ),
-                  ),
+                  labelStyle: AppTextStyles.labelMd.copyWith(color: aktif ? Colors.white : AppColors.onSurfaceVariant, fontSize: 12.5),
+                  shape: StadiumBorder(side: BorderSide(color: aktif ? AppColors.primary : AppColors.border)),
                 );
               },
             ),
           ),
           Expanded(
-            child: filtered.isEmpty
-                ? Center(
-                    child: Text(
-                      'Tidak ada lot pada kategori ini',
-                      style: AppTextStyles.bodyMd.copyWith(
-                        color: AppColors.muted,
+            child: RefreshIndicator(
+              onRefresh: _muat,
+              child: ListView(
+                physics: const AlwaysScrollableScrollPhysics(),
+                padding: const EdgeInsets.fromLTRB(AppSpacing.screenGutter, AppSpacing.sm, AppSpacing.screenGutter, AppSpacing.lg),
+                children: [
+                  if (_error != null)
+                    Column(
+                      children: [
+                        Text(_error!, textAlign: TextAlign.center, style: AppTextStyles.bodySm.copyWith(color: AppColors.error)),
+                        OutlinedButton.icon(onPressed: _muat, icon: const Icon(Icons.refresh, size: 16), label: const Text('Coba Lagi')),
+                      ],
+                    )
+                  else if (_memuat && _data.isEmpty)
+                    const Padding(padding: EdgeInsets.all(AppSpacing.xl), child: Center(child: CircularProgressIndicator()))
+                  else if (_data.isEmpty)
+                    Padding(
+                      padding: const EdgeInsets.all(AppSpacing.xl),
+                      child: Text(
+                        _aktif == 'ikut' ? 'Kamu belum mengikuti lelang apa pun.' : 'Belum ada lelang pada kategori ini.',
+                        textAlign: TextAlign.center,
+                        style: AppTextStyles.bodyMd.copyWith(color: AppColors.muted),
                       ),
-                    ),
-                  )
-                : ListView.separated(
-                    padding: const EdgeInsets.fromLTRB(
-                      AppSpacing.screenGutter,
-                      AppSpacing.sm,
-                      AppSpacing.screenGutter,
-                      AppSpacing.lg,
-                    ),
-                    itemCount: filtered.length,
-                    separatorBuilder: (context, i) =>
-                        const SizedBox(height: AppSpacing.md),
-                    itemBuilder: (context, i) => _LotCard(
-                      lot: filtered[i],
-                      onTap: () => widget.onDetailTap?.call(filtered[i]),
-                    ),
-                  ),
+                    )
+                  else
+                    for (final l in _data) LelangKartu(lelang: l, catatan: _catatan(l), onTap: () => widget.onDetailTap?.call(l)),
+                ],
+              ),
+            ),
           ),
         ],
       ),
@@ -133,208 +152,4 @@ class _LelangScreenState extends State<LelangScreen> {
       ),
     );
   }
-}
-
-class _LotCard extends StatelessWidget {
-  const _LotCard({required this.lot, this.onTap});
-
-  final LelangLot lot;
-  final VoidCallback? onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    final live = lot.status == StatusLelang.berlangsung;
-    final soon = lot.status == StatusLelang.segeraDimulai;
-
-    return InkWell(
-      onTap: onTap,
-      borderRadius: BorderRadius.circular(AppRadius.lg),
-      child: Container(
-        padding: const EdgeInsets.all(AppSpacing.sm),
-        decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(AppRadius.lg),
-          boxShadow: const [BoxShadow(color: Colors.black12, blurRadius: 8)],
-        ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Stack(
-              children: [
-                ClipRRect(
-                  borderRadius: BorderRadius.circular(AppRadius.md),
-                  child: AspectRatio(
-                    aspectRatio: 16 / 10,
-                    child: Image.asset(lot.karya.assetPath, fit: BoxFit.cover),
-                  ),
-                ),
-                Positioned(
-                  top: 8,
-                  left: 8,
-                  child: _pill('LOT #${lot.lotNumber}', bg: Colors.white),
-                ),
-                Positioned(
-                  top: 8,
-                  right: 8,
-                  child: live
-                      ? _pill(
-                          'Berakhir ${lot.countdownFormatted}',
-                          bg: AppColors.errorContainer,
-                          fg: AppColors.error,
-                          icon: Icons.schedule,
-                        )
-                      : soon
-                      ? _pill(
-                          'Segera Dimulai',
-                          bg: AppColors.accentSoft,
-                          fg: AppColors.accent,
-                          icon: Icons.schedule,
-                        )
-                      : _pill(
-                          'Selesai',
-                          bg: AppColors.surfaceContainerHighest,
-                          fg: AppColors.muted,
-                        ),
-                ),
-                Positioned(
-                  left: 8,
-                  bottom: 8,
-                  child: Row(
-                    children: [
-                      const Icon(
-                        Icons.verified,
-                        size: 13,
-                        color: AppColors.accent,
-                      ),
-                      const SizedBox(width: 4),
-                      Text(
-                        lot.galleryName,
-                        style: AppTextStyles.labelSm.copyWith(
-                          color: Colors.white,
-                          shadows: const [
-                            Shadow(blurRadius: 4, color: Colors.black87),
-                          ],
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: AppSpacing.sm),
-            Text(
-              lot.karya.title,
-              style: AppTextStyles.headlineSm.copyWith(
-                fontStyle: FontStyle.italic,
-              ),
-            ),
-            Text(
-              '${lot.karya.styleName} · Cat di atas kanvas',
-              style: AppTextStyles.bodySm.copyWith(color: AppColors.muted),
-            ),
-            const SizedBox(height: AppSpacing.xs),
-            Container(
-              padding: const EdgeInsets.all(AppSpacing.sm),
-              decoration: BoxDecoration(
-                color: AppColors.surfaceContainerLow,
-                borderRadius: BorderRadius.circular(AppRadius.md),
-              ),
-              child: Row(
-                children: [
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Text(
-                          soon
-                              ? 'ESTIMASI BUKA LELANG'
-                              : 'TAWARAN TERTINGGI SAAT INI',
-                          style: AppTextStyles.overline.copyWith(fontSize: 9),
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                        ),
-                        Text(
-                          lot.currentBidFormatted,
-                          style: AppTextStyles.headlineSm.copyWith(
-                            fontSize: 18,
-                          ),
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                        ),
-                        // Ditaruh di baris terpisah (bukan sebaris dgn harga
-                        // via Row) supaya tidak overflow horizontal saat
-                        // harga + jumlah tawaran bersama lebih lebar dari
-                        // ruang yang tersisa di sebelah tombol aksi.
-                        if (!soon)
-                          Text(
-                            '${lot.bidCount} Tawaran',
-                            style: AppTextStyles.bodySm.copyWith(
-                              color: AppColors.accent,
-                              fontSize: 11,
-                            ),
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                          ),
-                      ],
-                    ),
-                  ),
-                  const SizedBox(width: AppSpacing.xs),
-                  if (!soon)
-                    FilledButton.icon(
-                      onPressed: onTap,
-                      icon: const Icon(Icons.gavel, size: 15),
-                      label: const Text('Pasang Bid'),
-                      style: FilledButton.styleFrom(
-                        backgroundColor: AppColors.primary,
-                        minimumSize: const Size(0, 38),
-                      ),
-                    )
-                  else
-                    OutlinedButton.icon(
-                      onPressed: () => showComingSoon(context, 'Pengingat lelang'),
-                      icon: const Icon(
-                        Icons.notifications_active_outlined,
-                        size: 15,
-                        color: AppColors.accent,
-                      ),
-                      label: const Text('Ingatkan'),
-                      style: OutlinedButton.styleFrom(
-                        minimumSize: const Size(0, 38),
-                      ),
-                    ),
-                ],
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _pill(
-    String text, {
-    required Color bg,
-    Color fg = AppColors.onSurface,
-    IconData? icon,
-  }) => Container(
-    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-    decoration: BoxDecoration(
-      color: bg.withValues(alpha: bg == Colors.white ? 0.95 : 1),
-      borderRadius: BorderRadius.circular(AppRadius.full),
-    ),
-    child: Row(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        if (icon != null) ...[
-          Icon(icon, size: 11, color: fg),
-          const SizedBox(width: 3),
-        ],
-        Text(
-          text,
-          style: AppTextStyles.overline.copyWith(fontSize: 9, color: fg),
-        ),
-      ],
-    ),
-  );
 }

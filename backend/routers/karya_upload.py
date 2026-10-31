@@ -164,5 +164,9 @@ async def hapus_karya(
     ada = (await db.execute(select(func.count()).select_from(Transaksi).where(Transaksi.karya_id == kid))).scalar_one()
     if ada:
         raise HTTPException(409, "Karya ini sudah punya transaksi, jadi tidak bisa dihapus.")
+    from models.lelang import Lelang, StatusLelang
+
+    if (await db.execute(select(func.count()).select_from(Lelang).where(Lelang.karya_id == kid, Lelang.status != StatusLelang.DIBATALKAN))).scalar_one():
+        raise HTTPException(409, "Karya ini punya lelang, jadi tidak bisa dihapus.")
     karya.deleted_at = datetime.utcnow()
     await db.commit()

@@ -107,7 +107,7 @@ async def catat_transfer_kepemilikan(db: AsyncSession, transaksi: Transaksi) -> 
     baru = KepemilikanKarya(
         karya_id=transaksi.karya_id,
         pemilik_id=transaksi.pembeli_id,
-        sumber=SumberKepemilikan.PEMBELIAN,
+        sumber=SumberKepemilikan.LELANG if transaksi.lelang_id is not None else SumberKepemilikan.PEMBELIAN,
         transaksi_id=transaksi.id,
         diperoleh_at=sekarang,
     )

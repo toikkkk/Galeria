@@ -26,6 +26,7 @@ class DetailKaryaScreen extends StatelessWidget {
     required this.onBack,
     this.onArTap,
     this.onBeliTap,
+    this.onLelangTap,
     this.onTokoTap,
   });
 
@@ -33,6 +34,9 @@ class DetailKaryaScreen extends StatelessWidget {
   final VoidCallback onBack;
   final VoidCallback? onArTap;
   final VoidCallback? onBeliTap;
+
+  /// Karya sedang dilelang: buka halaman lelangnya (dengan id lelang).
+  final ValueChanged<String>? onLelangTap;
   final VoidCallback? onTokoTap;
 
   @override
@@ -354,8 +358,14 @@ class DetailKaryaScreen extends StatelessWidget {
             const SizedBox(width: AppSpacing.xs),
             Expanded(
               child: ElevatedButton(
-                onPressed: karya.terjual ? null : onBeliTap,
-                child: Text(karya.terjual ? 'Sudah terjual' : 'Beli Sekarang · ${karya.priceFormatted}'),
+                onPressed: karya.terjual
+                    ? null
+                    : (karya.lelangId != null ? () => onLelangTap?.call(karya.lelangId!) : onBeliTap),
+                child: Text(
+                  karya.terjual
+                      ? 'Sudah terjual'
+                      : (karya.lelangId != null ? 'Sedang dilelang · Ikuti Lelang' : 'Beli Sekarang · ${karya.priceFormatted}'),
+                ),
               ),
             ),
           ],

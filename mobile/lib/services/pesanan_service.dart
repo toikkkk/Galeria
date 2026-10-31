@@ -53,6 +53,10 @@ class PesananService {
 
   Future<Pesanan> detail(String id) async => _p(await _client.getJson('/api/pesanan/$id', auth: true));
 
+  /// Pilih/ganti alamat pengiriman selama belum dibayar (wajib untuk pesanan hasil lelang).
+  Future<Pesanan> pilihAlamat(String id, String alamatId) async =>
+      _p(await _client.postJson('/api/pesanan/$id/alamat', {'alamat_id': alamatId}, auth: true));
+
   Future<Pesanan> pilihMetode(String id, String metode) async =>
       _p(await _client.postJson('/api/pesanan/$id/bayar', {'metode': metode}, auth: true));
 

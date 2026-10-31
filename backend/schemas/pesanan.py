@@ -68,6 +68,10 @@ class BayarReq(BaseModel):
     metode: MetodeBayar
 
 
+class PilihAlamat(BaseModel):
+    alamat_id: str
+
+
 class KirimReq(BaseModel):
     kurir: str = Field(min_length=2, max_length=40)
     no_resi: str = Field(min_length=4, max_length=60)
@@ -113,6 +117,8 @@ class PesananOut(BaseModel):
     no_resi: str | None = None
     sudah_dikirim: bool
     sudah_diulas: bool = False
+    dari_lelang: bool = False
+    perlu_alamat: bool = False  # pesanan dari lelang: alamat harus dipilih sebelum membayar
     created_at: datetime
     batas_bayar_at: datetime | None = None
     dibayar_at: datetime | None = None

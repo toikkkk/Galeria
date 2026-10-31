@@ -23,6 +23,7 @@ class Karya {
     this.statusVerifikasi,
     this.terjual = false,
     this.artworkId,
+    this.lelangId,
   });
 
   /// UUID dari database -- kosong ('') untuk [sampleKarya] lokal (belum
@@ -70,6 +71,9 @@ class Karya {
 
   /// ID sertifikat digital GALERIA (mis. GAL-ART-2026-000001); null = belum bersertifikat.
   final String? artworkId;
+
+  /// Id lelang aktif karya ini (tidak bisa dibeli langsung selama dilelang); null = tidak sedang dilelang.
+  final String? lelangId;
   /// Ukuran fisik karya (cm) -- dipakai AR supaya lukisan tampil dgn skala asli.
   /// `null` = belum diisi seniman; AR memakai ukuran perkiraan dan melabelinya begitu.
   final double? lebarCm;
@@ -132,6 +136,7 @@ class Karya {
       statusVerifikasi: json['status_verifikasi'] as String?,
       terjual: (json['terjual'] as bool?) ?? false,
       artworkId: json['artwork_id'] as String?,
+      lelangId: json['lelang_id'] as String?,
     );
   }
 }

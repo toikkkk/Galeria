@@ -45,6 +45,30 @@ class _SelesaikanPembayaranScreenState extends State<SelesaikanPembayaranScreen>
   late Pesanan _pesanan = widget.pesanan;
   bool _sibuk = false;
   String? _error;
+  final AlamatService _alamatService = AlamatService();
+  List<Alamat> _alamat = [];
+
+  @override
+  void initState() {
+    super.initState();
+    if (_pesanan.perluAlamat) _muatAlamat();
+  }
+
+  Future<void> _muatAlamat() async {
+    try {
+      final d = await _alamatService.daftar();
+      if (mounted) setState(() => _alamat = d);
+    } catch (e) {
+      if (mounted) setState(() => _error = 'Gagal memuat alamat: $e');
+    }
+  }
+
+  Future<void> _tambahAlamat() async {
+    final baru = await tampilkanFormAlamat(context, service: _alamatService);
+    if (baru == null || !mounted) return;
+    setState(() => _alamat = [..._alamat, baru]);
+    await _jalankan(() => _service.pilihAlamat(_pesanan.id, baru.id));
+  }
 
   Future<void> _jalankan(Future<Pesanan> Function() kerja, {bool selesai = false}) async {
     setState(() {
@@ -113,11 +137,50 @@ class _SelesaikanPembayaranScreenState extends State<SelesaikanPembayaranScreen>
             ),
           ),
           const SizedBox(height: AppSpacing.md),
+          if (_pesanan.perluAlamat) ...[
+            Text('Alamat Pengiriman', style: AppTextStyles.headlineSm),
+            const SizedBox(height: 2),
+            Text(
+              'Pesanan dari lelang belum punya alamat. Pilih alamat pengiriman sebelum membayar.',
+              style: AppTextStyles.bodySm.copyWith(color: AppColors.muted),
+            ),
+            const SizedBox(height: AppSpacing.xs),
+            for (final a in _alamat)
+              GestureDetector(
+                onTap: _sibuk ? null : () => _jalankan(() => _service.pilihAlamat(_pesanan.id, a.id)),
+                child: Container(
+                  margin: const EdgeInsets.only(bottom: AppSpacing.xs),
+                  padding: const EdgeInsets.all(AppSpacing.sm),
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(AppRadius.md),
+                    border: Border.all(color: AppColors.border),
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text('${a.label} · ${a.namaPenerima}', style: AppTextStyles.labelMd),
+                      Text(a.ringkas, style: AppTextStyles.bodySm.copyWith(color: AppColors.muted, fontSize: 11)),
+                    ],
+                  ),
+                ),
+              ),
+            OutlinedButton.icon(
+              onPressed: _sibuk ? null : _tambahAlamat,
+              icon: const Icon(Icons.add_location_alt_outlined, size: 18),
+              label: const Text('Tambah alamat baru'),
+            ),
+            const SizedBox(height: AppSpacing.md),
+          ] else if (_pesanan.dariLelang && _pesanan.alamat != null) ...[
+            Text('Dikirim ke', style: AppTextStyles.bodySm.copyWith(color: AppColors.muted)),
+            Text(_pesanan.alamatRingkas, style: AppTextStyles.bodySm),
+            const SizedBox(height: AppSpacing.md),
+          ],
           Text('Metode Pembayaran', style: AppTextStyles.headlineSm),
           const SizedBox(height: AppSpacing.xs),
           for (final m in _metode)
             GestureDetector(
-              onTap: _sibuk ? null : () => _jalankan(() => _service.pilihMetode(_pesanan.id, m.$1)),
+              onTap: (_sibuk || _pesanan.perluAlamat) ? null : () => _jalankan(() => _service.pilihMetode(_pesanan.id, m.$1)),
               child: Container(
                 margin: const EdgeInsets.only(bottom: AppSpacing.xs),
                 padding: const EdgeInsets.all(AppSpacing.sm),
