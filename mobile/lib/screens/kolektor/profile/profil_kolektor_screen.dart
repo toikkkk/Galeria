@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../../../theme/app_theme.dart';
 import '../../../widgets/kolektor/kolektor_bottom_nav.dart';
+import '../../../utils/coming_soon.dart';
 
 /// Konversi dari
 /// docs/KOLEKTOR FITUR UTAMA/.../galeria_profil_kolektor/code.html
@@ -28,9 +29,9 @@ class ProfilKolektorScreen extends StatelessWidget {
       appBar: AppBar(
         title: Text('Profil Saya', style: AppTextStyles.headlineMd),
         actions: [
-          IconButton(onPressed: () {}, icon: const Icon(Icons.tune)),
+          IconButton(onPressed: () => showComingSoon(context, 'Filter'), icon: const Icon(Icons.tune)),
           IconButton(
-            onPressed: () {},
+            onPressed: () => showComingSoon(context, 'Pengaturan'),
             icon: const Icon(Icons.settings_outlined),
           ),
         ],
@@ -343,18 +344,21 @@ class ProfilKolektorScreen extends StatelessWidget {
             child: Column(
               children: [
                 _menuTile(
+                  context,
                   Icons.account_balance_wallet_outlined,
                   'Metode Pembayaran & Escrow Seni',
                   'BCA Prioritas, Visa Signature',
                 ),
                 const Divider(height: 1),
                 _menuTile(
+                  context,
                   Icons.history_edu_outlined,
                   'Sertifikat Keaslian (COA) Digital',
                   'Kriptografis & terverifikasi kurator',
                 ),
                 const Divider(height: 1),
                 _menuTile(
+                  context,
                   Icons.auto_awesome_outlined,
                   'Preferensi Genre & Kurator Favorit',
                   'Barok, Kubisme, Impresionisme',
@@ -404,8 +408,8 @@ class ProfilKolektorScreen extends StatelessWidget {
     ],
   );
 
-  Widget _menuTile(IconData icon, String title, String subtitle) => InkWell(
-    onTap: () {},
+  Widget _menuTile(BuildContext context, IconData icon, String title, String subtitle) => InkWell(
+    onTap: () => showComingSoon(context, 'Fitur ini'),
     child: Padding(
       padding: const EdgeInsets.symmetric(
         horizontal: AppSpacing.md,

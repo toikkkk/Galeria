@@ -1,0 +1,11 @@
+# ml-sentiment -- environment TERPISAH (torch CPU besar; jangan dicampur dgn backend/.venv)
+#   python -m venv .venv ; .venv\Scripts\activate
+#   pip install torch --index-url https://download.pytorch.org/whl/cpu
+#   pip install -r requirements.txt
+transformers>=4.40,<5
+numpy>=1.26
+pandas>=2.2
+scikit-learn>=1.4
+sqlalchemy[asyncio]>=2.0   # tulis hasil ke Neon
+asyncpg>=0.29
+python-dotenv>=1.0
