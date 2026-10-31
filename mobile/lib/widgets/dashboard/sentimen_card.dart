@@ -17,10 +17,14 @@ const _warna = {
   'negatif': _negatif,
 };
 
+/// Ulasan yang belum dibaca model ('menunggu') tampil abu-abu, bukan dipaksa jadi salah satu label.
+Color _warnaDari(String s) => _warna[s] ?? AppColors.outline;
+
 String _label(String s) => switch (s) {
       'positif' => 'Positif',
       'netral' => 'Netral',
-      _ => 'Negatif',
+      'negatif' => 'Negatif',
+      _ => 'Menunggu analisis',
     };
 
 const _namaBulan = ['Jan', 'Feb', 'Mar', 'Apr', 'Mei', 'Jun', 'Jul', 'Agu', 'Sep', 'Okt', 'Nov', 'Des'];
@@ -30,17 +34,12 @@ String _bulanPendek(String iso) {
   return _namaBulan[m - 1];
 }
 
-/// Kartu sentimen ulasan. Memuat datanya sendiri dan TIDAK menjatuhkan layar bila gagal.
-///
-/// * Default (dashboard seniman): "Sentimen Ulasan" lengkap -- indeks, proporsi, tren 6 bulan, ulasan.
-/// * [ringkas] (halaman detail karya untuk kolektor): "Ulasan Pembeli" -- rating, proporsi, 2 ulasan;
-///   disembunyikan sepenuhnya bila data tidak ada/gagal dimuat (tidak menambah kesan "error" di halaman beli).
+/// Kartu "Sentimen Ulasan" di dashboard seniman: indeks, proporsi, tren 6 bulan, dan ulasan terbaru dari
+/// pembeli yang sudah menerima karya. Memuat datanya sendiri dan TIDAK menjatuhkan layar bila gagal.
 class SentimenCard extends StatefulWidget {
-  const SentimenCard({super.key, required this.senimanId, this.service, this.ringkas = false});
+  const SentimenCard({super.key, this.service});
 
-  final String senimanId;
   final SentimenService? service;
-  final bool ringkas;
 
   @override
   State<SentimenCard> createState() => _SentimenCardState();
@@ -64,7 +63,7 @@ class _SentimenCardState extends State<SentimenCard> {
       _gagal = false;
     });
     try {
-      final d = await _service.fetchSentimen(widget.senimanId);
+      final d = await _service.fetchSentimen();
       if (!mounted) return;
       setState(() {
         _data = d;
@@ -81,16 +80,12 @@ class _SentimenCardState extends State<SentimenCard> {
 
   @override
   Widget build(BuildContext context) {
-    final r = widget.ringkas;
-    if (r && !_loading && (_gagal || _data == null || _data!.nUlasan == 0)) return const SizedBox.shrink();
     return DashboardCard(
-      title: r ? 'Ulasan Pembeli' : 'Sentimen Ulasan',
-      subtitle: r ? 'Ringkasan ulasan kolektor lain untuk seniman ini' : 'Dibaca otomatis oleh IndoBERT dari ulasan kolektor',
+      title: 'Sentimen Ulasan',
+      subtitle: 'Dibaca otomatis oleh IndoBERT dari ulasan pembeli yang sudah menerima karya',
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Align(alignment: Alignment.centerRight, child: DataContohBadge()),
-          const SizedBox(height: AppSpacing.xs),
           if (_loading)
             const Padding(
               padding: EdgeInsets.symmetric(vertical: AppSpacing.md),
@@ -99,9 +94,9 @@ class _SentimenCardState extends State<SentimenCard> {
           else if (_gagal || _data == null)
             _Pesan(teks: 'Analisis sentimen belum tersedia.', aksi: _muat)
           else if (_data!.nUlasan == 0)
-            const _Pesan(teks: 'Belum ada ulasan untuk seniman ini.')
+            const _Pesan(teks: 'Belum ada ulasan. Ulasan muncul setelah pembeli menerima karyamu dan menulis penilaian.')
           else
-            _Isi(data: _data!, ringkas: r),
+            _Isi(data: _data!),
         ],
       ),
     );
@@ -129,37 +124,14 @@ class _Pesan extends StatelessWidget {
 }
 
 class _Isi extends StatelessWidget {
-  const _Isi({required this.data, this.ringkas = false});
+  const _Isi({required this.data});
 
   final SentimenSeniman data;
-  final bool ringkas;
 
   @override
   Widget build(BuildContext context) {
     final indeks = data.indeksSentimen;
     final rating = data.ratingRata2 == null ? '' : ' · rating ${data.ratingRata2!.toStringAsFixed(1)}';
-    if (ringkas) {
-      return Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            '${data.ratingRata2 == null ? '' : '★ ${data.ratingRata2!.toStringAsFixed(1)} · '}${data.nUlasan} ulasan',
-            style: AppTextStyles.headlineSm.copyWith(fontSize: 15),
-          ),
-          const SizedBox(height: AppSpacing.sm),
-          _BarProporsi(hitung: data.hitung),
-          if (data.ulasanTerbaru.isNotEmpty) ...[
-            const SizedBox(height: AppSpacing.sm),
-            for (final u in data.ulasanTerbaru.take(2)) _Ulasan(u: u),
-          ],
-          const SizedBox(height: AppSpacing.xs),
-          Text(
-            'Contoh data: ulasan dan klasifikasinya sintetis.',
-            style: AppTextStyles.bodySm.copyWith(color: AppColors.muted, fontSize: 11),
-          ),
-        ],
-      );
-    }
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -199,7 +171,9 @@ class _Isi extends StatelessWidget {
         ],
         const SizedBox(height: AppSpacing.xs),
         Text(
-          'Ulasan dan labelnya sintetis; hasil model belum diuji pada ulasan pengguna sungguhan.',
+          data.nMenunggu > 0
+              ? '${data.nMenunggu} ulasan menunggu dianalisis model, jadi belum masuk ke indeks dan proporsi di atas.'
+              : 'Label sentimen berasal dari model IndoBERT dan bisa keliru; baca ulasannya langsung bila perlu.',
           style: AppTextStyles.bodySm.copyWith(color: AppColors.muted, fontSize: 11),
         ),
       ],
@@ -316,10 +290,10 @@ class _Ulasan extends StatelessWidget {
             margin: const EdgeInsets.only(top: 3, right: AppSpacing.xs),
             padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
             decoration: BoxDecoration(
-              color: _warna[u.sentimen]!.withValues(alpha: 0.12),
+              color: _warnaDari(u.sentimen).withValues(alpha: 0.12),
               borderRadius: BorderRadius.circular(AppRadius.xs),
             ),
-            child: Text(_label(u.sentimen), style: AppTextStyles.overline.copyWith(fontSize: 9, color: _warna[u.sentimen])),
+            child: Text(_label(u.sentimen), style: AppTextStyles.overline.copyWith(fontSize: 9, color: _warnaDari(u.sentimen))),
           ),
           Expanded(child: Text(u.teks, maxLines: 3, overflow: TextOverflow.ellipsis, style: AppTextStyles.bodySm)),
         ],

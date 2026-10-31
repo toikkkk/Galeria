@@ -19,7 +19,11 @@ from schemas.dashboard import (
     SenimanDemoItem,
     TrenPasar,
 )
+from models.user import User
+from schemas.sentimen import SentimenSeniman
+from services import dashboard_nyata as nyata
 from services import dashboard_repo as repo
+from services.auth_deps import butuh_role
 
 router = APIRouter(prefix="/api/dashboard", tags=["dashboard-seniman"])
 
@@ -89,3 +93,55 @@ async def notifikasi(seniman_id: str, db: AsyncSession = Depends(get_db)):
     """Notifikasi: pembelian kolektor, hasil lelang, tindakan (data contoh)."""
     sid, _ = await _seniman_atau_404(db, seniman_id)
     return await repo.notifikasi_seniman(db, sid)
+
+
+# ---------------------------------------------------------------------------
+# Dashboard seniman yang login: data NYATA dari transaksi/karya/ulasan (bukan data contoh).
+# `/saya/...` selalu merujuk ke akun pemanggil, jadi tidak ada id yang bisa diutak-atik.
+# ---------------------------------------------------------------------------
+_seniman = butuh_role("seniman")
+
+
+@router.get("/saya/ringkasan", response_model=RingkasanSeniman)
+async def saya_ringkasan(
+    periode: int = Query(30, description="30, 90, atau 365 hari"),
+    user: User = Depends(_seniman),
+    db: AsyncSession = Depends(get_db),
+):
+    if periode not in (30, 90, 365):
+        raise HTTPException(422, "periode harus 30, 90, atau 365")
+    return await nyata.ringkasan(db, user, periode)
+
+
+@router.get("/saya/penjualan-bulanan", response_model=list[PenjualanBulan])
+async def saya_penjualan_bulanan(
+    bulan: int = Query(12, ge=1, le=36), user: User = Depends(_seniman), db: AsyncSession = Depends(get_db)
+):
+    return await nyata.penjualan_bulanan(db, user, bulan)
+
+
+@router.get("/saya/aliran", response_model=list[AliranSeniman])
+async def saya_aliran(user: User = Depends(_seniman), db: AsyncSession = Depends(get_db)):
+    return await nyata.aliran(db, user)
+
+
+@router.get("/saya/segmen-pembeli", response_model=SegmenPembeliResponse)
+async def saya_segmen_pembeli(user: User = Depends(_seniman)):
+    """Segmentasi pembeli butuh riwayat pembelian banyak kolektor; belum tersedia untuk data nyata."""
+    return SegmenPembeliResponse(tersedia=False, items=[])
+
+
+@router.get("/saya/penarikan", response_model=RiwayatPenarikan)
+async def saya_penarikan(user: User = Depends(_seniman)):
+    """Fitur tarik dana belum ada, jadi riwayatnya kosong (bukan angka karangan)."""
+    return RiwayatPenarikan(total_ditarik_idr=0, items=[])
+
+
+@router.get("/saya/notifikasi", response_model=list[NotifikasiSeniman])
+async def saya_notifikasi(user: User = Depends(_seniman), db: AsyncSession = Depends(get_db)):
+    return await nyata.notifikasi(db, user)
+
+
+@router.get("/saya/sentimen", response_model=SentimenSeniman)
+async def saya_sentimen(user: User = Depends(_seniman), db: AsyncSession = Depends(get_db)):
+    return await nyata.sentimen(db, user)

@@ -75,6 +75,7 @@ class Pesanan {
     required this.sudahDikirim,
     required this.createdAt,
     required this.aksi,
+    this.sudahDiulas = false,
     this.imageUrl,
     this.imageFilename,
     this.alamat,
@@ -91,7 +92,7 @@ class Pesanan {
 
   final String id, status, statusLabel, karyaId, judul, artistName, styleName, pembeliNama, penjualNama;
   final int hargaIdr, komisiIdr, pendapatanSenimanIdr;
-  final bool sudahDikirim;
+  final bool sudahDikirim, sudahDiulas;
   final DateTime createdAt;
   final List<String> aksi;
   final String? imageUrl, imageFilename, kurir, noResi;
@@ -129,6 +130,7 @@ class Pesanan {
       komisiIdr: j['komisi_platform_idr'] as int,
       pendapatanSenimanIdr: j['pendapatan_seniman_idr'] as int,
       sudahDikirim: j['sudah_dikirim'] as bool? ?? false,
+      sudahDiulas: j['sudah_diulas'] as bool? ?? false,
       createdAt: DateTime.parse(j['created_at'] as String).toLocal(),
       aksi: (j['aksi'] as List? ?? const []).cast<String>(),
       alamat: j['alamat'] as Map<String, dynamic>?,

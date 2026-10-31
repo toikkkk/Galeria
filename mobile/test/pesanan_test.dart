@@ -8,7 +8,7 @@ import 'package:galeria/screens/pesanan/detail_pesanan_screen.dart';
 import 'package:galeria/services/api_client.dart';
 import 'package:galeria/services/pesanan_service.dart';
 
-Pesanan _pesanan({String status = 'menunggu_pembayaran', List<String> aksi = const ['bayar', 'batal'], bool dikirim = false}) =>
+Pesanan _pesanan({String status = 'menunggu_pembayaran', List<String> aksi = const ['bayar', 'batal'], bool dikirim = false, bool diulas = false}) =>
     Pesanan.fromJson({
       'id': '3f9a21c4-0000-4000-8000-000000000001',
       'status': status,
@@ -21,6 +21,7 @@ Pesanan _pesanan({String status = 'menunggu_pembayaran', List<String> aksi = con
       'pendapatan_seniman_idr': 1800000,
       'alamat': {'nama_penerima': 'Budi', 'telepon': '+62812', 'alamat_lengkap': 'Jl. Melati 5', 'kota': 'Surabaya', 'kode_pos': '60111'},
       'sudah_dikirim': dikirim,
+      'sudah_diulas': diulas,
       'created_at': '2026-10-31T01:00:00Z',
       'aksi': aksi,
     });
@@ -135,6 +136,29 @@ void main() {
     await tester.pump();
     expect(fake.dipanggil, isEmpty);
     expect(find.text('Pilih atau tambahkan alamat pengiriman dulu.'), findsOneWidget);
+  });
+
+  testWidgets('pesanan selesai belum diulas menampilkan tombol Tulis ulasan; sudah diulas menampilkan keterangan', (tester) async {
+    await tester.pumpWidget(MaterialApp(
+      home: DetailPesananScreen(
+        pesananId: 'x', onBack: () {},
+        service: _FakePesanan([_pesanan(status: 'selesai', aksi: const ['ulas'])]),
+      ),
+    ));
+    await tester.pumpAndSettle();
+    await tester.scrollUntilVisible(find.text('Tulis ulasan'), 200, scrollable: find.byType(Scrollable).first);
+    expect(find.text('Tulis ulasan'), findsOneWidget);
+
+    await tester.pumpWidget(MaterialApp(
+      home: DetailPesananScreen(
+        key: UniqueKey(), // state baru, bukan state layar sebelumnya
+        pesananId: 'x', onBack: () {},
+        service: _FakePesanan([_pesanan(status: 'selesai', aksi: const [], diulas: true)]),
+      ),
+    ));
+    await tester.pumpAndSettle();
+    await tester.scrollUntilVisible(find.text('Kamu sudah mengulas pesanan ini.'), 200, scrollable: find.byType(Scrollable).first);
+    expect(find.text('Tulis ulasan'), findsNothing);
   });
 
   test('pesan error server memakai detail berbahasa Indonesia', () {

@@ -13,14 +13,13 @@ class _FakeService extends DashboardService {
   final bool segmenTersedia;
 
   @override
-  Future<List<SenimanDemo>> fetchSenimanDemo() async {
+  Future<RingkasanSeniman> fetchRingkasan({int periode = 30}) async {
     if (gagal) throw ApiException('Gagal terhubung ke backend');
-    return const [SenimanDemo(id: 's1', displayName: 'Claude Monet', levelReputasi: 'mapan', nTerjual: 10)];
+    return _ringkasan(periode);
   }
 
-  @override
-  Future<RingkasanSeniman> fetchRingkasan(String senimanId, {int periode = 30}) async => RingkasanSeniman(
-        id: senimanId,
+  RingkasanSeniman _ringkasan(int periode) => RingkasanSeniman(
+        id: 's1',
         displayName: 'Claude Monet',
         levelReputasi: 'mapan',
         periodeHari: periode,
@@ -37,13 +36,13 @@ class _FakeService extends DashboardService {
       );
 
   @override
-  Future<List<PenjualanBulan>> fetchPenjualanBulanan(String senimanId, {int bulan = 12}) async => [
+  Future<List<PenjualanBulan>> fetchPenjualanBulanan({int bulan = 12}) async => [
         for (var m = 1; m <= bulan; m++)
           PenjualanBulan(bulan: '2026-${m.toString().padLeft(2, '0')}-01', nTerjual: m % 3, omzetIdr: (m % 3) * 1000000),
       ];
 
   @override
-  Future<List<AliranSeniman>> fetchAliran(String senimanId) async => const [
+  Future<List<AliranSeniman>> fetchAliran() async => const [
         AliranSeniman(
           styleName: 'Impressionism',
           nTerjual: 9,
@@ -55,7 +54,7 @@ class _FakeService extends DashboardService {
       ];
 
   @override
-  Future<SegmenPembeliHasil> fetchSegmenPembeli(String senimanId) async => segmenTersedia
+  Future<SegmenPembeliHasil> fetchSegmenPembeli() async => segmenTersedia
       ? const SegmenPembeliHasil(
           tersedia: true,
           items: [
@@ -76,16 +75,6 @@ class _FakeService extends DashboardService {
           ],
         )
       : const SegmenPembeliHasil(tersedia: false, items: []);
-
-  @override
-  Future<TrenPasar> fetchTrenPasar() async => const TrenPasar(
-        senimanRamai: [
-          SenimanRamai(senimanId: 's2', displayName: 'Vincent Van Gogh', nTerjual30Hari: 12, lonjakan: 2.1, hargaRata2Idr: 85000000),
-        ],
-        aliranRamai: [
-          AliranRamai(styleName: 'Impressionism', nTerjual30Hari: 55, porsiPct: 31.0, hargaRata2Idr: 48000000),
-        ],
-      );
 }
 
 Future<void> _pump(WidgetTester tester, _FakeService service, {double lebar = 800}) async {
@@ -105,11 +94,11 @@ void main() {
     expect(find.byIcon(Icons.chat_bubble_outline), findsNothing);
     expect(find.text('Analitik Penjualan'), findsOneWidget);
     expect(find.text('Pembeli'), findsOneWidget); // tab segmen tersedia
-    expect(find.text('Pasar'), findsOneWidget);
+    expect(find.text('Pasar'), findsNothing); // tren pasar contoh tidak ditampilkan untuk data nyata
     expect(find.textContaining('Kunjungan'), findsNothing);
   });
 
-  testWidgets('toggle Karya/Omzet mengganti grafik, tab Analitik berpindah', (tester) async {
+  testWidgets('toggle Karya/Omzet mengganti grafik', (tester) async {
     await _pump(tester, _FakeService());
 
     expect(find.text('Jumlah karya terjual per bulan'), findsOneWidget);
@@ -118,13 +107,8 @@ void main() {
     expect(find.text('Omzet (Rp) per bulan'), findsOneWidget);
     expect(find.text('Jumlah karya terjual per bulan'), findsNothing);
 
-    // tab Aliran (default) -> Pasar
+    // tab Aliran (default)
     expect(find.text('Harga rata-rata Rp55 jt'), findsOneWidget);
-    await tester.ensureVisible(find.text('Pasar'));
-    await tester.tap(find.text('Pasar'));
-    await tester.pumpAndSettle();
-    expect(find.text('Vincent Van Gogh'), findsOneWidget);
-    expect(find.text('PELUKIS RAMAI'), findsOneWidget);
   });
 
   testWidgets('tab Pembeli menampilkan peran segmen hasil clustering', (tester) async {

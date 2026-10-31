@@ -22,6 +22,7 @@ class Karya {
     this.tinggiCm,
     this.statusVerifikasi,
     this.terjual = false,
+    this.artworkId,
   });
 
   /// UUID dari database -- kosong ('') untuk [sampleKarya] lokal (belum
@@ -66,6 +67,9 @@ class Karya {
 
   /// true bila sudah terjual / sedang dipesan (server menghitungnya dari tabel transaksi).
   final bool terjual;
+
+  /// ID sertifikat digital GALERIA (mis. GAL-ART-2026-000001); null = belum bersertifikat.
+  final String? artworkId;
   /// Ukuran fisik karya (cm) -- dipakai AR supaya lukisan tampil dgn skala asli.
   /// `null` = belum diisi seniman; AR memakai ukuran perkiraan dan melabelinya begitu.
   final double? lebarCm;
@@ -127,6 +131,7 @@ class Karya {
       tinggiCm: (json['tinggi_cm'] as num?)?.toDouble(),
       statusVerifikasi: json['status_verifikasi'] as String?,
       terjual: (json['terjual'] as bool?) ?? false,
+      artworkId: json['artwork_id'] as String?,
     );
   }
 }

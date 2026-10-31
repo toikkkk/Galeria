@@ -117,12 +117,14 @@ class AnalitikCard extends StatefulWidget {
     super.key,
     required this.aliran,
     required this.segmen,
-    required this.tren,
+    this.tren,
   });
 
   final List<AliranSeniman> aliran;
   final SegmenPembeliHasil segmen;
-  final TrenPasar tren;
+
+  /// null = tab "Pasar" disembunyikan (belum ada data tren pasar nyata).
+  final TrenPasar? tren;
 
   @override
   State<AnalitikCard> createState() => _AnalitikCardState();
@@ -134,7 +136,7 @@ class _AnalitikCardState extends State<AnalitikCard> {
   List<_Tab> get _tabs => [
     _Tab.aliran,
     if (widget.segmen.tersedia) _Tab.pembeli,
-    _Tab.pasar,
+    if (widget.tren != null) _Tab.pasar,
   ];
 
   @override
@@ -192,7 +194,7 @@ class _AnalitikCardState extends State<AnalitikCard> {
             child: switch (aktif) {
               _Tab.aliran => _AliranTab(items: widget.aliran),
               _Tab.pembeli => _PembeliTab(hasil: widget.segmen),
-              _Tab.pasar => _PasarTab(tren: widget.tren),
+              _Tab.pasar => _PasarTab(tren: widget.tren!),
             },
           ),
         ],

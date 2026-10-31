@@ -1,11 +1,9 @@
 import 'package:flutter/material.dart';
 
-import '../../config/demo_seniman.dart';
 import '../../models/dashboard_seniman.dart';
 import '../../services/dashboard_service.dart';
 import '../../theme/app_theme.dart';
 import '../../utils/format.dart';
-import '../../widgets/dashboard/dashboard_sections.dart';
 
 /// Notifikasi seniman: pembelian dari kolektor, hasil lelang, dan tindakan
 /// yang perlu dilakukan (mis. pesanan perlu dikemas).
@@ -42,8 +40,7 @@ class _NotifikasiSenimanScreenState extends State<NotifikasiSenimanScreen> {
       _error = null;
     });
     try {
-      final id = await resolveDemoSenimanId(_service);
-      final r = await _service.fetchNotifikasi(id);
+      final r = await _service.fetchNotifikasi();
       if (!mounted) return;
       setState(() {
         _items = r;
@@ -128,11 +125,6 @@ class _NotifikasiSenimanScreenState extends State<NotifikasiSenimanScreen> {
             ],
           ),
           const SizedBox(height: AppSpacing.xs),
-          const Align(
-            alignment: Alignment.centerLeft,
-            child: DataContohBadge(label: 'DATA CONTOH'),
-          ),
-          const SizedBox(height: AppSpacing.sm),
           if (items.isEmpty)
             Padding(
               padding: const EdgeInsets.symmetric(vertical: AppSpacing.xxl),

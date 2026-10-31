@@ -55,6 +55,7 @@ def to_list_item(karya: Karya, fp: KaryaFingerprint | None = None) -> KaryaListI
         # client (mobile) yang prepend base URL (lihat schemas/katalog.py).
         image_url=storage.url_gambar(karya.image_key),
         status_verifikasi=karya.status_verifikasi.value,
+        artwork_id=karya.artwork_id,
         lebar_cm=karya.lebar_cm,
         tinggi_cm=karya.tinggi_cm,
     )

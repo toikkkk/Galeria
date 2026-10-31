@@ -33,13 +33,14 @@ class RingkasanSeniman {
     required this.nPembeliUnik,
     required this.karyaTersedia,
     required this.karyaTerjualTotal,
+    this.pesananPerluDiproses = 0,
     required this.perubahanNTerjualPct,
     required this.perubahanOmzetPct,
   });
 
   final String id, displayName, levelReputasi;
   final int periodeHari, nTerjual, omzetIdr, komisiPlatformIdr, pendapatanBersihIdr;
-  final int hargaRata2Idr, nPembeliUnik, karyaTersedia, karyaTerjualTotal;
+  final int hargaRata2Idr, nPembeliUnik, karyaTersedia, karyaTerjualTotal, pesananPerluDiproses;
   final double? perubahanNTerjualPct, perubahanOmzetPct;
 
   /// "mapan" -> "Seniman Mapan".
@@ -66,6 +67,7 @@ class RingkasanSeniman {
       nPembeliUnik: _i(j['n_pembeli_unik']),
       karyaTersedia: _i(j['karya_tersedia']),
       karyaTerjualTotal: _i(j['karya_terjual_total']),
+      pesananPerluDiproses: _i(j['pesanan_perlu_diproses']),
       perubahanNTerjualPct: _d(p['n_terjual']),
       perubahanOmzetPct: _d(p['omzet_idr']),
     );

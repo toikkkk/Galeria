@@ -55,6 +55,7 @@ class SentimenSeniman {
     required this.hitung,
     required this.trenBulanan,
     required this.ulasanTerbaru,
+    this.nMenunggu = 0,
     this.modelVersion,
     this.indeksSentimen,
     this.ratingRata2,
@@ -62,6 +63,9 @@ class SentimenSeniman {
 
   final String senimanId;
   final int nUlasan;
+
+  /// Ulasan yang belum dibaca model IndoBERT (analisis dijalankan batch).
+  final int nMenunggu;
   final String? modelVersion;
   final List<SentimenHitung> hitung;
   final double? indeksSentimen; // -100..100
@@ -72,6 +76,7 @@ class SentimenSeniman {
   factory SentimenSeniman.fromJson(Map<String, dynamic> j) => SentimenSeniman(
         senimanId: j['seniman_id'] as String,
         nUlasan: _i(j['n_ulasan']),
+        nMenunggu: _i(j['n_menunggu']),
         modelVersion: j['model_version'] as String?,
         hitung: (j['hitung'] as List).map((e) => SentimenHitung.fromJson(e as Map<String, dynamic>)).toList(),
         indeksSentimen: _d(j['indeks_sentimen']),

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 
 import 'package:share_plus/share_plus.dart';
 
@@ -7,8 +8,7 @@ import '../../../theme/app_theme.dart';
 import '../../../widgets/karya_image.dart';
 import '../../../widgets/kolektor/karya_grid_card.dart';
 import '../../../utils/coming_soon.dart';
-import '../../../widgets/dashboard/sentimen_card.dart';
-import '../../../widgets/kolektor/tulis_ulasan_sheet.dart';
+import '../../../widgets/ulasan_karya_card.dart';
 
 /// Konversi dari
 /// docs/KOLEKTOR FITUR PEMBELIAN PEMBAYARAN/.../galeria_detail_karya_seni/code.html
@@ -111,7 +111,7 @@ class DetailKaryaScreen extends StatelessWidget {
                   ),
                 ),
                 Text(
-                  'Termasuk pajak kurasi, asuransi transit & sertifikasi resmi',
+                  'Belum termasuk ongkos kirim',
                   style: AppTextStyles.bodySm.copyWith(
                     color: AppColors.muted,
                     fontSize: 11,
@@ -122,13 +122,14 @@ class DetailKaryaScreen extends StatelessWidget {
                   spacing: 6,
                   runSpacing: 6,
                   children: [
-                    _tag(Icons.aspect_ratio, '120 × 90 cm'),
-                    _tag(Icons.palette_outlined, 'Cat Minyak'),
-                    _tag(Icons.calendar_today, '2024'),
+                    if (karya.lebarCm != null && karya.tinggiCm != null)
+                      _tag(Icons.aspect_ratio, '${_cm(karya.lebarCm!)} × ${_cm(karya.tinggiCm!)} cm'),
+                    _tag(Icons.palette_outlined, karya.styleName),
                   ],
                 ),
                 const SizedBox(height: AppSpacing.md),
-                // Sertifikat Keaslian Digital
+                // Sertifikat Keaslian Digital -- hanya bila karya benar-benar punya Artwork ID
+                if (karya.artworkId != null)
                 Container(
                   padding: const EdgeInsets.all(AppSpacing.md),
                   decoration: BoxDecoration(
@@ -187,17 +188,21 @@ class DetailKaryaScreen extends StatelessWidget {
                           children: [
                             Flexible(
                               child: Text(
-                                'GAL-2026-${karya.artistName.hashCode.toRadixString(16).substring(0, 4).toUpperCase()}',
+                                karya.artworkId ?? '',
                                 style: AppTextStyles.bodySm.copyWith(
                                   fontFamily: 'monospace',
                                   fontWeight: FontWeight.w600,
                                 ),
                               ),
                             ),
-                            const Icon(
-                              Icons.content_copy,
-                              size: 14,
-                              color: AppColors.muted,
+                            GestureDetector(
+                              onTap: () async {
+                                await Clipboard.setData(ClipboardData(text: karya.artworkId ?? ''));
+                                if (context.mounted) {
+                                  ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('ID sertifikat disalin.')));
+                                }
+                              },
+                              child: const Icon(Icons.content_copy, size: 14, color: AppColors.muted),
                             ),
                           ],
                         ),
@@ -270,35 +275,16 @@ class DetailKaryaScreen extends StatelessWidget {
                     ),
                   ),
                 ),
-                if (karya.senimanId != null) ...[
+                if (karya.id.isNotEmpty) ...[
                   const SizedBox(height: AppSpacing.md),
-                  SentimenCard(senimanId: karya.senimanId!, ringkas: true),
-                  const SizedBox(height: AppSpacing.xs),
-                  SizedBox(
-                    width: double.infinity,
-                    child: OutlinedButton.icon(
-                      key: const Key('tulis_ulasan'),
-                      onPressed: () async {
-                        final messenger = ScaffoldMessenger.of(context);
-                        final terkirim = await tampilkanTulisUlasan(context, karyaId: karya.id, judulKarya: karya.title);
-                        if (terkirim) {
-                          messenger.showSnackBar(const SnackBar(
-                            content: Text('Terima kasih! Ulasanmu tersimpan dan akan dianalisis.'),
-                          ));
-                        }
-                      },
-                      icon: const Icon(Icons.rate_review_outlined, size: 18),
-                      label: const Text('Tulis ulasan'),
-                    ),
-                  ),
+                  UlasanKaryaCard(karyaId: karya.id),
                 ],
                 const SizedBox(height: AppSpacing.md),
                 Text('Cerita Karya', style: AppTextStyles.headlineMd),
                 const SizedBox(height: 4),
                 Text(
-                  'Mahakarya beraliran ${karya.styleName} ini merefleksikan penguasaan teknik dan '
-                  'komposisi khas ${karya.artistName}. Karya diproduksi dengan pigmen berkualitas tinggi '
-                  'di atas kanvas linen, dan telah melalui proses kurasi oleh dewan kurator GALERIA.',
+                  'Karya beraliran ${karya.styleName} oleh ${karya.artistName}, ditawarkan oleh ${karya.galleryName}. '
+                  'Karya ini sudah melewati pemeriksaan keaslian digital GALERIA (deteksi duplikat dan deteksi gambar AI).',
                   style: AppTextStyles.bodyMd.copyWith(
                     color: AppColors.onSurface,
                   ),
@@ -307,10 +293,15 @@ class DetailKaryaScreen extends StatelessWidget {
                 Row(
                   children: [
                     Expanded(
-                      child: _bentoBox('Kondisi Fisik', 'Sempurna (A+)'),
+                      child: _bentoBox(
+                        'Ukuran',
+                        (karya.lebarCm != null && karya.tinggiCm != null)
+                            ? '${_cm(karya.lebarCm!)} × ${_cm(karya.tinggiCm!)} cm'
+                            : 'Belum dicantumkan',
+                      ),
                     ),
                     const SizedBox(width: AppSpacing.xs),
-                    Expanded(child: _bentoBox('Kepemilikan', 'Koleksi Privat')),
+                    Expanded(child: _bentoBox('Ketersediaan', karya.terjual ? 'Sudah terjual' : 'Tersedia')),
                   ],
                 ),
                 const SizedBox(height: AppSpacing.md),
@@ -372,6 +363,9 @@ class DetailKaryaScreen extends StatelessWidget {
       ),
     );
   }
+
+  /// 60.0 -> "60", 60.5 -> "60,5".
+  static String _cm(double v) => (v == v.roundToDouble() ? v.toInt().toString() : v.toString().replaceAll('.', ','));
 
   Widget _tag(IconData icon, String label) => Container(
     padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 5),

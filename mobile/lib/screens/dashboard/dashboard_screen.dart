@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 
-import '../../config/demo_seniman.dart';
 import '../../models/dashboard_seniman.dart';
+import '../../services/auth_service.dart';
 import '../../services/dashboard_service.dart';
 import '../../theme/app_theme.dart';
 import '../../widgets/galeria_logo.dart';
@@ -14,9 +14,9 @@ import '../../utils/coming_soon.dart';
 /// Konversi dari
 /// docs/design/role_seniman_1/.../galeria_dashboard_seniman_galeri/code.html
 ///
-/// Angka penjualan/omzet/aliran/segmen/tren pasar diambil dari backend
-/// (`GET /api/dashboard/...`) -- DATA SINTETIS (schema `dummy_rekomendasi`),
-/// dilabeli "Data contoh". Tombol Tarik Dana masih placeholder.
+/// Angka penjualan/omzet/aliran diambil dari backend (`GET /api/dashboard/saya/...`) dan dihitung dari
+/// transaksi NYATA milik seniman yang login (pesanan berstatus selesai). Seniman baru melihat angka 0,
+/// bukan data contoh. Tombol Tarik Dana masih placeholder (belum ada fitur penarikan).
 /// Dashboard hanya statistik deskriptif, bukan prediksi/saran harga.
 class DashboardScreen extends StatefulWidget {
   const DashboardScreen({
@@ -55,7 +55,6 @@ class _DashboardData {
     required this.bulanan,
     required this.aliran,
     required this.segmen,
-    required this.tren,
   });
 
   final String senimanId;
@@ -63,7 +62,6 @@ class _DashboardData {
   final List<PenjualanBulan> bulanan;
   final List<AliranSeniman> aliran;
   final SegmenPembeliHasil segmen;
-  final TrenPasar tren;
 
   _DashboardData copyWithRingkasan(RingkasanSeniman r) => _DashboardData(
     senimanId: senimanId,
@@ -71,7 +69,6 @@ class _DashboardData {
     bulanan: bulanan,
     aliran: aliran,
     segmen: segmen,
-    tren: tren,
   );
 }
 
@@ -98,13 +95,12 @@ class _DashboardScreenState extends State<DashboardScreen> {
       _error = null;
     });
     try {
-      final id = await resolveDemoSenimanId(_service);
+      final id = AuthService.instance.user?.id ?? '';
       final results = await Future.wait([
-        _service.fetchRingkasan(id, periode: _periode),
-        _service.fetchPenjualanBulanan(id),
-        _service.fetchAliran(id),
-        _service.fetchSegmenPembeli(id),
-        _service.fetchTrenPasar(),
+        _service.fetchRingkasan(periode: _periode),
+        _service.fetchPenjualanBulanan(),
+        _service.fetchAliran(),
+        _service.fetchSegmenPembeli(),
       ]);
       if (!mounted) return;
       setState(() {
@@ -114,7 +110,6 @@ class _DashboardScreenState extends State<DashboardScreen> {
           bulanan: results[1] as List<PenjualanBulan>,
           aliran: results[2] as List<AliranSeniman>,
           segmen: results[3] as SegmenPembeliHasil,
-          tren: results[4] as TrenPasar,
         );
         _loading = false;
       });
@@ -135,7 +130,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
       _ringkasanLoading = true;
     });
     try {
-      final r = await _service.fetchRingkasan(data.senimanId, periode: p);
+      final r = await _service.fetchRingkasan(periode: p);
       if (!mounted) return;
       setState(() {
         _data = data.copyWithRingkasan(r);
@@ -238,6 +233,34 @@ class _DashboardScreenState extends State<DashboardScreen> {
                   setState(() => _error = null);
                   _gantiPeriode(_periode);
                 },
+              ),
+            ),
+          if (r.pesananPerluDiproses > 0)
+            Padding(
+              padding: const EdgeInsets.only(bottom: AppSpacing.sm),
+              child: InkWell(
+                onTap: () => widget.onNavTap?.call(3),
+                borderRadius: BorderRadius.circular(AppRadius.md),
+                child: Container(
+                  padding: const EdgeInsets.all(AppSpacing.sm),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFFFF3CD),
+                    borderRadius: BorderRadius.circular(AppRadius.md),
+                  ),
+                  child: Row(
+                    children: [
+                      const Icon(Icons.inventory_2_outlined, size: 20, color: Color(0xFF584400)),
+                      const SizedBox(width: AppSpacing.xs),
+                      Expanded(
+                        child: Text(
+                          '${r.pesananPerluDiproses} pesanan perlu diproses (konfirmasi atau kirim)',
+                          style: AppTextStyles.labelMd.copyWith(color: const Color(0xFF584400)),
+                        ),
+                      ),
+                      const Icon(Icons.chevron_right, color: Color(0xFF584400)),
+                    ],
+                  ),
+                ),
               ),
             ),
           Center(
@@ -449,10 +472,9 @@ class _DashboardScreenState extends State<DashboardScreen> {
           AnalitikCard(
             aliran: data.aliran,
             segmen: data.segmen,
-            tren: data.tren,
           ),
           const SizedBox(height: AppSpacing.md),
-          SentimenCard(senimanId: data.senimanId),
+          const SentimenCard(),
           const SizedBox(height: AppSpacing.md),
           const SizedBox(height: AppSpacing.xl),
         ],

@@ -33,6 +33,7 @@ from routers import (
     gambar,
     media,
     pesanan,
+    ulasan_nyata,
     karya_upload,
     katalog,
     katalog_dummy,
@@ -151,6 +152,7 @@ app.include_router(gambar.router)
 app.include_router(media.router)
 app.include_router(alamat.router)
 app.include_router(pesanan.router)
+app.include_router(ulasan_nyata.router)
 app.include_router(verifikasi_publik.router)
 
 

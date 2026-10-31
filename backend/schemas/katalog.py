@@ -30,6 +30,8 @@ class KaryaListItem(BaseModel):
     seniman_id: str | None = None
     # menunggu / terverifikasi / ditolak / perlu_ditinjau (di katalog publik selalu terverifikasi).
     status_verifikasi: str | None = None
+    # Artwork ID sertifikat digital (GAL-ART-2026-000001); NULL = belum/tidak pernah lolos verifikasi.
+    artwork_id: str | None = None
     # True bila karya sudah terjual / sedang dipesan (ada pesanan yang belum dibatalkan).
     terjual: bool = False
     # Ringkasan hasil verification engine (Art-to-Art + Art-to-AI) dari

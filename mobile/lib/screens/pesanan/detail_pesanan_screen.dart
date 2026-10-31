@@ -5,6 +5,7 @@ import '../../services/pesanan_service.dart';
 import '../../theme/app_theme.dart';
 import '../../utils/format.dart';
 import '../../utils/format_waktu.dart';
+import '../../widgets/kolektor/tulis_ulasan_sheet.dart';
 import '../../widgets/pesanan_widgets.dart';
 
 /// Detail satu pesanan, dipakai kolektor DAN seniman. Tombol yang muncul ditentukan server (`aksi`),
@@ -111,6 +112,13 @@ class _DetailPesananScreenState extends State<DetailPesananScreen> {
       ),
     );
     if (ya == true) await _aksi(() => _service.terima(p.id), berhasil: 'Pesanan selesai. Karya kini tercatat milikmu.');
+  }
+
+  Future<void> _tulisUlasan(Pesanan p) async {
+    final terkirim = await tampilkanTulisUlasan(context, pesananId: p.id, judulKarya: p.judul);
+    if (!terkirim || !mounted) return;
+    tampilkanPesan(context, 'Terima kasih! Ulasanmu tersimpan dan akan dianalisis.');
+    await _muat();
   }
 
   @override
@@ -237,6 +245,18 @@ class _DetailPesananScreenState extends State<DetailPesananScreen> {
           _tombol('Konfirmasi pesanan', Icons.check, () => _aksi(() => _service.konfirmasi(p.id), berhasil: 'Pesanan dikonfirmasi. Silakan kemas dan kirim karya.')),
         if (p.bisa('kirim')) _tombol('Tandai dikirim + resi', Icons.local_shipping_outlined, () => _dialogKirim(p)),
         if (p.bisa('terima')) _tombol('Karya sudah saya terima', Icons.inventory_2_outlined, () => _konfirmasiTerima(p)),
+        if (p.bisa('ulas')) _tombol('Tulis ulasan', Icons.rate_review_outlined, () => _tulisUlasan(p)),
+        if (p.sudahDiulas)
+          Padding(
+            padding: const EdgeInsets.only(bottom: AppSpacing.xs),
+            child: Row(
+              children: [
+                const Icon(Icons.check_circle, size: 16, color: AppColors.accent),
+                const SizedBox(width: 6),
+                Text('Kamu sudah mengulas pesanan ini.', style: AppTextStyles.bodySm.copyWith(color: AppColors.muted)),
+              ],
+            ),
+          ),
         if (p.bisa('batal'))
           TextButton(
             onPressed: _sibuk ? null : () => _aksi(() => _service.batal(p.id), berhasil: 'Pesanan dibatalkan.'),

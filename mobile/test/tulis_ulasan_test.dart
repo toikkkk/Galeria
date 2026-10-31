@@ -11,9 +11,9 @@ class _FakeUlasan extends UlasanService {
   final kiriman = <Map<String, Object>>[];
 
   @override
-  Future<void> kirim({required String karyaId, required int rating, required String teks}) async {
+  Future<void> kirim({required String pesananId, required int rating, required String teks}) async {
     if (gagal != null) throw gagal!;
-    kiriman.add({'karyaId': karyaId, 'rating': rating, 'teks': teks});
+    kiriman.add({'pesananId': pesananId, 'rating': rating, 'teks': teks});
   }
 }
 
@@ -23,7 +23,7 @@ Future<bool?> _buka(WidgetTester tester, _FakeUlasan service) async {
     home: Builder(
       builder: (context) => Scaffold(
         body: TextButton(
-          onPressed: () async => hasil = await tampilkanTulisUlasan(context, karyaId: 'k1', judulKarya: 'Judul', service: service),
+          onPressed: () async => hasil = await tampilkanTulisUlasan(context, pesananId: 'p1', judulKarya: 'Judul', service: service),
           child: const Text('buka'),
         ),
       ),
@@ -64,20 +64,20 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(service.kiriman, [
-      {'karyaId': 'k1', 'rating': 5, 'teks': 'Pengirimannya cepat sekali'},
+      {'pesananId': 'p1', 'rating': 5, 'teks': 'Pengirimannya cepat sekali'},
     ]);
     expect(find.text('Tulis ulasan'), findsNothing); // sheet tertutup
   });
 
-  testWidgets('409 -> pesan ramah, formulir tetap terbuka (tidak crash)', (tester) async {
-    await _buka(tester, _FakeUlasan(gagal: ApiException('Server error 409: sudah')));
+  testWidgets('ditolak server -> pesan server ditampilkan, formulir tetap terbuka (tidak crash)', (tester) async {
+    await _buka(tester, _FakeUlasan(gagal: ApiException('Kamu sudah mengulas pesanan ini.')));
     await tester.tap(find.byKey(const Key('bintang_3')));
     await tester.enterText(find.byKey(const Key('isi_ulasan')), 'Biasa saja menurut saya');
     await tester.pump();
     await tester.tap(find.byKey(const Key('kirim_ulasan')));
     await tester.pumpAndSettle();
 
-    expect(find.text('Kamu sudah pernah menulis ulasan untuk karya ini.'), findsOneWidget);
+    expect(find.text('Kamu sudah mengulas pesanan ini.'), findsOneWidget);
     expect(find.text('Tulis ulasan'), findsOneWidget);
     expect(_tombol(tester).onPressed, isNotNull); // bisa coba lagi
   });

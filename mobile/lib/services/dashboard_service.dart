@@ -1,7 +1,8 @@
 import '../models/dashboard_seniman.dart';
 import 'api_client.dart';
 
-/// Wrapper tipis ke `GET /api/dashboard/...` (lihat backend/routers/dashboard_seniman.py).
+/// Dashboard seniman yang login: `GET /api/dashboard/saya/...` (data nyata dari transaksi, lihat
+/// backend/services/dashboard_nyata.py). Semua request ber-auth; tidak ada id seniman yang dikirim.
 class DashboardService {
   DashboardService({ApiClient? client}) : _client = client ?? ApiClient();
 
@@ -9,43 +10,33 @@ class DashboardService {
 
   List<Map<String, dynamic>> _list(dynamic data) => (data as List).cast<Map<String, dynamic>>();
 
-  Future<List<SenimanDemo>> fetchSenimanDemo() async {
-    final data = await _client.getJson('/api/dashboard/demo-seniman');
-    return _list(data).map(SenimanDemo.fromJson).toList();
-  }
-
-  Future<RingkasanSeniman> fetchRingkasan(String senimanId, {int periode = 30}) async {
-    final data = await _client.getJson('/api/dashboard/seniman/$senimanId/ringkasan?periode=$periode');
+  Future<RingkasanSeniman> fetchRingkasan({int periode = 30}) async {
+    final data = await _client.getJson('/api/dashboard/saya/ringkasan?periode=$periode', auth: true);
     return RingkasanSeniman.fromJson(data as Map<String, dynamic>);
   }
 
-  Future<List<PenjualanBulan>> fetchPenjualanBulanan(String senimanId, {int bulan = 12}) async {
-    final data = await _client.getJson('/api/dashboard/seniman/$senimanId/penjualan-bulanan?bulan=$bulan');
+  Future<List<PenjualanBulan>> fetchPenjualanBulanan({int bulan = 12}) async {
+    final data = await _client.getJson('/api/dashboard/saya/penjualan-bulanan?bulan=$bulan', auth: true);
     return _list(data).map(PenjualanBulan.fromJson).toList();
   }
 
-  Future<List<AliranSeniman>> fetchAliran(String senimanId) async {
-    final data = await _client.getJson('/api/dashboard/seniman/$senimanId/aliran');
+  Future<List<AliranSeniman>> fetchAliran() async {
+    final data = await _client.getJson('/api/dashboard/saya/aliran', auth: true);
     return _list(data).map(AliranSeniman.fromJson).toList();
   }
 
-  Future<SegmenPembeliHasil> fetchSegmenPembeli(String senimanId) async {
-    final data = await _client.getJson('/api/dashboard/seniman/$senimanId/segmen-pembeli');
+  Future<SegmenPembeliHasil> fetchSegmenPembeli() async {
+    final data = await _client.getJson('/api/dashboard/saya/segmen-pembeli', auth: true);
     return SegmenPembeliHasil.fromJson(data as Map<String, dynamic>);
   }
 
-  Future<TrenPasar> fetchTrenPasar() async {
-    final data = await _client.getJson('/api/dashboard/pasar/tren');
-    return TrenPasar.fromJson(data as Map<String, dynamic>);
-  }
-
-  Future<RiwayatPenarikan> fetchRiwayatPenarikan(String senimanId) async {
-    final data = await _client.getJson('/api/dashboard/seniman/$senimanId/penarikan');
+  Future<RiwayatPenarikan> fetchRiwayatPenarikan() async {
+    final data = await _client.getJson('/api/dashboard/saya/penarikan', auth: true);
     return RiwayatPenarikan.fromJson(data as Map<String, dynamic>);
   }
 
-  Future<List<NotifikasiSeniman>> fetchNotifikasi(String senimanId) async {
-    final data = await _client.getJson('/api/dashboard/seniman/$senimanId/notifikasi');
+  Future<List<NotifikasiSeniman>> fetchNotifikasi() async {
+    final data = await _client.getJson('/api/dashboard/saya/notifikasi', auth: true);
     return _list(data).map(NotifikasiSeniman.fromJson).toList();
   }
 }

@@ -7,21 +7,21 @@ const _minChar = 10;
 const _maxChar = 500;
 
 /// Buka formulir "Tulis ulasan". Mengembalikan `true` bila ulasan berhasil terkirim.
-Future<bool> tampilkanTulisUlasan(BuildContext context, {required String karyaId, required String judulKarya, UlasanService? service}) async {
+Future<bool> tampilkanTulisUlasan(BuildContext context, {required String pesananId, required String judulKarya, UlasanService? service}) async {
   final hasil = await showModalBottomSheet<bool>(
     context: context,
     isScrollControlled: true,
     backgroundColor: AppColors.surface,
     shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(AppRadius.lg))),
-    builder: (_) => TulisUlasanSheet(karyaId: karyaId, judulKarya: judulKarya, service: service),
+    builder: (_) => TulisUlasanSheet(pesananId: pesananId, judulKarya: judulKarya, service: service),
   );
   return hasil ?? false;
 }
 
 class TulisUlasanSheet extends StatefulWidget {
-  const TulisUlasanSheet({super.key, required this.karyaId, required this.judulKarya, this.service});
+  const TulisUlasanSheet({super.key, required this.pesananId, required this.judulKarya, this.service});
 
-  final String karyaId, judulKarya;
+  final String pesananId, judulKarya;
   final UlasanService? service;
 
   @override
@@ -50,7 +50,7 @@ class _TulisUlasanSheetState extends State<TulisUlasanSheet> {
       _error = null;
     });
     try {
-      await _service.kirim(karyaId: widget.karyaId, rating: _rating, teks: _teks.text.trim());
+      await _service.kirim(pesananId: widget.pesananId, rating: _rating, teks: _teks.text.trim());
       if (!mounted) return;
       Navigator.of(context).pop(true);
     } catch (e) {

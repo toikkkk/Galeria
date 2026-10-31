@@ -38,6 +38,7 @@ class RingkasanSeniman(BaseModel):
     n_pembeli_unik: int
     karya_tersedia: int
     karya_terjual_total: int
+    pesanan_perlu_diproses: int = 0  # dibayar & menunggu konfirmasi, atau dikonfirmasi & belum dikirim
     perubahan_pct: PerubahanPct
 
 

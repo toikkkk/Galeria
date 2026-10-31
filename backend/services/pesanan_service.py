@@ -26,6 +26,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from models.karya import Karya, StatusVerifikasiKarya
 from models.transaksi import StatusTransaksi as S
 from models.transaksi import Transaksi
+from models.ulasan import Ulasan
 from models.user import AlamatPengiriman, User
 from schemas.pesanan import InstruksiBayar, KaryaRingkas, PesananOut
 from services import pembayaran, storage
@@ -82,7 +83,9 @@ def _aksi(t: Transaksi, user_id: uuid.UUID) -> list[str]:
     return a
 
 
-def ke_out(t: Transaksi, karya: Karya, pembeli: User, penjual: User, user_id: uuid.UUID) -> PesananOut:
+def ke_out(
+    t: Transaksi, karya: Karya, pembeli: User, penjual: User, user_id: uuid.UUID, *, sudah_diulas: bool = False
+) -> PesananOut:
     instruksi = None
     if t.status == S.MENUNGGU_PEMBAYARAN and t.metode_pembayaran and t.referensi_pembayaran:
         nama, _ = pembayaran.METODE[t.metode_pembayaran][0], None
@@ -113,6 +116,7 @@ def ke_out(t: Transaksi, karya: Karya, pembeli: User, penjual: User, user_id: uu
         kurir=t.kurir,
         no_resi=t.no_resi,
         sudah_dikirim=t.dikirim_at is not None,
+        sudah_diulas=sudah_diulas,
         created_at=t.created_at,
         batas_bayar_at=t.batas_bayar_at,
         dibayar_at=t.dibayar_at,
@@ -120,7 +124,9 @@ def ke_out(t: Transaksi, karya: Karya, pembeli: User, penjual: User, user_id: uu
         dikirim_at=t.dikirim_at,
         selesai_at=t.selesai_at,
         dibatalkan_at=t.dibatalkan_at,
-        aksi=_aksi(t, user_id),
+        aksi=_aksi(t, user_id) + (
+            ["ulas"] if (t.status == S.SELESAI and user_id == t.pembeli_id and not sudah_diulas) else []
+        ),
     )
 
 
@@ -128,7 +134,8 @@ async def muat_out(db: AsyncSession, t: Transaksi, user_id: uuid.UUID) -> Pesana
     karya = await db.get(Karya, t.karya_id)
     pembeli = await db.get(User, t.pembeli_id)
     penjual = await db.get(User, t.penjual_id)
-    return ke_out(t, karya, pembeli, penjual, user_id)
+    diulas = await db.scalar(select(Ulasan.id).where(Ulasan.transaksi_id == t.id)) is not None
+    return ke_out(t, karya, pembeli, penjual, user_id, sudah_diulas=diulas)
 
 
 def _parse_uuid(v: str, pesan: str) -> uuid.UUID:

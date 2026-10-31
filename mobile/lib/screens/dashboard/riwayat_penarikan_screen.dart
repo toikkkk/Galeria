@@ -1,11 +1,9 @@
 import 'package:flutter/material.dart';
 
-import '../../config/demo_seniman.dart';
 import '../../models/dashboard_seniman.dart';
 import '../../services/dashboard_service.dart';
 import '../../theme/app_theme.dart';
 import '../../utils/format.dart';
-import '../../widgets/dashboard/dashboard_sections.dart';
 
 /// Riwayat tarik dana dari pendapatan seniman
 /// (`GET /api/dashboard/seniman/{id}/penarikan`).
@@ -40,8 +38,7 @@ class _RiwayatPenarikanScreenState extends State<RiwayatPenarikanScreen> {
       _error = null;
     });
     try {
-      final id = await resolveDemoSenimanId(_service);
-      final r = await _service.fetchRiwayatPenarikan(id);
+      final r = await _service.fetchRiwayatPenarikan();
       if (!mounted) return;
       setState(() {
         _data = r;
@@ -129,16 +126,11 @@ class _RiwayatPenarikanScreenState extends State<RiwayatPenarikanScreen> {
             ),
           ),
           const SizedBox(height: AppSpacing.sm),
-          const Align(
-            alignment: Alignment.centerLeft,
-            child: DataContohBadge(label: 'DATA CONTOH'),
-          ),
-          const SizedBox(height: AppSpacing.sm),
           if (data.items.isEmpty)
             Padding(
               padding: const EdgeInsets.symmetric(vertical: AppSpacing.xxl),
               child: Center(
-                child: Text('Belum ada penarikan dana.',
+                child: Text('Belum ada penarikan dana. Fitur tarik dana belum tersedia.',
                     style: AppTextStyles.bodySm.copyWith(color: AppColors.muted)),
               ),
             )
@@ -151,8 +143,7 @@ class _RiwayatPenarikanScreenState extends State<RiwayatPenarikanScreen> {
             ),
           const SizedBox(height: AppSpacing.sm),
           Text(
-            'Riwayat ini dihitung dari pendapatan bersih data contoh (setelah komisi platform), '
-            'bukan catatan transfer bank nyata.',
+            'Fitur penarikan dana belum tersedia, jadi riwayat ini kosong.',
             style: AppTextStyles.bodySm.copyWith(color: AppColors.muted, fontSize: 11),
           ),
         ],
