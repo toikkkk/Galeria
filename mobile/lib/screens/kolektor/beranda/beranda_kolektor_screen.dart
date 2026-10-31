@@ -6,6 +6,8 @@ import 'package:flutter/material.dart';
 import '../../../config/demo_kolektor.dart';
 import '../../../models/karya.dart';
 import '../../../models/karya_rekomendasi.dart';
+import '../../../models/event.dart';
+import '../../../services/event_service.dart';
 import '../../../services/notifikasi_service.dart';
 import '../../../services/api_client.dart';
 import '../../../services/katalog_service.dart';
@@ -59,8 +61,13 @@ class _BerandaKolektorScreenState extends State<BerandaKolektorScreen> {
   final _searchCtrl = TextEditingController();
   String _query = '';
 
-  /// Mulai dari [sampleKarya] (lokal), diganti begitu fetch API sukses.
-  List<Karya> _karya = sampleKarya;
+  /// Kosong sampai katalog dari server datang (tidak ada karya contoh).
+  List<Karya> _karya = [];
+  bool _memuatKatalog = true;
+  String? _errorKatalog;
+
+  /// Event terdekat dari server untuk banner; null = banner disembunyikan.
+  EventInfo? _eventBanner;
 
   /// Hasil model rekomendasi; `null` = belum/gagal dimuat (tampil [_karya]).
   RekomendasiResult? _rekomendasi;
@@ -78,6 +85,7 @@ class _BerandaKolektorScreenState extends State<BerandaKolektorScreen> {
     NotifikasiStore.instance.addListener(_notifBerubah);
     NotifikasiStore.instance.muat();
     _loadKatalog();
+    _loadBanner();
     if (kPakaiDataDummy) _loadRekomendasi();
   }
 
@@ -87,10 +95,20 @@ class _BerandaKolektorScreenState extends State<BerandaKolektorScreen> {
       final karya = kPakaiDataDummy
           ? [...await _karyaSeniman(service), ...(await service.fetchKatalogDummy()).items]
           : await service.fetchKatalog();
-      if (!mounted || karya.isEmpty) return;
-      setState(() => _karya = karya);
+      if (mounted) setState(() => _karya = karya);
+    } catch (e) {
+      if (mounted) setState(() => _errorKatalog = 'Gagal memuat karya: $e');
+    } finally {
+      if (mounted) setState(() => _memuatKatalog = false);
+    }
+  }
+
+  Future<void> _loadBanner() async {
+    try {
+      final d = await EventService().daftar();
+      if (mounted && d.isNotEmpty) setState(() => _eventBanner = d.first);
     } catch (_) {
-      // Diam-diam tetap pakai sampleKarya -- lihat komentar kelas di atas.
+      // tanpa banner bila gagal
     }
   }
 
@@ -297,115 +315,32 @@ class _BerandaKolektorScreenState extends State<BerandaKolektorScreen> {
             if (_query.isNotEmpty)
               ..._buildSearchResults(searchResults)
             else ...[
-              // Banner pameran
-              Padding(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: AppSpacing.screenGutter,
-                ),
-                child: InkWell(
-                  onTap: widget.onEventTap,
-                  borderRadius: BorderRadius.circular(AppRadius.lg),
-                  child: Stack(
-                    children: [
-                      ClipRRect(
-                        borderRadius: BorderRadius.circular(AppRadius.lg),
-                        child: AspectRatio(
-                          aspectRatio: 16 / 9,
-                          // Gambar banner TETAP (karya contoh Pasca-Impresionisme, aman utk semua umur) -- bukan
-                          // _karya[0], karena katalog dummy dari dataset WikiArt bisa berisi lukisan nudis.
-                          child: KaryaImage(karya: sampleKarya[1]),
-                        ),
+              // Banner: event terdekat dari server (disembunyikan bila belum ada event)
+              if (_eventBanner != null) ...[
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: AppSpacing.screenGutter),
+                  child: InkWell(
+                    onTap: widget.onEventTap,
+                    borderRadius: BorderRadius.circular(AppRadius.lg),
+                    child: Container(
+                      width: double.infinity,
+                      padding: const EdgeInsets.all(AppSpacing.md),
+                      decoration: BoxDecoration(color: AppColors.primary, borderRadius: BorderRadius.circular(AppRadius.lg)),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text('EVENT TERDEKAT', style: AppTextStyles.overline.copyWith(color: AppColors.accentSoft, fontSize: 9)),
+                          const SizedBox(height: 4),
+                          Text(_eventBanner!.judul, maxLines: 2, overflow: TextOverflow.ellipsis, style: AppTextStyles.headlineSm.copyWith(color: Colors.white, fontSize: 16)),
+                          const SizedBox(height: 4),
+                          Text('${_eventBanner!.mulai.day}/${_eventBanner!.mulai.month}/${_eventBanner!.mulai.year} · ${_eventBanner!.lokasi}', style: AppTextStyles.bodySm.copyWith(color: Colors.white70)),
+                        ],
                       ),
-                      Positioned.fill(
-                        child: DecoratedBox(
-                          decoration: BoxDecoration(
-                            borderRadius: BorderRadius.circular(AppRadius.lg),
-                            gradient: LinearGradient(
-                              begin: Alignment.topCenter,
-                              end: Alignment.bottomCenter,
-                              colors: [
-                                Colors.transparent,
-                                Colors.black.withValues(alpha: 0.8),
-                              ],
-                              stops: const [0.3, 1.0],
-                            ),
-                          ),
-                        ),
-                      ),
-                      Positioned(
-                        top: 10,
-                        left: 10,
-                        child: Container(
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 8,
-                            vertical: 3,
-                          ),
-                          decoration: BoxDecoration(
-                            color: Colors.white.withValues(alpha: 0.92),
-                            borderRadius: BorderRadius.circular(AppRadius.full),
-                          ),
-                          child: Text(
-                            'EKSKLUSIF PEKAN INI',
-                            style: AppTextStyles.overline.copyWith(
-                              fontSize: 8.5,
-                            ),
-                          ),
-                        ),
-                      ),
-                      Positioned(
-                        left: 14,
-                        right: 14,
-                        bottom: 12,
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              'Grand Vernissage 2026: Masterpiece Nusantara & Eropa',
-                              style: AppTextStyles.headlineSm.copyWith(
-                                color: Colors.white,
-                                fontSize: 16,
-                              ),
-                              maxLines: 2,
-                              overflow: TextOverflow.ellipsis,
-                            ),
-                            const SizedBox(height: 4),
-                            Row(
-                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                              children: [
-                                Text(
-                                  '34 Karya Terpilih',
-                                  style: AppTextStyles.bodySm.copyWith(
-                                    color: Colors.white70,
-                                  ),
-                                ),
-                                Container(
-                                  padding: const EdgeInsets.symmetric(
-                                    horizontal: 10,
-                                    vertical: 4,
-                                  ),
-                                  decoration: BoxDecoration(
-                                    color: AppColors.accent,
-                                    borderRadius: BorderRadius.circular(
-                                      AppRadius.full,
-                                    ),
-                                  ),
-                                  child: Text(
-                                    'Lihat Kurasi',
-                                    style: AppTextStyles.labelSm.copyWith(
-                                      color: Colors.white,
-                                    ),
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ],
-                        ),
-                      ),
-                    ],
+                    ),
                   ),
                 ),
-              ),
-              const SizedBox(height: AppSpacing.lg),
+                const SizedBox(height: AppSpacing.lg),
+              ],
               // Quick actions
               Padding(
                 padding: const EdgeInsets.symmetric(
@@ -522,6 +457,16 @@ class _BerandaKolektorScreenState extends State<BerandaKolektorScreen> {
                 ),
               ),
               const SizedBox(height: AppSpacing.sm),
+              if (_rekomendasi == null && _karya.isEmpty)
+                Padding(
+                  padding: const EdgeInsets.all(AppSpacing.xl),
+                  child: Center(
+                    child: _memuatKatalog
+                        ? const CircularProgressIndicator()
+                        : Text(_errorKatalog ?? 'Belum ada karya di katalog.', textAlign: TextAlign.center, style: AppTextStyles.bodySm.copyWith(color: _errorKatalog != null ? AppColors.error : AppColors.muted)),
+                  ),
+                )
+              else
               Padding(
                 padding: const EdgeInsets.symmetric(
                   horizontal: AppSpacing.screenGutter,
@@ -547,22 +492,10 @@ class _BerandaKolektorScreenState extends State<BerandaKolektorScreen> {
                         onTap: () => widget.onKaryaTap?.call(item.karya),
                       );
                     }
-                    const overlines = [
-                      'Lelang Langsung',
-                      'Tawaran Terakhir',
-                      'Beli Langsung',
-                      'Tawaran Terbuka',
-                    ];
-                    const priceLabels = [
-                      'Tawaran Saat Ini',
-                      'Estimasi Palu',
-                      'Harga Koleksi',
-                      'Tawaran Terkini',
-                    ];
                     return KaryaGridCard(
                       karya: _karya[i],
-                      overline: overlines[i],
-                      priceLabel: priceLabels[i],
+                      overline: null,
+                      priceLabel: 'Harga',
                       onTap: () => widget.onKaryaTap?.call(_karya[i]),
                     );
                   },
