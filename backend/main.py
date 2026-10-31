@@ -34,6 +34,7 @@ from routers import (
     karya_upload,
     katalog,
     katalog_dummy,
+    verifikasi_publik,
     verification,
     visual_search,
 )
@@ -146,6 +147,7 @@ app.include_router(katalog_dummy.router)
 app.include_router(karya_upload.router)
 app.include_router(gambar.router)
 app.include_router(media.router)
+app.include_router(verifikasi_publik.router)
 
 
 @app.get("/")
