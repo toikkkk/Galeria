@@ -63,29 +63,9 @@ class _PesananSenimanScreenState extends State<PesananSenimanScreen> {
   }
 
   Future<void> _kirim(Pesanan p) async {
-    final kurir = TextEditingController(text: 'JNE');
-    final resi = TextEditingController();
-    final ok = await showDialog<bool>(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        title: const Text('Kirim pesanan'),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            TextField(controller: kurir, decoration: const InputDecoration(labelText: 'Kurir')),
-            TextField(controller: resi, decoration: const InputDecoration(labelText: 'Nomor resi')),
-          ],
-        ),
-        actions: [
-          TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Batal')),
-          TextButton(onPressed: () => Navigator.pop(ctx, true), child: const Text('Tandai dikirim')),
-        ],
-      ),
-    );
-    final k = kurir.text.trim(), r = resi.text.trim();
-    kurir.dispose();
-    resi.dispose();
-    if (ok != true || !mounted) return;
+    final hasil = await tampilkanDialogKirim(context);
+    if (hasil == null || !mounted) return;
+    final (k, r) = hasil;
     setState(() => _sibuk.add(p.id));
     try {
       final baru = await _service.kirim(p.id, kurir: k, noResi: r);

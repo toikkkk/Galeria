@@ -285,3 +285,46 @@ class _FormAlamatState extends State<_FormAlamat> {
     );
   }
 }
+
+/// Dialog isi kurir + nomor resi. Mengembalikan (kurir, resi) atau null bila dibatalkan.
+/// Controller dimiliki dialog itu sendiri supaya dibuang setelah animasi tutup selesai.
+Future<(String, String)?> tampilkanDialogKirim(BuildContext context) {
+  return showDialog<(String, String)>(context: context, builder: (_) => const _DialogKirim());
+}
+
+class _DialogKirim extends StatefulWidget {
+  const _DialogKirim();
+
+  @override
+  State<_DialogKirim> createState() => _DialogKirimState();
+}
+
+class _DialogKirimState extends State<_DialogKirim> {
+  final _kurir = TextEditingController(text: 'JNE');
+  final _resi = TextEditingController();
+
+  @override
+  void dispose() {
+    _kurir.dispose();
+    _resi.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AlertDialog(
+      title: const Text('Kirim pesanan'),
+      content: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          TextField(key: const Key('kurir'), controller: _kurir, decoration: const InputDecoration(labelText: 'Kurir')),
+          TextField(key: const Key('resi'), controller: _resi, decoration: const InputDecoration(labelText: 'Nomor resi')),
+        ],
+      ),
+      actions: [
+        TextButton(onPressed: () => Navigator.pop(context), child: const Text('Batal')),
+        TextButton(key: const Key('tandai_dikirim'), onPressed: () => Navigator.pop(context, (_kurir.text.trim(), _resi.text.trim())), child: const Text('Tandai dikirim')),
+      ],
+    );
+  }
+}

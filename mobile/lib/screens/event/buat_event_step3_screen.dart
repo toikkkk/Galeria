@@ -107,10 +107,7 @@ class _BuatEventStep3ScreenState extends State<BuatEventStep3Screen> {
         }
       });
     }
-    nama.dispose();
-    harga.dispose();
-    kuota.dispose();
-    ket.dispose();
+    // controller sengaja tidak di-dispose di sini: field dialog masih beranimasi menutup (assertion '_dependents.isEmpty')
   }
 
   DateTime? _gabung(DateTime? tgl, TimeOfDay? jam, TimeOfDay awal) {
