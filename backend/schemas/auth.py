@@ -27,6 +27,7 @@ class RegisterReq(BaseModel):
     password: str
     display_name: str
     role: RolePublik
+    nomor_hp: str | None = None
 
     @field_validator("email")
     @classmethod
@@ -40,6 +41,19 @@ class RegisterReq(BaseModel):
         if not (2 <= len(v) <= 60):
             raise ValueError("nama tampilan harus 2-60 karakter")
         return v
+
+    @field_validator("nomor_hp")
+    @classmethod
+    def _v_hp(cls, v: str | None) -> str | None:
+        if v is None or not v.strip():
+            return None
+        digit = "".join(c for c in v if c.isdigit())
+        if digit.startswith("62"):
+            digit = digit[2:]
+        digit = digit.lstrip("0")
+        if not (8 <= len(digit) <= 13):
+            raise ValueError("nomor HP tidak valid")
+        return "+62" + digit
 
     @field_validator("password")
     @classmethod
@@ -81,6 +95,7 @@ class UserOut(BaseModel):
     display_name: str
     role: str
     avatar_url: str | None = None
+    nomor_hp: str | None = None
     email_verified: bool
 
 

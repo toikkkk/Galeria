@@ -9,8 +9,8 @@ import enum
 import uuid
 from datetime import datetime
 
-from sqlalchemy import BigInteger, CheckConstraint, DateTime, Enum, ForeignKey, func
-from sqlalchemy.dialects.postgresql import UUID
+from sqlalchemy import BigInteger, CheckConstraint, DateTime, Enum, ForeignKey, Text, func
+from sqlalchemy.dialects.postgresql import JSONB, UUID
 from sqlalchemy.orm import Mapped, mapped_column
 
 from database import Base
@@ -74,6 +74,18 @@ class Transaksi(Base):
     signing_key_id: Mapped[uuid.UUID] = mapped_column(
         UUID(as_uuid=True), ForeignKey("signing_keys.id", ondelete="RESTRICT"), nullable=False
     )
+    # --- siklus hidup pesanan (migrasi 0009) ---
+    alamat_snapshot: Mapped[dict | None] = mapped_column(JSONB, nullable=True)
+    metode_pembayaran: Mapped[str | None] = mapped_column(Text, nullable=True)
+    referensi_pembayaran: Mapped[str | None] = mapped_column(Text, nullable=True)
+    batas_bayar_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    dibayar_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    dikonfirmasi_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    dikirim_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    selesai_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    dibatalkan_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    kurir: Mapped[str | None] = mapped_column(Text, nullable=True)
+    no_resi: Mapped[str | None] = mapped_column(Text, nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
     updated_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), onupdate=func.now()

@@ -30,6 +30,8 @@ class KaryaListItem(BaseModel):
     seniman_id: str | None = None
     # menunggu / terverifikasi / ditolak / perlu_ditinjau (di katalog publik selalu terverifikasi).
     status_verifikasi: str | None = None
+    # True bila karya sudah terjual / sedang dipesan (ada pesanan yang belum dibatalkan).
+    terjual: bool = False
     # Ringkasan hasil verification engine (Art-to-Art + Art-to-AI) dari
     # tabel `karya_fingerprints`. NULL = karya belum pernah dicek engine
     # (mis. 8 karya seed lama).

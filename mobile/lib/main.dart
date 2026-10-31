@@ -49,7 +49,6 @@ import 'screens/kolektor/lelang/lelang_screen.dart';
 import 'screens/kolektor/notifikasi/notifikasi_screen.dart';
 import 'screens/kolektor/pesanan/daftar_pesanan_screen.dart';
 import 'screens/kolektor/pesanan/konfirmasi_pesanan_screen.dart';
-import 'screens/kolektor/pesanan/pesanan_selesai_screen.dart';
 import 'screens/kolektor/pesanan/selesaikan_pembayaran_screen.dart';
 import 'screens/kolektor/profile/profil_kolektor_screen.dart';
 import 'screens/kolektor/scan/ar_ruangan_screen.dart';
@@ -57,6 +56,8 @@ import 'screens/kolektor/scan/visual_search_camera_screen.dart';
 import 'screens/onboarding/role_selection_screen.dart';
 import 'screens/onboarding/splash_screen.dart';
 import 'screens/onboarding/welcome_screen.dart';
+import 'models/pesanan.dart';
+import 'screens/pesanan/detail_pesanan_screen.dart';
 import 'screens/pesanan/pesanan_seniman_screen.dart';
 import 'screens/profile/profil_screen.dart';
 import 'theme/app_theme.dart';
@@ -222,6 +223,34 @@ String? _jagaRute(BuildContext context, GoRouterState state) {
   if (privatSeniman && !user.isSeniman) return '/beranda-kolektor';
   if (privatKolektor && user.isSeniman) return '/dashboard';
   return null;
+}
+
+/// "Beli Sekarang": harus login sebagai pembeli; akun seniman tidak bisa membeli.
+void _beli(BuildContext context, Karya karya) {
+  final user = AuthService.instance.user;
+  if (!AuthService.instance.loggedIn || user == null) {
+    _messengerKey.currentState?.showSnackBar(const SnackBar(content: Text('Masuk dulu untuk membeli karya.')));
+    context.push('/login');
+    return;
+  }
+  if (user.isSeniman) {
+    _messengerKey.currentState?.showSnackBar(
+      const SnackBar(content: Text('Akun seniman tidak bisa membeli. Daftar sebagai kolektor untuk membeli karya.')),
+    );
+    return;
+  }
+  context.push('/pesanan/konfirmasi', extra: karya);
+}
+
+class _LayarKosong extends StatelessWidget {
+  const _LayarKosong(this.pesan);
+  final String pesan;
+
+  @override
+  Widget build(BuildContext context) => Scaffold(
+        appBar: AppBar(leading: BackButton(onPressed: () => _kembali(context))),
+        body: Center(child: Padding(padding: const EdgeInsets.all(24), child: Text(pesan, textAlign: TextAlign.center))),
+      );
 }
 
 final _router = GoRouter(
@@ -434,6 +463,7 @@ final _router = GoRouter(
     GoRoute(
       path: '/pesanan-seniman',
       builder: (context, state) => PesananSenimanScreen(
+        onDetailTap: (p) => context.push('/pesanan-seniman/detail', extra: p.id),
         // Dituju via tab-switch (go(), lihat _goSenimanTab) -- pop() tidak
         // bisa diandalkan (bisa tidak ada riwayat). Pola sama dgn
         // /karya-saya.
@@ -584,7 +614,7 @@ final _router = GoRouter(
           karya: karya,
           onBack: () => _kembali(context),
           onArTap: () => context.push('/pindai/ar', extra: karya),
-          onBeliTap: () => context.push('/pesanan/konfirmasi', extra: karya),
+          onBeliTap: () => _beli(context, karya),
           onTokoTap: () => context.push('/toko'),
         );
       },
@@ -601,42 +631,54 @@ final _router = GoRouter(
       builder: (context, state) => DaftarPesananScreen(
         onNavTap: (i) => _goKolektorTab(context, i),
         onPindai: () => context.push('/pindai'),
-        onBayarTap: (total) =>
-            context.push('/pesanan/pembayaran', extra: total),
-        onDetailTap: (karya) => context.push('/pesanan/selesai', extra: karya),
+        onBayarTap: (pesanan) => context.push('/pesanan/pembayaran', extra: pesanan),
+        onDetailTap: (pesanan) => context.push('/pesanan/detail', extra: pesanan.id),
       ),
     ),
     GoRoute(
       path: '/pesanan/konfirmasi',
       builder: (context, state) {
-        final karya = (state.extra as Karya?) ?? sampleKarya.first;
+        final karya = state.extra as Karya?;
+        if (karya == null) return const _LayarKosong('Pilih karya dulu dari katalog.');
         return KonfirmasiPesananScreen(
           karya: karya,
           onBack: () => _kembali(context),
-          // Estimasi total (kurir seni + asuransi + biaya layanan default) --
-          // demo lokal, belum ada state pembayaran nyata lintas layar.
-          onLanjut: () => context.push(
-            '/pesanan/pembayaran',
-            extra: karya.priceIdr + 2625000,
-          ),
+          // pushReplacement: dari layar pembayaran, "kembali" tidak boleh membuat pesanan kedua.
+          onDibuat: (pesanan) => context.pushReplacement('/pesanan/pembayaran', extra: pesanan),
         );
       },
     ),
     GoRoute(
       path: '/pesanan/pembayaran',
-      builder: (context, state) => SelesaikanPembayaranScreen(
-        totalIdr: (state.extra as int?) ?? 147625000,
-        onBack: () => _kembali(context),
-        onSudahBayar: () =>
-            context.push('/pesanan/selesai', extra: sampleKarya.first),
-      ),
+      builder: (context, state) {
+        final pesanan = state.extra as Pesanan?;
+        if (pesanan == null) return const _LayarKosong('Pesanan tidak ditemukan.');
+        return SelesaikanPembayaranScreen(
+          pesanan: pesanan,
+          onBack: () => _kembali(context),
+          onSelesai: (p) => context.pushReplacement('/pesanan/detail', extra: p.id),
+        );
+      },
     ),
     GoRoute(
-      path: '/pesanan/selesai',
-      builder: (context, state) => PesananSelesaiScreen(
-        karya: (state.extra as Karya?) ?? sampleKarya.first,
-        onSelesai: () => context.go('/koleksi-saya'),
-      ),
+      path: '/pesanan/detail',
+      builder: (context, state) {
+        final id = state.extra as String?;
+        if (id == null) return const _LayarKosong('Pesanan tidak ditemukan.');
+        return DetailPesananScreen(
+          pesananId: id,
+          onBack: () => _kembali(context),
+          onBayar: (p) => context.push('/pesanan/pembayaran', extra: p),
+        );
+      },
+    ),
+    GoRoute(
+      path: '/pesanan-seniman/detail',
+      builder: (context, state) {
+        final id = state.extra as String?;
+        if (id == null) return const _LayarKosong('Pesanan tidak ditemukan.');
+        return DetailPesananScreen(pesananId: id, onBack: () => _kembali(context));
+      },
     ),
     GoRoute(
       path: '/pindai',
@@ -662,6 +704,7 @@ final _router = GoRouter(
         onPindai: () => context.push('/pindai'),
         onLogout: () => _keluar(context),
         onPesananTap: () => context.push('/pesanan'),
+        onPesananDetail: (p) => context.push('/pesanan/detail', extra: p.id),
       ),
     ),
   ],

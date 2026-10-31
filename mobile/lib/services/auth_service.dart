@@ -15,11 +15,12 @@ class AuthUser {
     required this.displayName,
     required this.role,
     this.avatarUrl,
+    this.nomorHp,
     this.emailVerified = false,
   });
 
   final String id, email, displayName, role;
-  final String? avatarUrl;
+  final String? avatarUrl, nomorHp;
   final bool emailVerified;
 
   bool get isSeniman => role == 'seniman';
@@ -47,6 +48,7 @@ class AuthUser {
         displayName: j['display_name'] as String,
         role: j['role'] as String,
         avatarUrl: j['avatar_url'] as String?,
+        nomorHp: j['nomor_hp'] as String?,
         emailVerified: j['email_verified'] as bool? ?? false,
       );
 
@@ -56,6 +58,7 @@ class AuthUser {
         'display_name': displayName,
         'role': role,
         'avatar_url': avatarUrl,
+        'nomor_hp': nomorHp,
         'email_verified': emailVerified,
       };
 }
@@ -156,12 +159,14 @@ class AuthService extends ChangeNotifier {
     required String password,
     required String displayName,
     required String role,
+    String? nomorHp,
   }) =>
       _masuk('/api/auth/register', {
         'email': email.trim(),
         'password': password,
         'display_name': displayName.trim(),
         'role': role,
+        if (nomorHp != null && nomorHp.trim().isNotEmpty) 'nomor_hp': nomorHp.trim(),
       });
 
   /// Keluar. Pembersihan lokal SELALU terjadi, walau server tak terjangkau.

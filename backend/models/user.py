@@ -49,6 +49,7 @@ class User(Base):
     google_sub: Mapped[str | None] = mapped_column(Text, unique=True, nullable=True)
     display_name: Mapped[str] = mapped_column(Text, nullable=False)
     avatar_url: Mapped[str | None] = mapped_column(Text, nullable=True)
+    nomor_hp: Mapped[str | None] = mapped_column(Text, nullable=True)
     role: Mapped[UserRole] = mapped_column(
         Enum(UserRole, name="user_role", values_callable=lambda e: [m.value for m in e]),
         nullable=False,
@@ -78,3 +79,25 @@ class AuthSession(Base):
     issued_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
     expires_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
     revoked_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+
+
+class AlamatPengiriman(Base):
+    """Buku alamat pengguna. Maksimal satu alamat ``is_utama`` per pengguna (indeks unik parsial di DB)."""
+
+    __tablename__ = "alamat_pengiriman"
+
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    user_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"), nullable=False
+    )
+    label: Mapped[str] = mapped_column(Text, nullable=False)
+    nama_penerima: Mapped[str] = mapped_column(Text, nullable=False)
+    telepon: Mapped[str] = mapped_column(Text, nullable=False)
+    alamat_lengkap: Mapped[str] = mapped_column(Text, nullable=False)
+    kota: Mapped[str] = mapped_column(Text, nullable=False)
+    kode_pos: Mapped[str] = mapped_column(Text, nullable=False)
+    is_utama: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), onupdate=func.now()
+    )

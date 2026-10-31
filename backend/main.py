@@ -29,8 +29,10 @@ from routers import (
     dashboard_seniman,
     sentimen,
     ulasan,
+    alamat,
     gambar,
     media,
+    pesanan,
     karya_upload,
     katalog,
     katalog_dummy,
@@ -147,6 +149,8 @@ app.include_router(katalog_dummy.router)
 app.include_router(karya_upload.router)
 app.include_router(gambar.router)
 app.include_router(media.router)
+app.include_router(alamat.router)
+app.include_router(pesanan.router)
 app.include_router(verifikasi_publik.router)
 
 

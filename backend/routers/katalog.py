@@ -21,6 +21,21 @@ from schemas.katalog import KaryaDetail, KaryaListItem, KatalogPage
 router = APIRouter(prefix="/api", tags=["katalog"])
 
 
+async def tandai_terjual(db: AsyncSession, items: list[KaryaListItem]) -> None:
+    """Isi ``terjual`` untuk sekumpulan item dengan SATU query."""
+    if not items:
+        return
+    from models.transaksi import StatusTransaksi, Transaksi
+
+    ids = [uuid.UUID(i.id) for i in items]
+    rows = await db.execute(
+        select(Transaksi.karya_id).where(Transaksi.karya_id.in_(ids), Transaksi.status != StatusTransaksi.DIBATALKAN)
+    )
+    terjual = {str(r[0]) for r in rows}
+    for i in items:
+        i.terjual = i.id in terjual
+
+
 def to_list_item(karya: Karya, fp: KaryaFingerprint | None = None) -> KaryaListItem:
     return KaryaListItem(
         seniman_id=str(karya.seniman_id) if karya.seniman_id else None,
@@ -92,8 +107,10 @@ async def list_katalog(
         )
     ).all()
 
+    items = [to_list_item(k, fp) for k, fp in rows]
+    await tandai_terjual(db, items)
     return KatalogPage(
-        items=[to_list_item(k, fp) for k, fp in rows],
+        items=items,
         page=page,
         page_size=page_size,
         total=total,
@@ -118,4 +135,5 @@ async def get_karya(karya_id: str, db: AsyncSession = Depends(get_db)):
 
     fp = await db.get(KaryaFingerprint, karya_uuid)
     item = to_list_item(karya, fp)
+    await tandai_terjual(db, [item])
     return KaryaDetail(**item.model_dump())

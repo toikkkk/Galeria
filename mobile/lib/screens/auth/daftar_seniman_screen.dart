@@ -56,6 +56,8 @@ class _DaftarSenimanScreenState extends State<DaftarSenimanScreen> {
       err = 'Isi nama lengkapmu dulu.';
     } else if (!RegExp(r'^[^@\s]+@[^@\s]+\.[^@\s]+$').hasMatch(email)) {
       err = 'Format email belum benar.';
+    } else if (_hpCtrl.text.trim().isNotEmpty && !RegExp(r'^\d{8,13}$').hasMatch(_hpCtrl.text.replaceAll(RegExp(r'[\s\-+]'), ''))) {
+      err = 'Nomor telepon belum benar (8-13 digit).';
     } else if (validasiPassword(pw) != null) {
       err = validasiPassword(pw);
     } else if (pw != _pw2Ctrl.text) {
@@ -70,7 +72,7 @@ class _DaftarSenimanScreenState extends State<DaftarSenimanScreen> {
       _error = null;
     });
     try {
-      await AuthService.instance.register(email: email, password: pw, displayName: nama, role: 'seniman');
+      await AuthService.instance.register(email: email, password: pw, displayName: nama, role: 'seniman', nomorHp: _hpCtrl.text);
       if (!mounted) return;
       widget.onContinue();
     } on AuthException catch (e) {

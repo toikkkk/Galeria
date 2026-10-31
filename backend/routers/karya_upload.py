@@ -28,7 +28,7 @@ from models.karya import Karya, StatusVerifikasiKarya
 from models.transaksi import Transaksi
 from models.user import User
 from models.verification import KaryaFingerprint
-from routers.katalog import to_list_item
+from routers.katalog import tandai_terjual, to_list_item
 from schemas.katalog import KaryaListItem
 from schemas.karya_upload import KaryaCreated, KaryaSayaPage
 from services import storage
@@ -142,7 +142,9 @@ async def karya_saya(
             .limit(page_size)
         )
     ).all()
-    return KaryaSayaPage(items=[to_list_item(k, fp) for k, fp in rows], page=page, page_size=page_size, total=total)
+    items = [to_list_item(k, fp) for k, fp in rows]
+    await tandai_terjual(db, items)
+    return KaryaSayaPage(items=items, page=page, page_size=page_size, total=total)
 
 
 @router.delete("/karya/{karya_id}", status_code=204)

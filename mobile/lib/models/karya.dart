@@ -21,6 +21,7 @@ class Karya {
     this.lebarCm,
     this.tinggiCm,
     this.statusVerifikasi,
+    this.terjual = false,
   });
 
   /// UUID dari database -- kosong ('') untuk [sampleKarya] lokal (belum
@@ -62,6 +63,9 @@ class Karya {
 
   /// menunggu / terverifikasi / ditolak / perlu_ditinjau (dari server); null untuk data lokal.
   final String? statusVerifikasi;
+
+  /// true bila sudah terjual / sedang dipesan (server menghitungnya dari tabel transaksi).
+  final bool terjual;
   /// Ukuran fisik karya (cm) -- dipakai AR supaya lukisan tampil dgn skala asli.
   /// `null` = belum diisi seniman; AR memakai ukuran perkiraan dan melabelinya begitu.
   final double? lebarCm;
@@ -122,6 +126,7 @@ class Karya {
       lebarCm: (json['lebar_cm'] as num?)?.toDouble(),
       tinggiCm: (json['tinggi_cm'] as num?)?.toDouble(),
       statusVerifikasi: json['status_verifikasi'] as String?,
+      terjual: (json['terjual'] as bool?) ?? false,
     );
   }
 }

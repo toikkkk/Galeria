@@ -32,7 +32,7 @@ def _device(request: Request, device: str | None) -> str | None:
 def _user_out(u: User) -> UserOut:
     return UserOut(
         id=str(u.id), email=u.email, display_name=u.display_name, role=u.role.value,
-        avatar_url=u.avatar_url, email_verified=u.email_verified,
+        avatar_url=u.avatar_url, nomor_hp=u.nomor_hp, email_verified=u.email_verified,
     )
 
 
@@ -53,7 +53,7 @@ async def register(body: RegisterReq, request: Request, db: AsyncSession = Depen
     _butuh_konfigurasi()
     user = User(
         id=uuid.uuid4(), email=body.email, password_hash=await svc.hash_password(body.password),
-        display_name=body.display_name, role=UserRole(body.role), email_verified=False,
+        display_name=body.display_name, role=UserRole(body.role), nomor_hp=body.nomor_hp, email_verified=False,
     )
     db.add(user)
     try:

@@ -1,458 +1,247 @@
-import '../../../services/auth_service.dart';
 import 'package:flutter/material.dart';
 
+import '../../../models/pesanan.dart';
+import '../../../services/auth_service.dart';
+import '../../../services/pesanan_service.dart';
 import '../../../theme/app_theme.dart';
-import '../../../widgets/kolektor/kolektor_bottom_nav.dart';
 import '../../../utils/coming_soon.dart';
+import '../../../widgets/kolektor/kolektor_bottom_nav.dart';
+import '../../../widgets/pesanan_widgets.dart';
 
-/// Konversi dari
-/// docs/KOLEKTOR FITUR UTAMA/.../galeria_profil_kolektor/code.html
-///
-/// Data profil, statistik, & alamat di sini contoh (placeholder).
-class ProfilKolektorScreen extends StatelessWidget {
+/// Profil kolektor. Identitas dari akun yang login; statistik, pesanan terakhir, dan alamat utama
+/// dibaca dari server (`/api/pesanan`, `/api/alamat`). Tidak ada angka atau data contoh.
+class ProfilKolektorScreen extends StatefulWidget {
   const ProfilKolektorScreen({
     super.key,
     this.onNavTap,
     this.onPindai,
     this.onLogout,
     this.onPesananTap,
-  });
+    this.onPesananDetail,
+    PesananService? pesananService,
+    AlamatService? alamatService,
+  })  : _pesanan = pesananService,
+        _alamat = alamatService;
 
   final ValueChanged<int>? onNavTap;
   final VoidCallback? onPindai;
   final VoidCallback? onLogout;
   final VoidCallback? onPesananTap;
+  final ValueChanged<Pesanan>? onPesananDetail;
+  final PesananService? _pesanan;
+  final AlamatService? _alamat;
+
+  @override
+  State<ProfilKolektorScreen> createState() => _ProfilKolektorScreenState();
+}
+
+class _ProfilKolektorScreenState extends State<ProfilKolektorScreen> {
+  late final PesananService _pesananService = widget._pesanan ?? PesananService();
+  late final AlamatService _alamatService = widget._alamat ?? AlamatService();
+  List<Pesanan> _pesanan = [];
+  Alamat? _alamat;
+  bool _memuat = true;
+  String? _error;
+
+  @override
+  void initState() {
+    super.initState();
+    _muat();
+  }
+
+  Future<void> _muat() async {
+    setState(() {
+      _memuat = true;
+      _error = null;
+    });
+    try {
+      final hasil = await Future.wait([_pesananService.daftar(), _alamatService.daftar()]);
+      if (!mounted) return;
+      final alamat = hasil[1] as List<Alamat>;
+      setState(() {
+        _pesanan = hasil[0] as List<Pesanan>;
+        _alamat = alamat.where((a) => a.isUtama).firstOrNull ?? alamat.firstOrNull;
+      });
+    } catch (e) {
+      if (mounted) setState(() => _error = 'Gagal memuat data profil: $e');
+    } finally {
+      if (mounted) setState(() => _memuat = false);
+    }
+  }
+
+  Future<void> _tambahAlamat() async {
+    final baru = await tampilkanFormAlamat(context, service: _alamatService);
+    if (baru != null && mounted) setState(() => _alamat = _alamat ?? baru);
+  }
 
   @override
   Widget build(BuildContext context) {
     final user = AuthService.instance.user;
+    final dimiliki = _pesanan.where((p) => p.status == 'selesai').length;
+    final aktif = _pesanan.where((p) => p.status == 'menunggu_pembayaran' || p.status == 'dibayar' || p.status == 'dikonfirmasi').length;
+    final terakhir = _pesanan.where((p) => p.status != 'dibatalkan').firstOrNull;
     return Scaffold(
       backgroundColor: AppColors.surface,
       appBar: AppBar(
         title: Text('Profil Saya', style: AppTextStyles.headlineMd),
         actions: [
-          IconButton(onPressed: () => showComingSoon(context, 'Filter'), icon: const Icon(Icons.tune)),
-          IconButton(
-            onPressed: () => showComingSoon(context, 'Pengaturan'),
-            icon: const Icon(Icons.settings_outlined),
-          ),
+          IconButton(onPressed: () => showComingSoon(context, 'Pengaturan'), icon: const Icon(Icons.settings_outlined)),
         ],
       ),
-      body: ListView(
-        padding: const EdgeInsets.symmetric(
-          horizontal: AppSpacing.screenGutter,
-          vertical: AppSpacing.sm,
-        ),
-        children: [
-          Container(
-            padding: const EdgeInsets.all(AppSpacing.md),
-            decoration: BoxDecoration(
-              color: Colors.white,
-              borderRadius: BorderRadius.circular(AppRadius.md),
-              boxShadow: const [
-                BoxShadow(color: Colors.black12, blurRadius: 8),
-              ],
-            ),
-            child: Column(
-              children: [
-                Row(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Stack(
-                      children: [
-                        CircleAvatar(
-                          radius: 32,
-                          backgroundColor: AppColors.primary,
-                          child: Text(
-                            user?.inisial ?? '?',
-                            style: AppTextStyles.headlineMd.copyWith(
-                              color: Colors.white,
-                              fontSize: 22,
-                            ),
-                          ),
-                        ),
-                        if (user?.emailVerified ?? false)
-                          Positioned(
-                            right: -2,
-                            bottom: -2,
-                            child: Container(
-                              width: 20,
-                              height: 20,
-                              decoration: const BoxDecoration(
-                                shape: BoxShape.circle,
-                                color: AppColors.accent,
-                              ),
-                              child: const Icon(
-                                Icons.verified,
-                                size: 12,
-                                color: Colors.white,
-                              ),
-                            ),
-                          ),
-                      ],
-                    ),
-                    const SizedBox(width: AppSpacing.sm),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
+      body: RefreshIndicator(
+        onRefresh: _muat,
+        child: ListView(
+          physics: const AlwaysScrollableScrollPhysics(),
+          padding: const EdgeInsets.symmetric(horizontal: AppSpacing.screenGutter, vertical: AppSpacing.sm),
+          children: [
+            _kartu(
+              Column(
+                children: [
+                  Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Stack(
                         children: [
-                          Container(
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 8,
-                              vertical: 2,
-                            ),
-                            decoration: BoxDecoration(
-                              color: AppColors.accentSoft.withValues(
-                                alpha: 0.5,
-                              ),
-                              borderRadius: BorderRadius.circular(
-                                AppRadius.full,
-                              ),
-                            ),
+                          CircleAvatar(
+                            radius: 32,
+                            backgroundColor: AppColors.primary,
                             child: Text(
-                              (user?.emailVerified ?? false) ? 'KOLEKTOR TERVERIFIKASI' : 'KOLEKTOR',
-                              style: AppTextStyles.overline.copyWith(
-                                fontSize: 8,
-                                color: AppColors.accent,
+                              user?.inisial ?? '?',
+                              style: AppTextStyles.headlineMd.copyWith(color: Colors.white, fontSize: 22),
+                            ),
+                          ),
+                          if (user?.emailVerified ?? false)
+                            Positioned(
+                              right: -2,
+                              bottom: -2,
+                              child: Container(
+                                width: 20,
+                                height: 20,
+                                decoration: const BoxDecoration(shape: BoxShape.circle, color: AppColors.accent),
+                                child: const Icon(Icons.verified, size: 12, color: Colors.white),
                               ),
                             ),
-                          ),
-                          const SizedBox(height: 4),
-                          Text(
-                            user?.displayName ?? 'Tamu',
-                            style: AppTextStyles.headlineMd.copyWith(
-                              fontSize: 18,
-                            ),
-                          ),
-                          Text(
-                            user?.email ?? '',
-                            style: AppTextStyles.bodySm.copyWith(
-                              color: AppColors.muted,
-                              fontSize: 11,
-                            ),
-                          ),
-                          Text(
-                            'ID Kolektor: ${user?.kodeAkun ?? '-'}',
-                            style: AppTextStyles.overline.copyWith(
-                              fontSize: 9,
-                              color: AppColors.outline,
-                            ),
-                          ),
                         ],
                       ),
+                      const SizedBox(width: AppSpacing.sm),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(user?.displayName ?? 'Tamu', style: AppTextStyles.headlineMd.copyWith(fontSize: 18)),
+                            Text(user?.email ?? '', style: AppTextStyles.bodySm.copyWith(color: AppColors.muted, fontSize: 11)),
+                            if (user?.nomorHp != null)
+                              Text(user!.nomorHp!, style: AppTextStyles.bodySm.copyWith(color: AppColors.muted, fontSize: 11)),
+                            Text(
+                              'ID Kolektor: ${user?.kodeAkun ?? '-'}',
+                              style: AppTextStyles.overline.copyWith(fontSize: 9, color: AppColors.outline),
+                            ),
+                            if (!(user?.emailVerified ?? false))
+                              Text('Email belum diverifikasi', style: AppTextStyles.bodySm.copyWith(fontSize: 10.5, color: const Color(0xFFB26A00))),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: AppSpacing.sm),
+                  Container(
+                    padding: const EdgeInsets.symmetric(vertical: AppSpacing.xs),
+                    decoration: BoxDecoration(color: AppColors.surfaceContainerLow, borderRadius: BorderRadius.circular(AppRadius.sm)),
+                    child: Row(
+                      children: [
+                        Expanded(child: _stat(_memuat ? '-' : '$dimiliki', 'Karya Dimiliki')),
+                        Container(width: 1, height: 28, color: AppColors.border),
+                        Expanded(child: _stat(_memuat ? '-' : '$aktif', 'Pesanan Aktif')),
+                        Container(width: 1, height: 28, color: AppColors.border),
+                        Expanded(child: _stat(_memuat ? '-' : '${_pesanan.length}', 'Total Pesanan')),
+                      ],
                     ),
-                  ],
-                ),
-                const SizedBox(height: AppSpacing.sm),
-                Container(
-                  padding: const EdgeInsets.symmetric(vertical: AppSpacing.xs),
-                  decoration: BoxDecoration(
-                    color: AppColors.surfaceContainerLow,
-                    borderRadius: BorderRadius.circular(AppRadius.sm),
                   ),
-                  child: Row(
-                    children: [
-                      Expanded(child: _stat('8', 'Karya Dikoleksi')),
-                      Container(width: 1, height: 28, color: AppColors.border),
-                      Expanded(child: _stat('14', 'Tawaran Lelang')),
-                      Container(width: 1, height: 28, color: AppColors.border),
-                      Expanded(child: _stat('3', 'Pameran Dihadiri')),
-                    ],
-                  ),
-                ),
-              ],
-            ),
-          ),
-          const SizedBox(height: AppSpacing.sm),
-          Container(
-            padding: const EdgeInsets.all(AppSpacing.md),
-            decoration: BoxDecoration(
-              color: AppColors.primary,
-              borderRadius: BorderRadius.circular(AppRadius.md),
-            ),
-            child: Row(
-              children: [
-                CircleAvatar(
-                  radius: 20,
-                  backgroundColor: AppColors.accentSoft,
-                  child: const Icon(
-                    Icons.workspace_premium,
-                    color: AppColors.accent,
-                    size: 20,
-                  ),
-                ),
-                const SizedBox(width: AppSpacing.sm),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        'TINGKAT KURATORIAL',
-                        style: AppTextStyles.overline.copyWith(
-                          fontSize: 8,
-                          color: Colors.white60,
-                        ),
-                      ),
-                      Text(
-                        'GALERIA Premier Patron',
-                        style: AppTextStyles.headlineSm.copyWith(
-                          color: Colors.white,
-                          fontSize: 15,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-                const Icon(Icons.chevron_right, color: Colors.white54),
-              ],
-            ),
-          ),
-          const SizedBox(height: AppSpacing.md),
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Text('Riwayat Pesanan Seni', style: AppTextStyles.headlineSm),
-              TextButton(
-                onPressed: onPesananTap,
-                child: const Text('Lihat Semua'),
+                ],
               ),
+            ),
+            if (_error != null) ...[
+              const SizedBox(height: AppSpacing.sm),
+              Text(_error!, style: AppTextStyles.bodySm.copyWith(color: AppColors.error)),
+              TextButton(onPressed: _muat, child: const Text('Coba lagi')),
             ],
-          ),
-          Container(
-            padding: const EdgeInsets.all(AppSpacing.sm),
-            decoration: BoxDecoration(
-              color: Colors.white,
-              borderRadius: BorderRadius.circular(AppRadius.md),
-              boxShadow: const [
-                BoxShadow(color: Colors.black12, blurRadius: 6),
-              ],
-            ),
-            child: Row(
+            const SizedBox(height: AppSpacing.md),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                ClipRRect(
-                  borderRadius: BorderRadius.circular(AppRadius.sm),
-                  child: Image.asset(
-                    'assets/images/catalog/baroque_01.jpg',
-                    width: 56,
-                    height: 56,
-                    fit: BoxFit.cover,
-                  ),
-                ),
-                const SizedBox(width: AppSpacing.sm),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Container(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 6,
-                          vertical: 1,
-                        ),
-                        decoration: BoxDecoration(
-                          color: AppColors.accentSoft.withValues(alpha: 0.5),
-                          borderRadius: BorderRadius.circular(AppRadius.full),
-                        ),
-                        child: Text(
-                          'Sedang Dikirim',
-                          style: AppTextStyles.overline.copyWith(
-                            fontSize: 8,
-                            color: AppColors.accent,
-                          ),
-                        ),
-                      ),
-                      Text(
-                        'Sang Putri Mahkota Renaisans',
-                        style: AppTextStyles.labelMd.copyWith(
-                          fontSize: 13,
-                          fontStyle: FontStyle.italic,
-                        ),
-                      ),
-                      Text(
-                        'Rp 120.000.000',
-                        style: AppTextStyles.bodySm.copyWith(
-                          color: AppColors.muted,
-                          fontSize: 11,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-                const Icon(Icons.chevron_right, color: AppColors.muted),
+                Text('Pesanan Terakhir', style: AppTextStyles.headlineSm),
+                TextButton(onPressed: widget.onPesananTap, child: const Text('Lihat Semua')),
               ],
             ),
-          ),
-          const SizedBox(height: AppSpacing.md),
-          Text('Alamat Tersimpan', style: AppTextStyles.headlineSm),
-          const SizedBox(height: AppSpacing.xs),
-          Container(
-            padding: const EdgeInsets.all(AppSpacing.md),
-            decoration: BoxDecoration(
-              color: Colors.white,
-              borderRadius: BorderRadius.circular(AppRadius.md),
-              boxShadow: const [
-                BoxShadow(color: Colors.black12, blurRadius: 6),
-              ],
-            ),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 8,
-                    vertical: 2,
-                  ),
-                  decoration: BoxDecoration(
-                    color: AppColors.accentSoft.withValues(alpha: 0.5),
-                    borderRadius: BorderRadius.circular(AppRadius.full),
-                  ),
-                  child: Text(
-                    'BELUM DIATUR',
-                    style: AppTextStyles.overline.copyWith(
-                      fontSize: 8,
-                      color: AppColors.accent,
+            if (terakhir == null)
+              _kartu(Text(
+                _memuat ? 'Memuat...' : 'Belum ada pesanan.',
+                style: AppTextStyles.bodySm.copyWith(color: AppColors.muted),
+              ))
+            else
+              PesananKartu(pesanan: terakhir, onTap: () => widget.onPesananDetail?.call(terakhir)),
+            const SizedBox(height: AppSpacing.sm),
+            Text('Alamat Utama', style: AppTextStyles.headlineSm),
+            const SizedBox(height: AppSpacing.xs),
+            _kartu(
+              _alamat == null
+                  ? Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(_memuat ? 'Memuat...' : 'Belum ada alamat pengiriman.', style: AppTextStyles.bodySm.copyWith(color: AppColors.muted)),
+                        if (!_memuat)
+                          TextButton.icon(onPressed: _tambahAlamat, icon: const Icon(Icons.add_location_alt_outlined, size: 18), label: const Text('Tambah alamat')),
+                      ],
+                    )
+                  : Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(_alamat!.label, style: AppTextStyles.labelMd),
+                        Text('${_alamat!.namaPenerima} · ${_alamat!.telepon}', style: AppTextStyles.bodySm.copyWith(fontSize: 11)),
+                        Text(_alamat!.ringkas, style: AppTextStyles.bodySm.copyWith(color: AppColors.muted, fontSize: 11)),
+                      ],
                     ),
-                  ),
-                ),
-                const SizedBox(height: 4),
-                Text(
-                  'Alamat pengiriman',
-                  style: AppTextStyles.labelMd,
-                ),
-                Text(
-                  '${user?.displayName ?? '-'} · ${user?.email ?? ''}',
-                  style: AppTextStyles.bodySm.copyWith(fontSize: 11),
-                ),
-                Text(
-                  'Alamat belum diatur. Kamu bisa mengisinya saat checkout.',
-                  style: AppTextStyles.bodySm.copyWith(
-                    color: AppColors.muted,
-                    fontSize: 11,
-                  ),
-                ),
-              ],
             ),
-          ),
-          const SizedBox(height: AppSpacing.md),
-          Text(
-            'Preferensi & Layanan Kolektor',
-            style: AppTextStyles.headlineSm,
-          ),
-          const SizedBox(height: AppSpacing.xs),
-          Container(
-            decoration: BoxDecoration(
-              color: Colors.white,
-              borderRadius: BorderRadius.circular(AppRadius.md),
-              boxShadow: const [
-                BoxShadow(color: Colors.black12, blurRadius: 6),
-              ],
+            const SizedBox(height: AppSpacing.md),
+            OutlinedButton.icon(
+              onPressed: widget.onLogout,
+              icon: const Icon(Icons.logout, size: 18, color: AppColors.error),
+              label: const Text('Keluar dari Akun Kolektor', style: TextStyle(color: AppColors.error)),
+              style: OutlinedButton.styleFrom(
+                backgroundColor: AppColors.errorContainer.withValues(alpha: 0.4),
+                side: BorderSide.none,
+                minimumSize: const Size(double.infinity, 46),
+              ),
             ),
-            child: Column(
-              children: [
-                _menuTile(
-                  context,
-                  Icons.account_balance_wallet_outlined,
-                  'Metode Pembayaran & Escrow Seni',
-                  'BCA Prioritas, Visa Signature',
-                ),
-                const Divider(height: 1),
-                _menuTile(
-                  context,
-                  Icons.history_edu_outlined,
-                  'Sertifikat Keaslian (COA) Digital',
-                  'Kriptografis & terverifikasi kurator',
-                ),
-                const Divider(height: 1),
-                _menuTile(
-                  context,
-                  Icons.auto_awesome_outlined,
-                  'Preferensi Genre & Kurator Favorit',
-                  'Barok, Kubisme, Impresionisme',
-                ),
-              ],
-            ),
-          ),
-          const SizedBox(height: AppSpacing.md),
-          OutlinedButton.icon(
-            onPressed: onLogout,
-            icon: const Icon(Icons.logout, size: 18, color: AppColors.error),
-            label: const Text(
-              'Keluar dari Akun Kolektor',
-              style: TextStyle(color: AppColors.error),
-            ),
-            style: OutlinedButton.styleFrom(
-              backgroundColor: AppColors.errorContainer.withValues(alpha: 0.4),
-              side: BorderSide.none,
-              minimumSize: const Size(double.infinity, 46),
-            ),
-          ),
-          const SizedBox(height: AppSpacing.sm),
-          Center(
-            child: Text(
-              'GALERIA Mobile Salons',
-              style: AppTextStyles.labelSm.copyWith(color: AppColors.outline),
-            ),
-          ),
-          const SizedBox(height: AppSpacing.lg),
-        ],
+            const SizedBox(height: AppSpacing.sm),
+            Center(child: Text('GALERIA', style: AppTextStyles.labelSm.copyWith(color: AppColors.outline))),
+            const SizedBox(height: AppSpacing.lg),
+          ],
+        ),
       ),
       bottomNavigationBar: KolektorBottomNav(
         currentIndex: 3,
-        onTap: (i) => onNavTap?.call(i),
-        onPindai: onPindai ?? () {},
+        onTap: (i) => widget.onNavTap?.call(i),
+        onPindai: widget.onPindai ?? () {},
       ),
     );
   }
 
-  Widget _stat(String value, String label) => Column(
-    children: [
-      Text(value, style: AppTextStyles.headlineSm.copyWith(fontSize: 16)),
-      Text(
-        label.toUpperCase(),
-        style: AppTextStyles.overline.copyWith(fontSize: 7),
-      ),
-    ],
-  );
+  Widget _kartu(Widget child) => Container(
+        width: double.infinity,
+        padding: const EdgeInsets.all(AppSpacing.md),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(AppRadius.md),
+          boxShadow: const [BoxShadow(color: Colors.black12, blurRadius: 8)],
+        ),
+        child: child,
+      );
 
-  Widget _menuTile(BuildContext context, IconData icon, String title, String subtitle) => InkWell(
-    onTap: () => showComingSoon(context, 'Fitur ini'),
-    child: Padding(
-      padding: const EdgeInsets.symmetric(
-        horizontal: AppSpacing.md,
-        vertical: AppSpacing.sm,
-      ),
-      child: Row(
+  Widget _stat(String value, String label) => Column(
         children: [
-          CircleAvatar(
-            radius: 16,
-            backgroundColor: AppColors.surfaceContainer,
-            child: Icon(icon, size: 16, color: AppColors.accent),
-          ),
-          const SizedBox(width: AppSpacing.sm),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  title,
-                  style: AppTextStyles.bodyMd.copyWith(
-                    fontWeight: FontWeight.w500,
-                    fontSize: 13,
-                  ),
-                ),
-                Text(
-                  subtitle,
-                  style: AppTextStyles.bodySm.copyWith(
-                    color: AppColors.muted,
-                    fontSize: 10.5,
-                  ),
-                  overflow: TextOverflow.ellipsis,
-                ),
-              ],
-            ),
-          ),
-          const Icon(Icons.chevron_right, size: 18, color: AppColors.muted),
+          Text(value, style: AppTextStyles.headlineSm.copyWith(fontSize: 16)),
+          Text(label.toUpperCase(), style: AppTextStyles.overline.copyWith(fontSize: 7)),
         ],
-      ),
-    ),
-  );
+      );
 }

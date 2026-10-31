@@ -363,8 +363,8 @@ class DetailKaryaScreen extends StatelessWidget {
             const SizedBox(width: AppSpacing.xs),
             Expanded(
               child: ElevatedButton(
-                onPressed: onBeliTap,
-                child: Text('Beli Sekarang · ${karya.priceFormatted}'),
+                onPressed: karya.terjual ? null : onBeliTap,
+                child: Text(karya.terjual ? 'Sudah terjual' : 'Beli Sekarang · ${karya.priceFormatted}'),
               ),
             ),
           ],
