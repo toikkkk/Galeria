@@ -30,6 +30,8 @@ from schemas.event import (
 )
 from schemas.pesanan import InstruksiBayar
 from services import pembayaran, storage
+from services import notifikasi_service as notif
+from models.engagement import TipeNotifikasi
 
 BATAS_BAYAR_MENIT = 30
 MAKS_TIKET_PER_AKUN = 5
@@ -257,6 +259,7 @@ async def pesan(db: AsyncSession, user: User, event_id: str, tiket_id: str, juml
     await db.flush()
     if total == 0:
         await _terbitkan_etiket(db, p)
+        notif.kirim(db, user.id, TipeNotifikasi.EVENT, "Tiket terbit", f'{p.jumlah} tiket untuk "{e.judul}" sudah ada di Tiket Saya.', f"tiket:{p.id}")
     await db.commit()
     return p
 
@@ -292,6 +295,9 @@ async def tandai_dibayar(db: AsyncSession, p: EventPesanan) -> None:
     p.status = "dibayar"
     p.dibayar_at = _now()
     await _terbitkan_etiket(db, p)
+    ev = await db.get(Event, p.event_id)
+    notif.kirim(db, p.pembeli_id, TipeNotifikasi.EVENT, "Pembayaran tiket diterima", f'{p.jumlah} e-tiket untuk "{ev.judul}" sudah terbit.', f"tiket:{p.id}")
+    notif.kirim(db, ev.komunitas_id, TipeNotifikasi.EVENT, "Tiket event terjual", f'{p.jumlah} tiket "{ev.judul}" terjual.', f"event:{ev.id}")
     await db.commit()
 
 

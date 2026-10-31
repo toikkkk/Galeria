@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../../models/dashboard_seniman.dart';
 import '../../services/auth_service.dart';
 import '../../services/dashboard_service.dart';
+import '../../services/notifikasi_service.dart';
 import '../../theme/app_theme.dart';
 import '../../widgets/galeria_logo.dart';
 import '../../utils/format.dart';
@@ -178,9 +179,20 @@ class _DashboardScreenState extends State<DashboardScreen> {
           ],
         ),
         actions: [
-          IconButton(
-            onPressed: widget.onNotifikasiTap,
-            icon: const Icon(Icons.notifications_outlined),
+          ListenableBuilder(
+            listenable: NotifikasiStore.instance,
+            builder: (context, _) => Stack(
+              alignment: Alignment.center,
+              children: [
+                IconButton(onPressed: widget.onNotifikasiTap, icon: const Icon(Icons.notifications_outlined)),
+                if (NotifikasiStore.instance.belumDibaca > 0)
+                  Positioned(
+                    top: 10,
+                    right: 10,
+                    child: Container(width: 9, height: 9, decoration: const BoxDecoration(shape: BoxShape.circle, color: AppColors.error)),
+                  ),
+              ],
+            ),
           ),
           Padding(
             padding: const EdgeInsets.only(right: AppSpacing.sm),

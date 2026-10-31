@@ -21,6 +21,8 @@ from models.ulasan import Ulasan
 from models.user import User
 from schemas.ulasan_nyata import UlasanKaryaItem, UlasanKaryaOut, UlasanOut, UlasanPesananIn
 from services.auth_deps import get_current_user
+from services import notifikasi_service as notif
+from models.engagement import TipeNotifikasi
 
 router = APIRouter(prefix="/api", tags=["ulasan"])
 
@@ -55,6 +57,7 @@ async def tulis_ulasan(
         rating=body.rating, teks=body.teks,
     )
     db.add(u)
+    notif.kirim(db, t.penjual_id, TipeNotifikasi.TRANSAKSI, f"Ulasan baru ({body.rating}/5)", body.teks[:120], f"karya:{t.karya_id}")
     try:
         await db.commit()
     except IntegrityError:

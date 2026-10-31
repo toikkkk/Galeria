@@ -1,368 +1,298 @@
 import 'package:flutter/material.dart';
 
 import '../../../models/karya.dart';
+import '../../../services/favorit_service.dart';
 import '../../../theme/app_theme.dart';
-import '../../../widgets/kolektor/kolektor_bottom_nav.dart';
+import '../../../utils/format.dart';
+import '../../../utils/format_waktu.dart';
+import '../../../widgets/favorit_hati.dart';
 import '../../../widgets/karya_image.dart';
-import '../../../utils/coming_soon.dart';
+import '../../../widgets/kolektor/kolektor_bottom_nav.dart';
 
-/// Konversi dari
-/// docs/KOLEKTOR FITUR UTAMA/.../galeria_koleksi_saya/code.html
+/// Koleksi Saya: karya yang KAMU MILIKI (setelah pesanan diterima) dan karya FAVORITMU. Semua dari server.
 ///
-/// "ID Kriptografis" di sini adalah teks demo UI-only (bukan hash asli) --
-/// modeling `ml-digital-art-identity/` belum selesai, lihat TODO di
-/// models/karya.dart & CLAUDE.md (istilah wajib: "sertifikat digital
-/// keaslian", BUKAN "Hak Paten").
-class KoleksiSayaScreen extends StatelessWidget {
-  const KoleksiSayaScreen({super.key, this.onNavTap, this.onPindai});
+/// "Periksa sertifikat" memanggil verifikasi publik (hash + tanda tangan Ed25519) dan menampilkan hasilnya apa adanya.
+/// Istilah wajib: "sertifikat digital keaslian" / bukti registrasi kepemilikan digital -- BUKAN "Hak Paten", dan
+/// bukan pemeriksaan keaslian fisik lukisan.
+class KoleksiSayaScreen extends StatefulWidget {
+  const KoleksiSayaScreen({super.key, this.onNavTap, this.onPindai, this.onKaryaTap, FavoritService? service}) : _service = service;
 
   final ValueChanged<int>? onNavTap;
   final VoidCallback? onPindai;
+  final ValueChanged<Karya>? onKaryaTap;
+  final FavoritService? _service;
 
   @override
-  Widget build(BuildContext context) {
-    final koleksi = sampleKarya.take(3).toList();
-    return Scaffold(
-      backgroundColor: AppColors.surface,
-      appBar: AppBar(
-        title: Text('Koleksi Saya', style: AppTextStyles.headlineMd),
-      ),
-      body: ListView(
-        padding: const EdgeInsets.symmetric(
-          horizontal: AppSpacing.screenGutter,
-          vertical: AppSpacing.sm,
-        ),
-        children: [
-          Text(
-            'ARSIP & PROVENANSI',
-            style: AppTextStyles.overline.copyWith(color: AppColors.accent),
-          ),
-          const SizedBox(height: 4),
-          Container(
-            padding: const EdgeInsets.all(AppSpacing.md),
-            decoration: BoxDecoration(
-              color: AppColors.surfaceContainerLow,
-              borderRadius: BorderRadius.circular(AppRadius.md),
-            ),
-            child: Column(
-              children: [
-                Row(
-                  children: [
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            'TOTAL MAHAKARYA',
-                            style: AppTextStyles.overline.copyWith(fontSize: 9),
-                          ),
-                          Text(
-                            '${koleksi.length} Karya',
-                            style: AppTextStyles.headlineLg.copyWith(
-                              fontSize: 22,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            'ESTIMASI PORTOFOLIO',
-                            style: AppTextStyles.overline.copyWith(fontSize: 9),
-                          ),
-                          Text(
-                            'Rp 12.400.000',
-                            style: AppTextStyles.labelMd.copyWith(
-                              color: AppColors.accent,
-                              fontSize: 16,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ],
-                ),
-                const Divider(height: AppSpacing.lg),
-                Row(
-                  children: [
-                    const Icon(
-                      Icons.verified_user,
-                      size: 14,
-                      color: AppColors.accent,
-                    ),
-                    const SizedBox(width: 6),
-                    Expanded(
-                      child: Text(
-                        'Tersinkronisasi dengan Ledger Kriptografis GALERIA',
-                        style: AppTextStyles.bodySm.copyWith(
-                          color: AppColors.muted,
-                          fontSize: 11,
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-              ],
-            ),
-          ),
-          const SizedBox(height: AppSpacing.md),
-          SizedBox(
-            height: 36,
-            child: ListView(
-              scrollDirection: Axis.horizontal,
-              children: [
-                _filterChip('Semua Koleksi (${koleksi.length})', active: true),
-                const SizedBox(width: AppSpacing.xs),
-                _filterChip('Klasik'),
-                const SizedBox(width: AppSpacing.xs),
-                _filterChip('Kontemporer'),
-              ],
-            ),
-          ),
-          const SizedBox(height: AppSpacing.md),
-          for (final k in koleksi) ...[
-            _CertificateCard(karya: k),
-            const SizedBox(height: AppSpacing.sm),
-          ],
-          Container(
-            padding: const EdgeInsets.all(AppSpacing.md),
-            decoration: BoxDecoration(
-              color: AppColors.surfaceContainerLow,
-              borderRadius: BorderRadius.circular(AppRadius.md),
-            ),
-            child: Row(
-              children: [
-                CircleAvatar(
-                  radius: 18,
-                  backgroundColor: AppColors.accentSoft,
-                  child: const Icon(
-                    Icons.support_agent,
-                    color: AppColors.accent,
-                    size: 18,
-                  ),
-                ),
-                const SizedBox(width: AppSpacing.sm),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        'Konsultasi Kurator Khusus',
-                        style: AppTextStyles.labelMd.copyWith(fontSize: 13),
-                      ),
-                      Text(
-                        'Layanan penaksiran & restorasi fisik koleksi',
-                        style: AppTextStyles.bodySm.copyWith(
-                          color: AppColors.muted,
-                          fontSize: 11,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-                TextButton(
-                  onPressed: () => showComingSoon(context, 'Hubungi'),
-                  style: TextButton.styleFrom(
-                    backgroundColor: AppColors.primary,
-                    foregroundColor: Colors.white,
-                  ),
-                  child: const Text('Hubungi'),
-                ),
-              ],
-            ),
-          ),
-          const SizedBox(height: AppSpacing.lg),
-        ],
-      ),
-      bottomNavigationBar: KolektorBottomNav(
-        currentIndex: 0,
-        onTap: (i) => onNavTap?.call(i),
-        onPindai: onPindai ?? () {},
-      ),
-    );
-  }
-
-  Widget _filterChip(String label, {bool active = false}) => Container(
-    padding: const EdgeInsets.symmetric(horizontal: AppSpacing.sm, vertical: 6),
-    decoration: BoxDecoration(
-      color: active ? AppColors.primary : AppColors.surfaceContainerHigh,
-      borderRadius: BorderRadius.circular(AppRadius.full),
-    ),
-    child: Text(
-      label,
-      style: AppTextStyles.labelMd.copyWith(
-        color: active ? Colors.white : AppColors.onSurface,
-        fontSize: 12,
-      ),
-    ),
-  );
+  State<KoleksiSayaScreen> createState() => _KoleksiSayaScreenState();
 }
 
-class _CertificateCard extends StatelessWidget {
-  const _CertificateCard({required this.karya});
+class _KoleksiSayaScreenState extends State<KoleksiSayaScreen> {
+  late final FavoritService _service = widget._service ?? FavoritService();
+  List<KoleksiItem>? _milik;
+  List<Karya>? _favorit;
+  String? _error;
+  int _tab = 0;
 
-  final Karya karya;
+  @override
+  void initState() {
+    super.initState();
+    _muat();
+    FavoritStore.instance.addListener(_favoritBerubah);
+  }
 
-  String get _certificateId =>
-      'GAL-${2024 + karya.title.length % 3}-${karya.artistName.hashCode.toRadixString(16).substring(0, 4).toUpperCase()}';
+  @override
+  void dispose() {
+    FavoritStore.instance.removeListener(_favoritBerubah);
+    super.dispose();
+  }
+
+  // hati di tab Favorit diketuk -> daftar disegarkan
+  void _favoritBerubah() {
+    if (_tab == 1 && mounted) _muatFavorit();
+  }
+
+  Future<void> _muatFavorit() async {
+    try {
+      final f = await _service.daftar();
+      if (mounted) setState(() => _favorit = f);
+    } catch (_) {}
+  }
+
+  Future<void> _muat() async {
+    setState(() => _error = null);
+    try {
+      final hasil = await Future.wait([_service.koleksi(), _service.daftar()]);
+      if (!mounted) return;
+      setState(() {
+        _milik = hasil[0] as List<KoleksiItem>;
+        _favorit = hasil[1] as List<Karya>;
+      });
+    } catch (e) {
+      if (mounted) setState(() => _error = 'Gagal memuat koleksi: $e');
+    }
+  }
+
+  Future<void> _periksa(Karya k) async {
+    final id = k.artworkId;
+    if (id == null) return;
+    final hasil = await showModalBottomSheet<void>(
+      context: context,
+      backgroundColor: AppColors.surface,
+      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(AppRadius.lg))),
+      builder: (_) => _SertifikatSheet(artworkId: id, judul: k.title, service: _service),
+    );
+    return hasil;
+  }
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(AppRadius.lg),
-        boxShadow: const [BoxShadow(color: Colors.black12, blurRadius: 8)],
-      ),
-      child: Column(
-        children: [
-          Padding(
-            padding: const EdgeInsets.all(AppSpacing.sm),
-            child: Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                ClipRRect(
-                  borderRadius: BorderRadius.circular(AppRadius.sm),
-                  child: SizedBox(
-                    width: 72,
-                    height: 92,
-                    child: KaryaImage(karya: karya),
-                  ),
-                ),
-                const SizedBox(width: AppSpacing.sm),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Row(
-                        children: [
-                          Container(
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 6,
-                              vertical: 2,
-                            ),
-                            decoration: BoxDecoration(
-                              color: AppColors.accentSoft.withValues(
-                                alpha: 0.6,
-                              ),
-                              borderRadius: BorderRadius.circular(
-                                AppRadius.full,
-                              ),
-                            ),
-                            child: Text(
-                              'Terverifikasi',
-                              style: AppTextStyles.overline.copyWith(
-                                fontSize: 8,
-                                color: AppColors.accent,
-                              ),
-                            ),
-                          ),
-                        ],
-                      ),
-                      const SizedBox(height: 2),
-                      Text(
-                        karya.title,
-                        style: AppTextStyles.headlineSm.copyWith(fontSize: 14),
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                      Text(
-                        '${karya.artistName} · ${karya.styleName}',
-                        style: AppTextStyles.bodySm.copyWith(
-                          color: AppColors.muted,
-                          fontSize: 11,
-                        ),
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                      const SizedBox(height: 6),
-                      Container(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 8,
-                          vertical: 4,
-                        ),
-                        decoration: BoxDecoration(
-                          color: AppColors.surfaceContainerLow,
-                          borderRadius: BorderRadius.circular(4),
-                        ),
-                        child: Row(
-                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                          children: [
-                            Flexible(
-                              child: Text(
-                                _certificateId,
-                                style: AppTextStyles.bodySm.copyWith(
-                                  fontFamily: 'monospace',
-                                  fontSize: 10,
-                                  color: AppColors.muted,
-                                ),
-                                overflow: TextOverflow.ellipsis,
-                              ),
-                            ),
-                            const Icon(
-                              Icons.content_copy,
-                              size: 12,
-                              color: AppColors.muted,
-                            ),
-                          ],
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
+    return Scaffold(
+      backgroundColor: AppColors.surface,
+      appBar: AppBar(title: Text('Koleksi Saya', style: AppTextStyles.headlineMd), actions: [IconButton(onPressed: _muat, icon: const Icon(Icons.refresh))]),
+      body: RefreshIndicator(
+        onRefresh: _muat,
+        child: ListView(
+          physics: const AlwaysScrollableScrollPhysics(),
+          padding: const EdgeInsets.symmetric(horizontal: AppSpacing.screenGutter, vertical: AppSpacing.sm),
+          children: [
+            SegmentedButton<int>(
+              segments: [
+                ButtonSegment(value: 0, label: Text('Dimiliki${_milik == null ? '' : ' (${_milik!.length})'}')),
+                ButtonSegment(value: 1, label: Text('Favorit${_favorit == null ? '' : ' (${_favorit!.length})'}')),
               ],
+              selected: {_tab},
+              onSelectionChanged: (s) => setState(() => _tab = s.first),
             ),
-          ),
-          Container(
-            padding: const EdgeInsets.symmetric(
-              horizontal: AppSpacing.sm,
-              vertical: AppSpacing.xs,
-            ),
-            decoration: const BoxDecoration(
-              color: AppColors.surfaceContainerLow,
-              borderRadius: BorderRadius.vertical(
-                bottom: Radius.circular(AppRadius.lg),
-              ),
-            ),
-            child: Row(
-              children: [
-                Expanded(
-                  child: TextButton.icon(
-                    onPressed: () => showComingSoon(context, 'Sertifikat'),
-                    icon: const Icon(
-                      Icons.workspace_premium_outlined,
-                      size: 15,
-                      color: AppColors.accent,
-                    ),
-                    label: const Text('Lihat Sertifikat'),
-                    style: TextButton.styleFrom(
-                      foregroundColor: AppColors.onSurface,
-                    ),
-                  ),
-                ),
-                Container(width: 1, height: 20, color: AppColors.border),
-                Expanded(
-                  child: TextButton.icon(
-                    onPressed: () => showComingSoon(context, 'Jual kembali'),
-                    icon: const Icon(
-                      Icons.swap_horiz,
-                      size: 15,
-                      color: AppColors.muted,
-                    ),
-                    label: const Text('Alihkan Hak'),
-                    style: TextButton.styleFrom(
-                      foregroundColor: AppColors.muted,
-                    ),
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ],
+            const SizedBox(height: AppSpacing.sm),
+            if (_error != null)
+              Column(children: [
+                Text(_error!, textAlign: TextAlign.center, style: AppTextStyles.bodySm.copyWith(color: AppColors.error)),
+                OutlinedButton.icon(onPressed: _muat, icon: const Icon(Icons.refresh, size: 16), label: const Text('Coba Lagi')),
+              ])
+            else if ((_tab == 0 ? _milik : _favorit) == null)
+              const Padding(padding: EdgeInsets.all(AppSpacing.xl), child: Center(child: CircularProgressIndicator()))
+            else if (_tab == 0)
+              ..._dimiliki()
+            else
+              ..._favoritList(),
+          ],
+        ),
       ),
+      bottomNavigationBar: KolektorBottomNav(currentIndex: 3, onTap: (i) => widget.onNavTap?.call(i), onPindai: widget.onPindai ?? () {}),
     );
   }
+
+  List<Widget> _dimiliki() {
+    final d = _milik!;
+    if (d.isEmpty) {
+      return [
+        Padding(
+          padding: const EdgeInsets.all(AppSpacing.xl),
+          child: Text('Kamu belum memiliki karya. Karya muncul di sini setelah pesanan atau lelang yang kamu menangkan diterima.', textAlign: TextAlign.center, style: AppTextStyles.bodySm.copyWith(color: AppColors.muted)),
+        ),
+      ];
+    }
+    final total = d.fold<int>(0, (a, x) => a + (x.hargaIdr ?? 0));
+    return [
+      Container(
+        padding: const EdgeInsets.all(AppSpacing.md),
+        decoration: BoxDecoration(color: AppColors.surfaceContainerLow, borderRadius: BorderRadius.circular(AppRadius.md)),
+        child: Row(children: [
+          Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+            Text('TOTAL KARYA', style: AppTextStyles.overline.copyWith(fontSize: 9)),
+            Text('${d.length} Karya', style: AppTextStyles.headlineLg.copyWith(fontSize: 22)),
+          ])),
+          Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+            Text('TOTAL YANG DIBAYAR', style: AppTextStyles.overline.copyWith(fontSize: 9)),
+            Text(formatRupiahRingkas(total), style: AppTextStyles.headlineLg.copyWith(fontSize: 22)),
+          ])),
+        ]),
+      ),
+      const SizedBox(height: AppSpacing.sm),
+      for (final x in d)
+        GestureDetector(
+          onTap: () => widget.onKaryaTap?.call(x.karya),
+          child: Container(
+            margin: const EdgeInsets.only(bottom: AppSpacing.sm),
+            padding: const EdgeInsets.all(AppSpacing.sm),
+            decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(AppRadius.md), boxShadow: const [BoxShadow(color: Colors.black12, blurRadius: 6)]),
+            child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
+              ClipRRect(borderRadius: BorderRadius.circular(AppRadius.sm), child: SizedBox(width: 84, height: 100, child: KaryaImage(karya: x.karya))),
+              const SizedBox(width: AppSpacing.sm),
+              Expanded(
+                child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                  Text(x.karya.title, style: AppTextStyles.labelMd, maxLines: 2, overflow: TextOverflow.ellipsis),
+                  Text(x.karya.artistName, style: AppTextStyles.bodySm.copyWith(color: AppColors.muted, fontSize: 11)),
+                  const SizedBox(height: 4),
+                  Text('${x.sumber == 'lelang' ? 'Dimenangkan lewat lelang' : 'Dibeli'} ${formatTanggal(x.diperoleh)}', style: AppTextStyles.bodySm.copyWith(fontSize: 11)),
+                  if (x.hargaIdr != null) Text(formatRupiah(x.hargaIdr!), style: AppTextStyles.labelMd.copyWith(color: AppColors.accent, fontSize: 13)),
+                  const SizedBox(height: 4),
+                  Text(x.karya.artworkId != null ? 'ID Sertifikat: ${x.karya.artworkId}' : 'Belum bersertifikat digital', style: AppTextStyles.bodySm.copyWith(fontSize: 10.5, fontFamily: x.karya.artworkId != null ? 'monospace' : null, color: AppColors.muted)),
+                  if (x.karya.artworkId != null)
+                    TextButton.icon(
+                      style: TextButton.styleFrom(padding: EdgeInsets.zero, minimumSize: const Size(0, 30), alignment: Alignment.centerLeft),
+                      onPressed: () => _periksa(x.karya),
+                      icon: const Icon(Icons.verified_user_outlined, size: 16),
+                      label: const Text('Periksa sertifikat'),
+                    ),
+                ]),
+              ),
+            ]),
+          ),
+        ),
+    ];
+  }
+
+  List<Widget> _favoritList() {
+    final d = _favorit!;
+    if (d.isEmpty) {
+      return [
+        Padding(
+          padding: const EdgeInsets.all(AppSpacing.xl),
+          child: Text('Belum ada favorit. Ketuk ikon hati pada karya yang kamu suka.', textAlign: TextAlign.center, style: AppTextStyles.bodySm.copyWith(color: AppColors.muted)),
+        ),
+      ];
+    }
+    return [
+      GridView.builder(
+        shrinkWrap: true,
+        physics: const NeverScrollableScrollPhysics(),
+        itemCount: d.length,
+        gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(crossAxisCount: 2, crossAxisSpacing: AppSpacing.sm, mainAxisSpacing: AppSpacing.sm, childAspectRatio: 0.78),
+        itemBuilder: (context, i) {
+          final k = d[i];
+          return GestureDetector(
+            onTap: () => widget.onKaryaTap?.call(k),
+            child: Container(
+              decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(AppRadius.md), boxShadow: const [BoxShadow(color: Colors.black12, blurRadius: 4)]),
+              clipBehavior: Clip.antiAlias,
+              child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                Expanded(
+                  child: Stack(fit: StackFit.expand, children: [
+                    KaryaImage(karya: k),
+                    Positioned(top: 6, right: 6, child: FavoritHati(karya: k)),
+                  ]),
+                ),
+                Padding(
+                  padding: const EdgeInsets.all(AppSpacing.xs),
+                  child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                    Text(k.title, maxLines: 1, overflow: TextOverflow.ellipsis, style: AppTextStyles.labelMd.copyWith(fontSize: 12.5)),
+                    Text(k.artistName, maxLines: 1, overflow: TextOverflow.ellipsis, style: AppTextStyles.bodySm.copyWith(fontSize: 11, color: AppColors.muted)),
+                    Text(k.terjual ? 'Terjual' : k.priceFormatted, style: AppTextStyles.bodySm.copyWith(fontSize: 11, fontWeight: FontWeight.w600)),
+                  ]),
+                ),
+              ]),
+            ),
+          );
+        },
+      ),
+    ];
+  }
+}
+
+class _SertifikatSheet extends StatefulWidget {
+  const _SertifikatSheet({required this.artworkId, required this.judul, required this.service});
+
+  final String artworkId, judul;
+  final FavoritService service;
+
+  @override
+  State<_SertifikatSheet> createState() => _SertifikatSheetState();
+}
+
+class _SertifikatSheetState extends State<_SertifikatSheet> {
+  HasilSertifikat? _h;
+  String? _error;
+
+  @override
+  void initState() {
+    super.initState();
+    widget.service.periksaSertifikat(widget.artworkId).then((h) {
+      if (mounted) setState(() => _h = h);
+    }).catchError((Object e) {
+      if (mounted) setState(() => _error = e.toString());
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final h = _h;
+    return Padding(
+      padding: const EdgeInsets.all(AppSpacing.screenGutter),
+      child: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.start, children: [
+        Text('Sertifikat Digital Keaslian', style: AppTextStyles.headlineMd),
+        Text(widget.judul, style: AppTextStyles.bodySm.copyWith(color: AppColors.muted)),
+        const SizedBox(height: AppSpacing.sm),
+        if (_error != null)
+          Text(_error!, style: AppTextStyles.bodySm.copyWith(color: AppColors.error))
+        else if (h == null)
+          const Padding(padding: EdgeInsets.all(AppSpacing.md), child: Center(child: CircularProgressIndicator()))
+        else ...[
+          Row(children: [
+            Icon(h.valid ? Icons.verified : Icons.warning_amber_rounded, color: h.valid ? AppColors.accent : AppColors.error, size: 28),
+            const SizedBox(width: 8),
+            Text(h.valid ? 'VALID' : 'TIDAK VALID', style: AppTextStyles.headlineMd.copyWith(color: h.valid ? AppColors.accent : AppColors.error)),
+          ]),
+          const SizedBox(height: AppSpacing.xs),
+          _baris('Data sertifikat tidak berubah', h.hashCocok),
+          _baris('Tanda tangan digital sah', h.signatureValid),
+          if (h.keyDicabut) Text('Peringatan: kunci penandatangan sudah dicabut.', style: AppTextStyles.bodySm.copyWith(color: AppColors.error)),
+          const SizedBox(height: 4),
+          Text('ID ${h.artworkId} · diverifikasi ${formatTanggal(h.diverifikasi)} · ${h.jumlahPemilik} catatan kepemilikan', style: AppTextStyles.bodySm.copyWith(fontSize: 11, color: AppColors.muted)),
+          const SizedBox(height: AppSpacing.xs),
+          Text('Ini bukti registrasi kepemilikan digital di GALERIA, bukan pemeriksaan keaslian fisik lukisan.', style: AppTextStyles.bodySm.copyWith(fontSize: 11, color: AppColors.muted)),
+        ],
+        const SizedBox(height: AppSpacing.md),
+      ]),
+    );
+  }
+
+  Widget _baris(String teks, bool ok) => Padding(
+        padding: const EdgeInsets.symmetric(vertical: 2),
+        child: Row(children: [
+          Icon(ok ? Icons.check_circle : Icons.cancel, size: 18, color: ok ? AppColors.accent : AppColors.error),
+          const SizedBox(width: 8),
+          Expanded(child: Text(teks, style: AppTextStyles.bodySm)),
+        ]),
+      );
 }

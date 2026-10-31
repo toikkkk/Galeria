@@ -6,7 +6,7 @@ import 'package:flutter/material.dart';
 import '../../../config/demo_kolektor.dart';
 import '../../../models/karya.dart';
 import '../../../models/karya_rekomendasi.dart';
-import '../../../models/notifikasi.dart';
+import '../../../services/notifikasi_service.dart';
 import '../../../services/api_client.dart';
 import '../../../services/katalog_service.dart';
 import '../../../services/rekomendasi_service.dart';
@@ -75,6 +75,8 @@ class _BerandaKolektorScreenState extends State<BerandaKolektorScreen> {
   @override
   void initState() {
     super.initState();
+    NotifikasiStore.instance.addListener(_notifBerubah);
+    NotifikasiStore.instance.muat();
     _loadKatalog();
     if (kPakaiDataDummy) _loadRekomendasi();
   }
@@ -141,8 +143,13 @@ class _BerandaKolektorScreenState extends State<BerandaKolektorScreen> {
     });
   }
 
+  void _notifBerubah() {
+    if (mounted) setState(() {});
+  }
+
   @override
   void dispose() {
+    NotifikasiStore.instance.removeListener(_notifBerubah);
     _debounce?.cancel();
     _searchCtrl.dispose();
     super.dispose();
@@ -173,7 +180,7 @@ class _BerandaKolektorScreenState extends State<BerandaKolektorScreen> {
                 onPressed: widget.onNotifikasiTap,
                 icon: const Icon(Icons.notifications_outlined),
               ),
-              if (sampleNotifikasi.any((n) => !n.dibaca))
+              if (NotifikasiStore.instance.belumDibaca > 0)
                 Positioned(
                   top: 10,
                   right: 10,

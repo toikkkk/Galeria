@@ -55,6 +55,7 @@ class LelangOut(BaseModel):
     pemenang_nama: str | None = None
     pesanan_id: str | None = None  # pesanan pemenang (terlihat oleh pemenang dan penjual)
     bisa_dibatalkan: bool = False  # penjual, belum ada bid
+    dipromosikan: bool = False  # promosi berbayar (ruang lelang) masih aktif
 
 
 class LelangDetail(LelangOut):

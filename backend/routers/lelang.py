@@ -8,6 +8,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from database import get_db
 from models.karya import Karya
+from models.langganan import KaryaPromosi
 from models.lelang import Lelang, LelangBid, StatusLelang as SL
 from models.user import User
 from schemas.lelang import BidIn, LelangBuat, LelangDetail, LelangList, LelangOut
@@ -52,7 +53,11 @@ async def daftar(
     rows = (
         await db.execute(
             select(Lelang).where(filt)
-            .order_by((Lelang.status == SL.SELESAI).asc(), Lelang.selesai_at.asc() if status in ("berlangsung", "akan_datang") else Lelang.selesai_at.desc())
+            .order_by(
+                (Lelang.status == SL.SELESAI).asc(),
+                # karya yang sedang dipromosikan (ruang lelang) tampil lebih dulu
+                Lelang.karya_id.in_(select(KaryaPromosi.karya_id).where(KaryaPromosi.di_lelang.is_(True), KaryaPromosi.berakhir_at > func.now())).desc(),
+                Lelang.selesai_at.asc() if status in ("berlangsung", "akan_datang") else Lelang.selesai_at.desc())
             .offset((page - 1) * page_size).limit(page_size)
         )
     ).scalars().all()

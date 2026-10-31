@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 
 import '../../models/karya.dart';
 import '../../services/katalog_service.dart';
-import '../../state/studio_store.dart';
 import '../../theme/app_theme.dart';
 import '../../widgets/karya_image.dart';
 
@@ -284,7 +283,7 @@ class _KaryaSayaCard extends StatelessWidget {
                       ),
                     ),
                   ),
-                  if (StudioStore.instance.sedangDipromosikan(karya))
+                  if (karya.isPromoted)
                     Positioned(
                       bottom: 8,
                       left: 8,

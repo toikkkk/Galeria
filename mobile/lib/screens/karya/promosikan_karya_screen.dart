@@ -1,7 +1,8 @@
 import 'package:flutter/material.dart';
 
 import '../../models/karya.dart';
-import '../../state/studio_store.dart';
+import '../../services/langganan_service.dart';
+import '../langganan/bayar_tagihan_screen.dart';
 import '../../theme/app_theme.dart';
 import '../../widgets/karya_image.dart';
 import '../../widgets/karya_picker.dart';
@@ -28,11 +29,25 @@ class PromosikanKaryaScreen extends StatefulWidget {
 }
 
 class _PromosikanKaryaScreenState extends State<PromosikanKaryaScreen> {
+  // Harga final ditentukan SERVER; angka di sini hanya tampilan awal sebelum katalog harga dimuat.
   static const _packages = [
-    (hari: '7 Hari', dilihat: 'Perkiraan 1.200 dilihat', harga: 50000, badge: null),
-    (hari: '14 Hari', dilihat: 'Perkiraan 2.600 dilihat', harga: 90000, badge: 'Paling Populer'),
-    (hari: '30 Hari', dilihat: 'Perkiraan 5.800 dilihat', harga: 170000, badge: 'Maksimal'),
+    (hari: '7 Hari', dilihat: 'Tampil lebih awal selama 7 hari', harga: 50000, badge: null),
+    (hari: '14 Hari', dilihat: 'Tampil lebih awal selama 14 hari', harga: 90000, badge: 'Paling Populer'),
+    (hari: '30 Hari', dilihat: 'Tampil lebih awal selama 30 hari', harga: 170000, badge: 'Maksimal'),
   ];
+  final Map<int, int> _hargaServer = {};
+  bool _kirim = false;
+  final _service = LanggananService();
+
+  @override
+  void initState() {
+    super.initState();
+    _service.paket().then((k) {
+      if (mounted) setState(() => _hargaServer.addAll({for (final h in k.promosi) h.durasiHari: h.hargaIdr}));
+    }).catchError((_) {});
+  }
+
+  int _hargaPaket(int i) => _hargaServer[_durasi[i]] ?? _packages[i].harga;
 
   static const _durasi = [7, 14, 30];
 
@@ -46,7 +61,7 @@ class _PromosikanKaryaScreenState extends State<PromosikanKaryaScreen> {
     if (hasil != null && hasil.isNotEmpty) setState(() => _karya = hasil.first);
   }
 
-  void _aktifkan() {
+  Future<void> _aktifkan() async {
     final k = _karya;
     if (k == null) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -60,22 +75,26 @@ class _PromosikanKaryaScreenState extends State<PromosikanKaryaScreen> {
       );
       return;
     }
-    StudioStore.instance.tambahPromosi(
-      PromosiKarya(
-        karya: k,
-        durasiHari: _durasi[_selected],
-        biayaIdr: _packages[_selected].harga,
-        diLelang: _tampilLelang,
-        diBeranda: _tampilBeranda,
-        mulai: DateTime.now(),
-      ),
-    );
-    widget.onLanjut();
+    if (k.id.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Karya contoh tidak bisa dipromosikan.')));
+      return;
+    }
+    setState(() => _kirim = true);
+    try {
+      final t = await _service.beliPromosi(karyaId: k.id, durasiHari: _durasi[_selected], diBeranda: _tampilBeranda, diLelang: _tampilLelang);
+      if (!mounted) return;
+      final lunas = await Navigator.of(context).push<bool>(MaterialPageRoute(builder: (_) => BayarTagihanScreen(tagihan: t, service: _service)));
+      if (lunas == true && mounted) widget.onLanjut();
+    } catch (e) {
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(e.toString())));
+    } finally {
+      if (mounted) setState(() => _kirim = false);
+    }
   }
 
   @override
   Widget build(BuildContext context) {
-    final priceFmt = _packages[_selected].harga;
+    final priceFmt = _hargaPaket(_selected);
     return Scaffold(
       backgroundColor: AppColors.surface,
       appBar: AppBar(
@@ -188,7 +207,7 @@ class _PromosikanKaryaScreenState extends State<PromosikanKaryaScreen> {
                   const SizedBox(width: AppSpacing.xs),
                   Expanded(
                     child: Text(
-                        'Mode demo: label promosi langsung aktif tanpa pembayaran. Alur pembayaran promosi belum tersedia.',
+                        'Pembayaran masih mode sandbox (tanpa uang sungguhan). Setelah lunas, label promosi aktif pada karyamu sampai masa promosi habis.',
                         style: AppTextStyles.bodySm),
                   ),
                 ],
@@ -216,7 +235,7 @@ class _PromosikanKaryaScreenState extends State<PromosikanKaryaScreen> {
               ),
               const Spacer(),
               ElevatedButton(
-                onPressed: _aktifkan,
+                onPressed: _kirim ? null : _aktifkan,
                 // Tema global ElevatedButton pakai minimumSize lebar tak
                 // terhingga (utk tombol full-width) -- di sini tombolnya
                 // jadi anak Row (bukan Expanded), jadi lebarnya harus
@@ -281,7 +300,7 @@ class _PromosikanKaryaScreenState extends State<PromosikanKaryaScreen> {
                     ],
                   ),
                 ),
-                Text(_rupiah(pkg.harga), style: AppTextStyles.labelMd),
+                Text(_rupiah(_hargaPaket(i)), style: AppTextStyles.labelMd),
               ],
             ),
           ],

@@ -8,6 +8,7 @@ import '../../../theme/app_theme.dart';
 import '../../../widgets/karya_image.dart';
 import '../../../widgets/kolektor/karya_grid_card.dart';
 import '../../../utils/coming_soon.dart';
+import '../../../widgets/favorit_hati.dart';
 import '../../../widgets/ulasan_karya_card.dart';
 
 /// Konversi dari
@@ -61,7 +62,7 @@ class DetailKaryaScreen extends StatelessWidget {
             ),
             icon: const Icon(Icons.share_outlined),
           ),
-          IconButton(onPressed: () => showComingSoon(context, 'Favorit'), icon: const Icon(Icons.favorite_border)),
+          FavoritHati(karya: karya, bulat: false, ukuran: 24),
         ],
       ),
       body: ListView(

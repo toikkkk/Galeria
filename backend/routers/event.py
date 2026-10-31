@@ -16,6 +16,7 @@ from schemas.event import (
     PesertaList, TiketSayaItem, TiketSayaList,
 )
 from services import event_service as svc
+from services import langganan_service
 from services import pembayaran
 from services.auth_deps import butuh_role, get_current_user, get_user_opsional
 from fastapi import HTTPException
@@ -27,6 +28,7 @@ _penyelenggara = butuh_role("seniman", "komunitas")
 
 @router.post("/event", response_model=EventOut, status_code=201)
 async def buat_event(body: EventBuat, user: User = Depends(_penyelenggara), db: AsyncSession = Depends(get_db)):
+    await langganan_service.pastikan_pro(db, user)  # penegakan di server, bukan hanya di aplikasi
     e = await svc.buat(db, user, body)
     return (await svc.ke_out_banyak(db, [e], user))[0]
 

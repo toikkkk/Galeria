@@ -30,6 +30,8 @@ from models.ulasan import Ulasan
 from models.user import AlamatPengiriman, User
 from schemas.pesanan import InstruksiBayar, KaryaRingkas, PesananOut
 from services import pembayaran, storage
+from services import notifikasi_service as notif
+from models.engagement import TipeNotifikasi
 from services.transaksi_service import buat_transaksi, catat_transfer_kepemilikan
 
 BATAS_BAYAR_JAM = 24
@@ -246,6 +248,7 @@ async def tandai_dibayar(db: AsyncSession, t: Transaksi) -> None:
     """Dipanggil simulator sandbox (dan kelak webhook gateway) saat uang diterima."""
     t.status = S.DIBAYAR
     t.dibayar_at = _now()
+    notif.kirim(db, t.penjual_id, TipeNotifikasi.TRANSAKSI, "Pesanan baru sudah dibayar", "Konfirmasi pesanan lalu kemas dan kirim karya.", f"pesanan:{t.id}")
     await db.commit()
 
 
@@ -258,6 +261,7 @@ async def batalkan(db: AsyncSession, t: Transaksi) -> None:
 async def konfirmasi(db: AsyncSession, t: Transaksi) -> None:
     t.status = S.DIKONFIRMASI
     t.dikonfirmasi_at = _now()
+    notif.kirim(db, t.pembeli_id, TipeNotifikasi.TRANSAKSI, "Pesanan dikonfirmasi seniman", "Karya sedang disiapkan untuk dikirim.", f"pesanan:{t.id}")
     await db.commit()
 
 
@@ -265,6 +269,7 @@ async def kirim(db: AsyncSession, t: Transaksi, kurir: str, no_resi: str) -> Non
     t.kurir = kurir
     t.no_resi = no_resi
     t.dikirim_at = _now()
+    notif.kirim(db, t.pembeli_id, TipeNotifikasi.TRANSAKSI, "Pesananmu dikirim", f"{kurir} · resi {no_resi}. Konfirmasi setelah karya kamu terima.", f"pesanan:{t.id}")
     await db.commit()
 
 
@@ -273,4 +278,5 @@ async def terima(db: AsyncSession, t: Transaksi) -> None:
     t.status = S.SELESAI
     t.selesai_at = _now()
     await catat_transfer_kepemilikan(db, t)
+    notif.kirim(db, t.penjual_id, TipeNotifikasi.TRANSAKSI, "Karya diterima pembeli", "Pesanan selesai dan pendapatan tercatat.", f"pesanan:{t.id}")
     await db.commit()

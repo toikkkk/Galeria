@@ -30,6 +30,8 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from database import get_db
 from models.user import User
 from services.auth_deps import butuh_role
+from services import notifikasi_service as notif
+from models.engagement import TipeNotifikasi
 from models.karya import Karya, StatusVerifikasiKarya
 from schemas.verification import VerificationResult
 from services.sertifikat_service import terbitkan_sertifikat
@@ -99,6 +101,8 @@ async def verify_karya(
     result = await service.verify(image, db=db, karya_id=karya_uuid, persist=True)
 
     karya.status_verifikasi = StatusVerifikasiKarya(result["rekomendasi_status"])
+    _judul = {"terverifikasi": "Karyamu terverifikasi", "ditolak": "Karyamu ditolak", "perlu_ditinjau": "Karyamu perlu ditinjau"}[result["rekomendasi_status"]]
+    notif.kirim(db, user.id, TipeNotifikasi.VERIFIKASI_KARYA, _judul, f'Hasil pemeriksaan keaslian untuk "{karya.title}".', "karya-saya")
 
     # Sertifikat kriptografis HANYA diterbitkan kalau rekomendasi = "terverifikasi"
     # (kriptografi.md: PASS -> certificate; REVIEW/REJECT tidak pernah dapat sertifikat).

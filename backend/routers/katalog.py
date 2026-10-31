@@ -42,9 +42,13 @@ async def tandai_terjual(db: AsyncSession, items: list[KaryaListItem]) -> None:
             )
         )
     }
+    from services import langganan_service
+
+    promo = {str(x) for x in await langganan_service.karya_dipromosikan(db, ids, ruang="beranda")}
     for i in items:
         i.terjual = i.id in terjual
         i.lelang_id = aktif.get(i.id)
+        i.is_promoted = i.id in promo  # hanya promosi berbayar yang masih aktif
 
 
 def to_list_item(karya: Karya, fp: KaryaFingerprint | None = None) -> KaryaListItem:

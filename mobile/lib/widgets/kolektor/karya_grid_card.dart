@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+
+import '../favorit_hati.dart';
 import 'package:share_plus/share_plus.dart';
 
 import '../../models/karya.dart';
@@ -77,7 +79,13 @@ class KaryaGridCard extends StatelessWidget {
                   Positioned(
                     top: 6,
                     right: 6,
-                    child: _ShareButton(karya: karya),
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        _ShareButton(karya: karya),
+                        if (karya.id.isNotEmpty) ...[const SizedBox(height: 4), FavoritHati(karya: karya)],
+                      ],
+                    ),
                   ),
                 ],
               ),

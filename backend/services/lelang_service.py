@@ -29,6 +29,8 @@ from models.transaksi import Transaksi
 from models.user import User
 from schemas.lelang import BidOut, KaryaLelang, LelangDetail, LelangOut
 from services import storage
+from services import notifikasi_service as notif
+from models.engagement import TipeNotifikasi
 from services.pesanan_service import BATAS_BAYAR_JAM, hitung_komisi
 from services.transaksi_service import buat_transaksi
 
@@ -77,10 +79,11 @@ async def finalisasi(db: AsyncSession) -> None:
                 .order_by(LelangBid.jumlah_idr.desc(), LelangBid.created_at.asc()).limit(1)
             )
         ).scalar_one_or_none()
+        karya = await db.get(Karya, l.karya_id)
         if top is None:
             l.status = SL.SELESAI
+            notif.kirim(db, karya.seniman_id, TipeNotifikasi.LELANG, "Lelang berakhir tanpa tawaran", f'"{karya.title}" tidak mendapat tawaran.', f"lelang:{l.id}")
             continue
-        karya = await db.get(Karya, l.karya_id)
         try:
             async with db.begin_nested():
                 t = await buat_transaksi(db, l.karya_id, top.bidder_id, karya.seniman_id, top.jumlah_idr, hitung_komisi(top.jumlah_idr))
@@ -88,6 +91,8 @@ async def finalisasi(db: AsyncSession) -> None:
                 t.batas_bayar_at = _now() + timedelta(hours=BATAS_BAYAR_JAM)
                 l.status = SL.SELESAI
                 l.pemenang_id = top.bidder_id
+                notif.kirim(db, top.bidder_id, TipeNotifikasi.LELANG, "Kamu memenangkan lelang!", f'"{karya.title}" Rp{top.jumlah_idr:,}. Pilih alamat dan bayar dalam 24 jam.'.replace(",", "."), f"pesanan:{t.id}")
+                notif.kirim(db, karya.seniman_id, TipeNotifikasi.LELANG, "Lelang berakhir dengan pemenang", f'"{karya.title}" terjual Rp{top.jumlah_idr:,}. Menunggu pembayaran pemenang.'.replace(",", "."), f"pesanan:{t.id}")
         except (RuntimeError, IntegrityError) as exc:
             # tanpa signing key / karya sempat dipesan lewat jalur lain: coba lagi di akses berikutnya
             logger.warning("Lelang %s belum bisa ditutup: %s", l.id, exc)
@@ -124,6 +129,9 @@ async def ke_out_banyak(db: AsyncSession, daftar: list[Lelang], user: User | Non
                 )
             ).scalar_one()
             top_bidder[l.id] = b
+    from services import langganan_service
+
+    promo = await langganan_service.karya_dipromosikan(db, [l.karya_id for l in daftar], ruang="lelang")
     pesanan = {
         t.lelang_id: t.id for t in (
             await db.execute(select(Transaksi).where(Transaksi.lelang_id.in_([l.id for l in daftar])))
@@ -154,6 +162,7 @@ async def ke_out_banyak(db: AsyncSession, daftar: list[Lelang], user: User | Non
                 pemenang_nama=nama_singkat(nama[l.pemenang_id]) if l.pemenang_id in nama else None,
                 pesanan_id=str(pesanan[l.id]) if (l.id in pesanan and (saya_pemenang or penjual)) else None,
                 bisa_dibatalkan=penjual and n == 0 and st in ("akan_datang", "berlangsung"),
+                dipromosikan=l.karya_id in promo,
             )
         )
     return out
@@ -250,6 +259,10 @@ async def pasang_bid(db: AsyncSession, user: User, lelang_id: str, jumlah: int) 
     if jumlah < minimum:
         raise HTTPException(409, f"Tawaran minimal Rp{minimum:,}".replace(",", "."))
     db.add(LelangBid(id=uuid.uuid4(), lelang_id=l.id, bidder_id=user.id, jumlah_idr=jumlah))
+    tautan = f"lelang:{l.id}"
+    if top is not None:
+        notif.kirim(db, top.bidder_id, TipeNotifikasi.LELANG, "Tawaranmu dikalahkan", f'Ada tawaran lebih tinggi untuk "{karya.title}". Tawar lagi sebelum lelang berakhir.', tautan)
+    notif.kirim(db, karya.seniman_id, TipeNotifikasi.LELANG, "Tawaran baru masuk", f'"{karya.title}" ditawar Rp{jumlah:,}.'.replace(",", "."), tautan)
     if l.selesai_at - now < PERPANJANGAN:  # anti-sniping
         l.selesai_at = now + PERPANJANGAN
     await db.commit()

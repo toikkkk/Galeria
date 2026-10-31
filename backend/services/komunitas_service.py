@@ -25,6 +25,8 @@ from schemas.komunitas import (
     AnggotaList, AnggotaOut, KomentarOut, KomunitasBuat, KomunitasOut, PostOut,
 )
 from services import storage
+from services import notifikasi_service as notif
+from models.engagement import TipeNotifikasi
 
 MAKS_KOMUNITAS_MILIK = 3
 
@@ -132,6 +134,8 @@ async def gabung(db: AsyncSession, user: User, komunitas_id: str) -> KomunitasAn
         raise HTTPException(409, "Kamu sudah menjadi anggota." if a.status == "aktif" else "Permintaan bergabungmu sedang menunggu persetujuan.")
     a = KomunitasAnggota(komunitas_id=k.id, user_id=user.id, peran="anggota", status="aktif" if k.terbuka else "menunggu")
     db.add(a)
+    notif.kirim(db, k.pemilik_id, TipeNotifikasi.KOMUNITAS, "Anggota baru bergabung" if k.terbuka else "Permintaan bergabung baru",
+                f"{user.display_name} {'bergabung di' if k.terbuka else 'meminta bergabung ke'} {k.nama}.", f"komunitas:{k.id}")
     try:
         await db.commit()
     except IntegrityError:
@@ -169,6 +173,8 @@ async def putuskan_permintaan(db: AsyncSession, user: User, komunitas_id: str, t
     a = await db.get(KomunitasAnggota, (k.id, _parse(target_id, "Anggota tidak ditemukan")))
     if a is None or a.status != "menunggu":
         raise HTTPException(404, "Permintaan bergabung tidak ditemukan.")
+    notif.kirim(db, a.user_id, TipeNotifikasi.KOMUNITAS, "Permintaan disetujui" if setuju else "Permintaan ditolak",
+                f"Permintaanmu bergabung ke {k.nama} {'disetujui' if setuju else 'ditolak'}.", f"komunitas:{k.id}")
     if setuju:
         a.status = "aktif"
     else:
@@ -278,6 +284,8 @@ async def buat_komentar(db: AsyncSession, user: User, post_id: str, teks: str) -
     await pastikan_anggota(db, k, user)
     c = KomunitasKomentar(id=uuid.uuid4(), post_id=p.id, penulis_id=user.id, teks=teks)
     db.add(c)
+    if p.penulis_id != user.id:
+        notif.kirim(db, p.penulis_id, TipeNotifikasi.KOMUNITAS, f"{user.display_name} mengomentari postinganmu", teks[:100], f"komunitas:{k.id}")
     await db.commit()
     return KomentarOut(id=str(c.id), penulis_id=str(user.id), penulis_nama=user.display_name, teks=c.teks, waktu=c.created_at or _now(), bisa_hapus=True)
 

@@ -2,27 +2,6 @@ import 'package:flutter/material.dart';
 
 import '../models/karya.dart';
 
-/// Label promosi pada sebuah karya (fitur PRO).
-class PromosiKarya {
-  const PromosiKarya({
-    required this.karya,
-    required this.durasiHari,
-    required this.biayaIdr,
-    required this.diLelang,
-    required this.diBeranda,
-    required this.mulai,
-  });
-
-  final Karya karya;
-  final int durasiHari;
-  final int biayaIdr;
-  final bool diLelang;
-  final bool diBeranda;
-  final DateTime mulai;
-
-  DateTime get berakhir => mulai.add(Duration(days: durasiHari));
-}
-
 class JenisTiket {
   JenisTiket({
     required this.nama,
@@ -68,7 +47,7 @@ class EventPameran {
   int get potensiPendapatanIdr => tiket.fold(0, (a, t) => a + t.hargaIdr * t.kuota);
 }
 
-/// State studio seniman: PRO, lelang, promosi, komunitas, event.
+/// State sementara studio seniman: hanya draft event yang sedang diisi di wizard.
 ///
 /// IN-MEMORY (hilang saat aplikasi ditutup): tabel `lelang`, `events`,
 /// `subscriptions` belum diterapkan di database Neon `neondb` (lihat
@@ -79,31 +58,9 @@ class StudioStore extends ChangeNotifier {
   StudioStore._();
   static final StudioStore instance = StudioStore._();
 
-  bool _isPro = false;
-  bool get isPro => _isPro;
-
-  final List<PromosiKarya> promosi = [];
 
   /// Draft event yang sedang diisi di wizard 3 langkah.
   EventPameran draftEvent = EventPameran();
-
-  void upgradeKePro() {
-    _isPro = true;
-    notifyListeners();
-  }
-
-  void tambahPromosi(PromosiKarya p) {
-    promosi.removeWhere((x) => _sama(x.karya, p.karya));
-    promosi.insert(0, p);
-    notifyListeners();
-  }
-
-  /// Karya sedang dipromosikan? (cocokkan lewat id, fallback judul).
-  bool sedangDipromosikan(Karya k) =>
-      promosi.any((p) => _sama(p.karya, k) && p.berakhir.isAfter(DateTime.now()));
-
-  static bool _sama(Karya a, Karya b) =>
-      a.id.isNotEmpty && b.id.isNotEmpty ? a.id == b.id : a.title == b.title;
 
   void mulaiDraftEvent() {
     draftEvent = EventPameran();

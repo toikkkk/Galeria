@@ -26,6 +26,7 @@ class TipeNotifikasi(str, enum.Enum):
     EVENT = "event"
     VERIFIKASI_KARYA = "verifikasi_karya"
     SISTEM = "sistem"
+    KOMUNITAS = "komunitas"
 
 
 class PlanSubscription(str, enum.Enum):
@@ -66,6 +67,8 @@ class Notifikasi(Base):
     judul: Mapped[str] = mapped_column(Text, nullable=False)
     isi: Mapped[str | None] = mapped_column(Text, nullable=True)
     is_read: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
+    # tujuan saat diketuk, mis. "pesanan:<uuid>", "lelang:<uuid>" (migrasi 0014)
+    tautan: Mapped[str | None] = mapped_column(Text, nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
 
 

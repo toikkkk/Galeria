@@ -25,7 +25,6 @@ import 'screens/lelang/buat_lelang_screen.dart';
 import 'screens/lelang/lelang_saya_screen.dart';
 import 'state/studio_store.dart';
 import 'widgets/pro_gate.dart';
-import 'screens/dashboard/notifikasi_seniman_screen.dart';
 import 'screens/dashboard/riwayat_penarikan_screen.dart';
 import 'screens/karya/karya_ditolak_screen.dart';
 import 'screens/karya/karya_perlu_ditinjau_screen.dart';
@@ -52,7 +51,10 @@ import 'screens/kolektor/karya/semua_karya_screen.dart';
 import 'screens/kolektor/koleksi/koleksi_saya_screen.dart';
 import 'screens/kolektor/lelang/detail_lelang_screen.dart';
 import 'screens/kolektor/lelang/lelang_screen.dart';
-import 'screens/kolektor/notifikasi/notifikasi_screen.dart';
+import 'models/notifikasi.dart';
+import 'screens/notifikasi/notifikasi_screen.dart';
+import 'services/favorit_service.dart';
+import 'services/notifikasi_service.dart';
 import 'screens/kolektor/pesanan/daftar_pesanan_screen.dart';
 import 'screens/kolektor/pesanan/konfirmasi_pesanan_screen.dart';
 import 'screens/kolektor/pesanan/selesaikan_pembayaran_screen.dart';
@@ -74,9 +76,47 @@ Future<void> main() async {
   ApiClient.tokenProvider = ({bool paksaPerbarui = false}) =>
       AuthService.instance.accessToken(paksaPerbarui: paksaPerbarui);
   await AuthService.instance.restore(); // cepat: hanya membaca penyimpanan aman, tanpa jaringan
+  _sinkronStoreLogin();
+  AuthService.instance.addListener(_sinkronStoreLogin);
   runApp(const GaleriaApp());
   // Setelah UI tampil: pastikan sesi tersimpan masih berlaku di server (offline = tetap dianggap masuk).
   unawaited(AuthService.instance.validasiSesi());
+}
+
+/// Favorit & penghitung notifikasi hanya hidup selama pengguna masuk.
+bool _terakhirMasuk = false;
+void _sinkronStoreLogin() {
+  final masuk = AuthService.instance.loggedIn;
+  if (masuk == _terakhirMasuk) return;
+  _terakhirMasuk = masuk;
+  if (masuk) {
+    NotifikasiStore.instance.mulai();
+    FavoritStore.instance.muat();
+  } else {
+    NotifikasiStore.instance.berhenti();
+    FavoritStore.instance.kosongkan();
+  }
+}
+
+/// Buka tujuan sebuah notifikasi menurut `tautan` (mis. pesanan, lelang, event, komunitas, diikuti id-nya) dan peran akun.
+void _bukaTautan(BuildContext context, Notifikasi n) {
+  final id = n.idTautan;
+  final seniman = AuthService.instance.user?.isSeniman ?? false;
+  switch (n.jenisTautan) {
+    case 'pesanan' when id != null:
+      context.push(seniman ? '/pesanan-seniman/detail' : '/pesanan/detail', extra: id);
+    case 'lelang' when id != null:
+      context.push(seniman ? '/lelang-saya/detail' : '/lelang/detail', extra: id);
+    case 'tiket':
+      context.push('/tiket-saya');
+    case 'event' when id != null:
+      context.push('/event/detail', extra: id);
+    case 'komunitas' when id != null:
+      context.push('/komunitas/detail', extra: id);
+    case 'karya-saya':
+    case 'karya':
+      if (seniman) context.push('/karya-saya');
+  }
 }
 
 /// Tujuan setelah splash: pengguna yang sudah masuk langsung ke beranda perannya, selain itu ke welcome.
@@ -245,6 +285,18 @@ Future<void> _mulaiBuatEvent(BuildContext context, {String? komunitasId}) async 
   }
 }
 
+/// Buka AR hanya bila Akses AR aktif (kolektor); lainnya diarahkan ke penawaran langganan.
+Future<void> _bukaAr(BuildContext context, Karya? karya) async {
+  final user = AuthService.instance.user;
+  if (user == null || !AuthService.instance.loggedIn) {
+    _messengerKey.currentState?.showSnackBar(const SnackBar(content: Text('Masuk dulu untuk memakai AR.')));
+    context.push('/login');
+    return;
+  }
+  if (!user.isSeniman && !await ensureAr(context)) return;
+  if (context.mounted) context.push('/pindai/ar', extra: karya);
+}
+
 /// "Beli Sekarang": harus login sebagai pembeli; akun seniman tidak bisa membeli.
 void _beli(BuildContext context, Karya karya) {
   final user = AuthService.instance.user;
@@ -380,8 +432,10 @@ final _router = GoRouter(
     ),
     GoRoute(
       path: '/notifikasi-seniman',
-      builder: (context, state) =>
-          NotifikasiSenimanScreen(onBack: () => _kembali(context)),
+      builder: (context, state) => NotifikasiScreen(
+        onBack: () => _kembali(context),
+        onBuka: (n) => _bukaTautan(context, n),
+      ),
     ),
     GoRoute(
       path: '/riwayat-penarikan',
@@ -599,11 +653,7 @@ final _router = GoRouter(
       path: '/notifikasi',
       builder: (context, state) => NotifikasiScreen(
         onBack: () => _kembali(context),
-        onPesananTap: () => context.push('/pesanan'),
-        onLelangTap: () => context.push('/lelang'),
-        onEventTap: () => context.push('/event'),
-        onRekomendasiTap: () => context.push('/karya/semua'),
-        onSertifikatTap: () => context.push('/koleksi-saya'),
+        onBuka: (n) => _bukaTautan(context, n),
       ),
     ),
     GoRoute(
@@ -738,7 +788,7 @@ final _router = GoRouter(
         return DetailKaryaScreen(
           karya: karya,
           onBack: () => _kembali(context),
-          onArTap: () => context.push('/pindai/ar', extra: karya),
+          onArTap: () => _bukaAr(context, karya),
           onBeliTap: () => _beli(context, karya),
           onLelangTap: (id) => context.push('/lelang/detail', extra: id),
           onTokoTap: () => context.push('/toko'),
@@ -812,7 +862,11 @@ final _router = GoRouter(
         onBack: () => _kembali(context),
         // pushReplacement: layar Scan ditutup agar kameranya dilepas -- ARCore tidak bisa berbagi
         // kamera dgn plugin `camera` (rebutan kamera => preview patah-patah lalu mati).
-        onArTap: () => context.pushReplacement('/pindai/ar'),
+        onArTap: () async {
+          final user = AuthService.instance.user;
+          if (user != null && !user.isSeniman && !await ensureAr(context)) return;
+          if (context.mounted) context.pushReplacement('/pindai/ar');
+        },
         onKaryaTap: (karya) => context.push('/karya/detail', extra: karya),
       ),
     ),
