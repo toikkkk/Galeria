@@ -146,6 +146,43 @@ async def muat_out(db: AsyncSession, t: Transaksi, user_id: uuid.UUID) -> Pesana
     return ke_out(t, karya, pembeli, penjual, user_id, sudah_diulas=diulas)
 
 
+async def _salin_karya_demo(db: AsyncSession, kid: uuid.UUID) -> Karya | None:
+    """Karya katalog DEMO (schema ``dummy_rekomendasi``) boleh dipesan untuk pengujian: barisnya disalin ke ``karya``
+    atas nama akun penjual demo (``DEMO_PENJUAL_EMAIL``, default akun seniman uji), sehingga alur pesanan -> bayar ->
+    konfirmasi -> kirim -> terima bisa dicoba penuh. Tanpa akun penjual itu, karya demo tetap tidak bisa dipesan."""
+    import os
+
+    from sqlalchemy import text
+
+    from services.dashboard_repo import _schema
+
+    email = (os.environ.get("DEMO_PENJUAL_EMAIL") or "seniman.uji@galeria.test").strip()
+    penjual = (await db.execute(select(User).where(User.email == email, User.is_active.is_(True)))).scalar_one_or_none()
+    if penjual is None:
+        return None
+    S = _schema()
+    try:
+        r = (await db.execute(text(
+            f"""SELECT k.title, s.display_name AS artist, k.style_name, k.price_idr, k.image_filename, k.image_key, k.lebar_cm, k.tinggi_cm
+                FROM {S}.karya k JOIN {S}.seniman s ON s.id = k.seniman_id WHERE k.id = :id"""), {"id": kid})).mappings().first()
+    except Exception:  # schema demo tidak ada di database ini
+        await db.rollback()
+        return None
+    if r is None:
+        return None
+    db.add(Karya(
+        id=kid, seniman_id=penjual.id, title=r["title"], artist_name=r["artist"], gallery_name=f"Studio {r['artist']}",
+        style_name=r["style_name"], price_idr=int(r["price_idr"]), image_filename=r["image_filename"], image_key=r["image_key"],
+        lebar_cm=float(r["lebar_cm"]) if r["lebar_cm"] is not None else None, tinggi_cm=float(r["tinggi_cm"]) if r["tinggi_cm"] is not None else None,
+        status_verifikasi=StatusVerifikasiKarya.TERVERIFIKASI,
+    ))
+    try:
+        await db.flush()
+    except IntegrityError:  # dua pesanan demo bersamaan: yang lain sudah menyalin
+        await db.rollback()
+    return (await db.execute(select(Karya).where(Karya.id == kid).with_for_update())).scalar_one_or_none()
+
+
 def _parse_uuid(v: str, pesan: str) -> uuid.UUID:
     try:
         return uuid.UUID(v)
@@ -163,6 +200,8 @@ async def buat_pesanan(db: AsyncSession, pembeli: User, karya_id: str, alamat_id
         raise HTTPException(404, "Alamat tidak ditemukan")
 
     karya = (await db.execute(select(Karya).where(Karya.id == kid).with_for_update())).scalar_one_or_none()
+    if karya is None:
+        karya = await _salin_karya_demo(db, kid)
     if (
         karya is None
         or karya.deleted_at is not None
