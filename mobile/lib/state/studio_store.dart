@@ -2,25 +2,6 @@ import 'package:flutter/material.dart';
 
 import '../models/karya.dart';
 
-/// Lelang yang dibuat seniman.
-class LelangSeniman {
-  const LelangSeniman({
-    required this.karya,
-    required this.hargaAwalIdr,
-    required this.kelipatanBidIdr,
-    required this.mulai,
-    required this.selesai,
-    this.catatan = '',
-  });
-
-  final Karya karya;
-  final int hargaAwalIdr;
-  final int kelipatanBidIdr;
-  final DateTime mulai;
-  final DateTime selesai;
-  final String catatan;
-}
-
 /// Label promosi pada sebuah karya (fitur PRO).
 class PromosiKarya {
   const PromosiKarya({
@@ -74,8 +55,7 @@ class JenisTiket {
   String keterangan;
 }
 
-/// Event pameran -- dipakai sebagai draft (saat wizard berjalan) dan sebagai
-/// event terbit (di [StudioStore.events]).
+/// Draft event yang sedang diisi di wizard (event terbit disimpan di server).
 class EventPameran {
   String nama = '';
   String deskripsi = '';
@@ -117,22 +97,14 @@ class StudioStore extends ChangeNotifier {
   bool _isPro = false;
   bool get isPro => _isPro;
 
-  final List<LelangSeniman> lelang = [];
   final List<PromosiKarya> promosi = [];
-  final List<EventPameran> events = [];
   KomunitasSeniman? komunitas;
 
   /// Draft event yang sedang diisi di wizard 3 langkah.
   EventPameran draftEvent = EventPameran();
-  EventPameran? lastPublished;
 
   void upgradeKePro() {
     _isPro = true;
-    notifyListeners();
-  }
-
-  void tambahLelang(LelangSeniman l) {
-    lelang.insert(0, l);
     notifyListeners();
   }
 
@@ -158,13 +130,4 @@ class StudioStore extends ChangeNotifier {
     draftEvent = EventPameran();
   }
 
-  /// Terbitkan draft -> masuk daftar event.
-  EventPameran terbitkanDraft() {
-    final e = draftEvent;
-    events.insert(0, e);
-    draftEvent = EventPameran();
-    lastPublished = e;
-    notifyListeners();
-    return e;
-  }
 }

@@ -2,7 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
 import '../../theme/app_theme.dart';
-import '../../state/studio_store.dart';
+import '../../models/event.dart';
+import '../../widgets/event_widgets.dart';
 import '../../utils/coming_soon.dart';
 import '../../utils/format.dart';
 import '../../utils/format_waktu.dart';
@@ -10,32 +11,26 @@ import '../../utils/format_waktu.dart';
 /// Konversi dari
 /// docs/design/role_seniman_2/.../galeria_event_berhasil_diterbitkan/code.html
 class EventBerhasilScreen extends StatelessWidget {
-  const EventBerhasilScreen({super.key, required this.onKelolaEvent, required this.onKembaliDasbor});
+  const EventBerhasilScreen({super.key, required this.event, required this.onKelolaEvent, required this.onKembaliDasbor});
+
+  final EventInfo? event;
 
   final VoidCallback onKelolaEvent;
   final VoidCallback onKembaliDasbor;
 
-  static String _jadwal(EventPameran? e) {
-    if (e == null || e.tanggalMulai == null) return '-';
-    final mulai = formatTanggal(e.tanggalMulai!);
-    final selesai = e.tanggalSelesai == null || e.tanggalSelesai == e.tanggalMulai
-        ? ''
-        : ' - ${formatTanggal(e.tanggalSelesai!)}';
-    final jam = (e.jamBuka != null && e.jamTutup != null)
-        ? ' · ${formatJam(e.jamBuka!)} - ${formatJam(e.jamTutup!)}'
-        : '';
-    return '$mulai$selesai$jam';
+  static String _jadwal(EventInfo? e) {
+    if (e == null) return '-';
+    final sama = e.mulai.year == e.selesai.year && e.mulai.month == e.selesai.month && e.mulai.day == e.selesai.day;
+    return sama
+        ? '${formatTanggal(e.mulai)} · ${jamMenit(e.mulai)} - ${jamMenit(e.selesai)}'
+        : '${formatTanggal(e.mulai)} - ${formatTanggal(e.selesai)}';
   }
 
   @override
   Widget build(BuildContext context) {
-    final e = StudioStore.instance.lastPublished;
-    final lokasi = e == null
-        ? '-'
-        : (e.format == 'online' ? 'Online · ${e.linkOnline}' : '${e.namaLokasi}, ${e.kota}');
-    final tiketInfo = e == null
-        ? '-'
-        : '${e.totalKuota} tiket · ${e.gratis ? 'gratis' : 'mulai ${formatRupiah(e.tiket.map((t) => t.hargaIdr).reduce((a, b) => a < b ? a : b))}'}';
+    final e = event;
+    final lokasi = e == null ? '-' : (e.online ? 'Online · ${e.linkOnline ?? ''}' : e.lokasi);
+    final tiketInfo = e == null ? '-' : '${e.totalKuota} tiket · ${e.gratis ? 'gratis' : 'mulai ${formatRupiah(e.hargaMulaiIdr)}'}';
     return Scaffold(
       backgroundColor: AppColors.surface,
       body: SafeArea(
@@ -131,7 +126,7 @@ class EventBerhasilScreen extends StatelessWidget {
                               child: Column(
                                 crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
-                                  Text(e == null ? 'Event' : '${e.tema}: ${e.nama}',
+                                  Text(e == null ? 'Event' : (e.tema != null ? '${e.tema}: ${e.judul}' : e.judul),
                                       style: AppTextStyles.headlineSm),
                                   const Divider(height: AppSpacing.md),
                                   _metaRow(Icons.calendar_today, _jadwal(e)),

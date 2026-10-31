@@ -1,262 +1,126 @@
-import '../../../services/auth_service.dart';
 import 'package:flutter/material.dart';
+import 'package:qr_flutter/qr_flutter.dart';
 
+import '../../../models/event.dart';
 import '../../../theme/app_theme.dart';
+import '../../../utils/format_waktu.dart';
+import '../../../widgets/event_widgets.dart';
 
-/// Konversi dari
-/// docs/KOLEKTOR FITUR UTAMA/.../galeria_pendaftaran_berhasil_e_tiket_event/code.html
-///
-/// Kode barcode di sini representasi visual saja (bar-bar statis), bukan
-/// barcode Code-128 yang bisa dipindai sungguhan -- UI demo.
-class ETiketScreen extends StatelessWidget {
-  const ETiketScreen({super.key, required this.onDone});
+/// Argumen rute `/event/e-tiket`.
+class ETiketArgs {
+  const ETiketArgs({required this.event, required this.tiketNama, required this.etiket, this.linkOnline});
 
+  final EventRingkas event;
+  final String tiketNama;
+  final List<ETiket> etiket;
+  final String? linkOnline;
+}
+
+/// E-tiket dengan QR sungguhan (isi QR = kode tiket, dipindai/diketik penyelenggara di check-in).
+/// Bila ada beberapa tiket dalam satu pesanan, geser untuk berganti.
+class ETiketScreen extends StatefulWidget {
+  const ETiketScreen({super.key, required this.event, required this.tiketNama, required this.etiket, required this.onDone, this.linkOnline});
+
+  final EventRingkas event;
+  final String tiketNama;
+  final List<ETiket> etiket;
   final VoidCallback onDone;
+  final String? linkOnline;
+
+  @override
+  State<ETiketScreen> createState() => _ETiketScreenState();
+}
+
+class _ETiketScreenState extends State<ETiketScreen> {
+  final _ctrl = PageController();
+  int _hal = 0;
+
+  @override
+  void dispose() {
+    _ctrl.dispose();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
+    final e = widget.event;
     return Scaffold(
       backgroundColor: AppColors.surface,
       appBar: AppBar(
-        title: Text(
-          'E-Tiket & Bukti Pendaftaran',
-          style: AppTextStyles.headlineSm,
-        ),
+        leading: IconButton(onPressed: widget.onDone, icon: const Icon(Icons.arrow_back)),
+        title: Text('E-Tiket', style: AppTextStyles.headlineSm),
       ),
-      body: ListView(
-        padding: const EdgeInsets.symmetric(
-          horizontal: AppSpacing.screenGutter,
-          vertical: AppSpacing.md,
-        ),
-        children: [
-          Center(
-            child: Column(
+      body: widget.etiket.isEmpty
+          ? Center(child: Text('Belum ada e-tiket.', style: AppTextStyles.bodySm.copyWith(color: AppColors.muted)))
+          : Column(
               children: [
-                Container(
-                  width: 56,
-                  height: 56,
-                  decoration: const BoxDecoration(
-                    shape: BoxShape.circle,
-                    color: AppColors.success,
-                  ),
-                  child: const Icon(Icons.check, color: Colors.white, size: 28),
-                ),
-                const SizedBox(height: AppSpacing.sm),
-                Text(
-                  'Pendaftaran Berhasil Terkonfirmasi',
-                  style: AppTextStyles.overline.copyWith(
-                    color: AppColors.success,
-                  ),
-                ),
-                const SizedBox(height: 4),
-                Text(
-                  'E-Tiket & Bukti Pendaftaran',
-                  style: AppTextStyles.headlineLg,
-                  textAlign: TextAlign.center,
-                ),
-                const SizedBox(height: 4),
-                Text(
-                  'Tunjukkan barcode di meja resepsionis kuratorial saat kedatangan.',
-                  textAlign: TextAlign.center,
-                  style: AppTextStyles.bodySm.copyWith(color: AppColors.muted),
-                ),
-              ],
-            ),
-          ),
-          const SizedBox(height: AppSpacing.lg),
-          Container(
-            decoration: BoxDecoration(
-              color: Colors.white,
-              borderRadius: BorderRadius.circular(AppRadius.lg),
-              boxShadow: const [
-                BoxShadow(color: Colors.black26, blurRadius: 16),
-              ],
-            ),
-            clipBehavior: Clip.antiAlias,
-            child: Column(
-              children: [
-                Container(
-                  color: AppColors.primary,
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: AppSpacing.md,
-                    vertical: AppSpacing.sm,
-                  ),
-                  child: Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      Row(
-                        children: [
-                          const Icon(
-                            Icons.workspace_premium,
-                            size: 16,
-                            color: AppColors.accent,
-                          ),
-                          const SizedBox(width: 6),
-                          Text(
-                            'GALERIA SALON VERNISSAGE',
-                            style: AppTextStyles.overline.copyWith(
-                              color: Colors.white,
-                              fontSize: 9,
-                            ),
-                          ),
-                        ],
-                      ),
-                      Container(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 6,
-                          vertical: 2,
-                        ),
-                        decoration: BoxDecoration(
-                          color: AppColors.accent,
-                          borderRadius: BorderRadius.circular(AppRadius.sm),
-                        ),
-                        child: Text(
-                          'KURATOR VIP',
-                          style: AppTextStyles.overline.copyWith(
-                            fontSize: 8,
-                            color: Colors.white,
+                Expanded(
+                  child: PageView.builder(
+                    controller: _ctrl,
+                    itemCount: widget.etiket.length,
+                    onPageChanged: (i) => setState(() => _hal = i),
+                    itemBuilder: (context, i) {
+                      final t = widget.etiket[i];
+                      return SingleChildScrollView(
+                        padding: const EdgeInsets.all(AppSpacing.screenGutter),
+                        child: Container(
+                          padding: const EdgeInsets.all(AppSpacing.md),
+                          decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(AppRadius.lg), boxShadow: const [BoxShadow(color: Colors.black12, blurRadius: 10)]),
+                          child: Column(
+                            children: [
+                              StatusEventChip(status: e.status),
+                              const SizedBox(height: 6),
+                              Text(e.judul, textAlign: TextAlign.center, style: AppTextStyles.headlineMd),
+                              Text('${formatTanggal(e.mulai)} · ${jamMenit(e.mulai)}', style: AppTextStyles.bodySm.copyWith(color: AppColors.muted)),
+                              Text(e.lokasi, style: AppTextStyles.bodySm.copyWith(color: AppColors.muted)),
+                              const SizedBox(height: AppSpacing.md),
+                              Stack(
+                                alignment: Alignment.center,
+                                children: [
+                                  Opacity(opacity: t.terpakai ? 0.25 : 1, child: QrImageView(data: t.kode, size: 210, padding: EdgeInsets.zero)),
+                                  if (t.terpakai)
+                                    Container(
+                                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                                      decoration: BoxDecoration(color: AppColors.error, borderRadius: BorderRadius.circular(AppRadius.sm)),
+                                      child: Text('SUDAH DIGUNAKAN', style: AppTextStyles.labelMd.copyWith(color: Colors.white)),
+                                    ),
+                                ],
+                              ),
+                              const SizedBox(height: AppSpacing.sm),
+                              SelectableText(t.kode, style: AppTextStyles.headlineSm.copyWith(letterSpacing: 2, fontFamily: 'monospace')),
+                              const Divider(height: AppSpacing.lg),
+                              _baris('Pemegang', t.namaPemegang ?? '-'),
+                              _baris('Jenis tiket', widget.tiketNama),
+                              _baris('Status', t.terpakai ? 'Digunakan${t.checkinAt != null ? ' pukul ${jamMenit(t.checkinAt!)}' : ''}' : 'Aktif'),
+                              if (widget.linkOnline != null) _baris('Tautan event', widget.linkOnline!),
+                            ],
                           ),
                         ),
-                      ),
-                    ],
+                      );
+                    },
                   ),
                 ),
-                AspectRatio(
-                  aspectRatio: 16 / 9,
-                  child: Image.asset(
-                    'assets/images/catalog/baroque_01.jpg',
-                    fit: BoxFit.cover,
+                if (widget.etiket.length > 1)
+                  Padding(
+                    padding: const EdgeInsets.only(bottom: AppSpacing.xs),
+                    child: Text('Tiket ${_hal + 1} dari ${widget.etiket.length} · geser untuk berganti', style: AppTextStyles.bodySm.copyWith(color: AppColors.muted)),
                   ),
-                ),
-                Padding(
-                  padding: const EdgeInsets.all(AppSpacing.md),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        'Diselenggarakan oleh Sanggar Rupa Nusantara',
-                        style: AppTextStyles.bodySm.copyWith(
-                          color: AppColors.muted,
-                          fontSize: 11,
-                        ),
-                      ),
-                      const Divider(height: AppSpacing.md),
-                      Row(
-                        children: [
-                          Expanded(child: _detail('Tanggal', '24 Okt 2026')),
-                          Expanded(child: _detail('Sesi', '14:00 – 18:00')),
-                        ],
-                      ),
-                      const SizedBox(height: AppSpacing.sm),
-                      Row(
-                        children: [
-                          Expanded(
-                            child: _detail('Nama Kolektor', AuthService.instance.user?.displayName ?? '-'),
-                          ),
-                          Expanded(child: _detail('Alokasi', 'VIP-A12')),
-                        ],
-                      ),
-                    ],
-                  ),
-                ),
-                Container(
-                  width: double.infinity,
-                  padding: const EdgeInsets.symmetric(vertical: AppSpacing.md),
-                  decoration: const BoxDecoration(
-                    border: Border(
-                      top: BorderSide(
-                        color: AppColors.border,
-                        style: BorderStyle.solid,
-                      ),
-                    ),
-                  ),
-                  child: Column(
-                    children: [
-                      Icon(
-                        Icons.qr_code_2,
-                        size: 96,
-                        color: AppColors.onSurface.withValues(alpha: 0.85),
-                      ),
-                      const SizedBox(height: 4),
-                      Text(
-                        'GLR-EVT-2026-8849-VIP',
-                        style: AppTextStyles.labelMd.copyWith(
-                          fontFamily: 'monospace',
-                          letterSpacing: 1,
-                        ),
-                      ),
-                    ],
+                SafeArea(
+                  child: Padding(
+                    padding: const EdgeInsets.fromLTRB(AppSpacing.screenGutter, 0, AppSpacing.screenGutter, AppSpacing.sm),
+                    child: SizedBox(width: double.infinity, child: ElevatedButton(onPressed: widget.onDone, child: const Text('Selesai'))),
                   ),
                 ),
               ],
             ),
-          ),
-          const SizedBox(height: AppSpacing.md),
-          Container(
-            padding: const EdgeInsets.all(AppSpacing.md),
-            decoration: BoxDecoration(
-              color: AppColors.surfaceContainerLow,
-              borderRadius: BorderRadius.circular(AppRadius.md),
-            ),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
-                  children: [
-                    const Icon(Icons.stars, size: 18, color: AppColors.accent),
-                    const SizedBox(width: 6),
-                    Text(
-                      'Hak Istimewa Akses VIP',
-                      style: AppTextStyles.headlineSm.copyWith(fontSize: 15),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: AppSpacing.xs),
-                _privilege(
-                  'Akses eksklusif VIP Hall & Private Collectors Lounge',
-                ),
-                _privilege('Katalog pameran edisi hardbound bertanda tangan'),
-                _privilege('Welcome evening cocktail bersama dewan kurator'),
-              ],
-            ),
-          ),
-          const SizedBox(height: AppSpacing.lg),
-          ElevatedButton(
-            onPressed: onDone,
-            child: const Text('Kembali ke Beranda Kolektor'),
-          ),
-          const SizedBox(height: AppSpacing.md),
-        ],
-      ),
     );
   }
 
-  Widget _detail(String label, String value) => Column(
-    crossAxisAlignment: CrossAxisAlignment.start,
-    children: [
-      Text(
-        label.toUpperCase(),
-        style: AppTextStyles.overline.copyWith(fontSize: 8),
-      ),
-      Text(
-        value,
-        style: AppTextStyles.bodyMd.copyWith(
-          fontWeight: FontWeight.w600,
-          fontSize: 13,
-        ),
-      ),
-    ],
-  );
-
-  Widget _privilege(String text) => Padding(
-    padding: const EdgeInsets.symmetric(vertical: 2),
-    child: Row(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        const Icon(Icons.check_circle, size: 14, color: AppColors.success),
-        const SizedBox(width: 6),
-        Expanded(child: Text(text, style: AppTextStyles.bodySm)),
-      ],
-    ),
-  );
+  Widget _baris(String l, String v) => Padding(
+        padding: const EdgeInsets.symmetric(vertical: 3),
+        child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
+          SizedBox(width: 96, child: Text(l, style: AppTextStyles.bodySm.copyWith(color: AppColors.muted))),
+          Expanded(child: Text(v, style: AppTextStyles.labelMd)),
+        ]),
+      );
 }

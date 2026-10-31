@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
+import '../../models/event.dart';
+import '../../services/event_service.dart';
 import '../../state/studio_store.dart';
 import '../../theme/app_theme.dart';
 import '../../utils/format.dart';
@@ -13,7 +15,7 @@ class BuatEventStep3Screen extends StatefulWidget {
   const BuatEventStep3Screen({super.key, required this.onKembali, required this.onTerbitkan});
 
   final VoidCallback onKembali;
-  final VoidCallback onTerbitkan;
+  final ValueChanged<EventInfo> onTerbitkan;
 
   @override
   State<BuatEventStep3Screen> createState() => _BuatEventStep3ScreenState();
@@ -22,7 +24,9 @@ class BuatEventStep3Screen extends StatefulWidget {
 class _BuatEventStep3ScreenState extends State<BuatEventStep3Screen> {
   final _draft = StudioStore.instance.draftEvent;
   bool _setuju = false;
+  bool _kirim = false;
   String? _error;
+  final _service = EventService();
 
   Future<void> _formTiket({JenisTiket? edit}) async {
     final nama = TextEditingController(text: edit?.nama ?? '');
@@ -109,7 +113,37 @@ class _BuatEventStep3ScreenState extends State<BuatEventStep3Screen> {
     ket.dispose();
   }
 
-  void _terbitkan() {
+  DateTime? _gabung(DateTime? tgl, TimeOfDay? jam, TimeOfDay awal) {
+    if (tgl == null) return null;
+    final j = jam ?? awal;
+    return DateTime(tgl.year, tgl.month, tgl.day, j.hour, j.minute);
+  }
+
+  Map<String, dynamic>? _body() {
+    final d = _draft;
+    final mulai = _gabung(d.tanggalMulai, d.jamBuka, const TimeOfDay(hour: 9, minute: 0));
+    final selesai = _gabung(d.tanggalSelesai ?? d.tanggalMulai, d.jamTutup, const TimeOfDay(hour: 17, minute: 0));
+    if (mulai == null || selesai == null) return null;
+    final online = d.format == 'online';
+    return {
+      'judul': d.nama.trim(),
+      if (d.deskripsi.trim().isNotEmpty) 'deskripsi': d.deskripsi.trim(),
+      'tema': d.tema,
+      'format': d.format,
+      if (!online) ...{'nama_lokasi': d.namaLokasi.trim(), 'alamat': d.alamat.trim(), 'kota': d.kota.trim()},
+      if (online) 'link_online': d.linkOnline.trim(),
+      'mulai_at': mulai.toUtc().toIso8601String(),
+      'selesai_at': selesai.toUtc().toIso8601String(),
+      'tiket': [
+        for (final t in d.tiket)
+          {'nama': t.nama, 'harga_idr': t.hargaIdr, 'kuota': t.kuota, if (t.keterangan.isNotEmpty) 'keterangan': t.keterangan},
+      ],
+      'karya_ids': [for (final k in d.karya) if (k.id.isNotEmpty) k.id],
+    };
+  }
+
+  Future<void> _terbitkan() async {
+    if (_kirim) return;
     if (_draft.tiket.isEmpty) {
       setState(() => _error = 'Tambahkan minimal 1 jenis tiket.');
       return;
@@ -118,8 +152,27 @@ class _BuatEventStep3ScreenState extends State<BuatEventStep3Screen> {
       setState(() => _error = 'Setujui ketentuan penyelenggaraan event.');
       return;
     }
-    StudioStore.instance.terbitkanDraft();
-    widget.onTerbitkan();
+    final body = _body();
+    if (body == null) {
+      setState(() => _error = 'Tanggal event belum diisi. Kembali ke langkah sebelumnya.');
+      return;
+    }
+    setState(() {
+      _kirim = true;
+      _error = null;
+    });
+    try {
+      final e = await _service.buat(body);
+      StudioStore.instance.mulaiDraftEvent();
+      if (mounted) widget.onTerbitkan(e);
+    } catch (err) {
+      if (mounted) {
+        setState(() {
+          _kirim = false;
+          _error = err.toString();
+        });
+      }
+    }
   }
 
   @override
@@ -190,7 +243,7 @@ class _BuatEventStep3ScreenState extends State<BuatEventStep3Screen> {
         ],
       ),
       bottomNavigationBar: EventBottomBar(
-        lanjutLabel: 'Terbitkan Event',
+        lanjutLabel: _kirim ? 'Menerbitkan...' : 'Terbitkan Event',
         onLanjut: _terbitkan,
         onKembali: widget.onKembali,
       ),

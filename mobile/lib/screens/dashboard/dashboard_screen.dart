@@ -28,6 +28,8 @@ class DashboardScreen extends StatefulWidget {
     this.onPromosikanKarya,
     this.onNotifikasiTap,
     this.onBuatLelang,
+    this.onLelangSaya,
+    this.onEventSaya,
     this.onRiwayatTap,
     this.service,
   });
@@ -39,6 +41,8 @@ class DashboardScreen extends StatefulWidget {
   final VoidCallback? onPromosikanKarya;
   final VoidCallback? onNotifikasiTap;
   final VoidCallback? onBuatLelang;
+  final VoidCallback? onLelangSaya;
+  final VoidCallback? onEventSaya;
   final VoidCallback? onRiwayatTap;
 
   /// Untuk testing; default membuat [DashboardService] sendiri.
@@ -462,6 +466,16 @@ class _DashboardScreenState extends State<DashboardScreen> {
                   label: 'Buat Event',
                   pro: true,
                   onTap: widget.onAdakanEvent,
+                ),
+                _QuickAction(
+                  icon: Icons.history_toggle_off,
+                  label: 'Lelang Saya',
+                  onTap: widget.onLelangSaya,
+                ),
+                _QuickAction(
+                  icon: Icons.event_available_outlined,
+                  label: 'Event Saya',
+                  onTap: widget.onEventSaya,
                 ),
               ],
             ),

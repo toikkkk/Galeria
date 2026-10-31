@@ -30,6 +30,7 @@ from routers import (
     sentimen,
     ulasan,
     alamat,
+    event,
     gambar,
     media,
     lelang,
@@ -154,6 +155,7 @@ app.include_router(media.router)
 app.include_router(alamat.router)
 app.include_router(pesanan.router)
 app.include_router(lelang.router)
+app.include_router(event.router)
 app.include_router(ulasan_nyata.router)
 app.include_router(verifikasi_publik.router)
 

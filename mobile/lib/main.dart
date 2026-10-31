@@ -37,9 +37,15 @@ import 'screens/karya/unggah_karya_screen.dart';
 import 'screens/kolektor/auth/daftar_kolektor_screen.dart';
 import 'screens/kolektor/auth/preferensi_genre_screen.dart';
 import 'screens/kolektor/beranda/beranda_kolektor_screen.dart';
+import 'models/event.dart';
+import 'screens/event/event_kelola_screen.dart';
+import 'screens/event/event_saya_screen.dart';
 import 'screens/kolektor/event/e_tiket_screen.dart';
+import 'screens/kolektor/event/event_detail_screen.dart';
 import 'screens/kolektor/event/event_screen.dart';
+import 'screens/kolektor/event/pembayaran_tiket_screen.dart';
 import 'screens/kolektor/event/tiket_checkout_screen.dart';
+import 'screens/kolektor/event/tiket_saya_screen.dart';
 import 'screens/kolektor/karya/detail_karya_screen.dart';
 import 'screens/kolektor/karya/profil_toko_screen.dart';
 import 'screens/kolektor/karya/semua_karya_screen.dart';
@@ -153,11 +159,11 @@ const _prefixSeniman = [
   '/dashboard', '/notifikasi-seniman', '/riwayat-penarikan', '/profil', '/karya-saya', '/komunitas',
   '/buat-lelang', '/unggah-karya', '/memverifikasi-keaslian', '/karya-terverifikasi', '/karya-ditolak',
   '/karya-perlu-ditinjau', '/pesanan-seniman', '/promosikan-karya', '/buat-event', '/event-berhasil',
-  '/daftar-seniman', '/verifikasi-identitas', '/lelang-saya',
+  '/daftar-seniman', '/verifikasi-identitas', '/lelang-saya', '/event-saya',
 ];
 const _prefixKolektor = [
   '/beranda-kolektor', '/notifikasi', '/karya/', '/lelang', '/koleksi-saya', '/event', '/toko', '/pesanan',
-  '/pindai', '/profil-kolektor', '/preferensi-genre', '/daftar-kolektor',
+  '/pindai', '/profil-kolektor', '/preferensi-genre', '/daftar-kolektor', '/tiket-saya',
 ];
 
 /// Halaman "beranda" sesuai peran pengguna di [path]; `/welcome` untuk layar masuk/onboarding.
@@ -198,13 +204,13 @@ const _rutePrivatSeniman = [
   '/karya-saya', '/komunitas', '/buat-lelang', '/unggah-karya',
   '/memverifikasi-keaslian', '/karya-terverifikasi', '/karya-ditolak',
   '/karya-perlu-ditinjau', '/pesanan-seniman', '/promosikan-karya',
-  '/buat-event', '/event-berhasil', '/lelang-saya',
+  '/buat-event', '/event-berhasil', '/lelang-saya', '/event-saya',
 ];
 
 /// Halaman terikat akun kolektor (tamu boleh jelajah katalog/lelang/event, tapi tidak halaman ini).
 const _rutePrivatKolektor = [
   '/profil-kolektor', '/pesanan', '/koleksi-saya', '/notifikasi',
-  '/event/tiket', '/event/e-tiket',
+  '/event/tiket', '/event/bayar', '/event/e-tiket', '/tiket-saya',
 ];
 
 bool _cocok(String path, List<String> daftar) =>
@@ -223,6 +229,19 @@ String? _jagaRute(BuildContext context, GoRouterState state) {
   if (privatSeniman && !user.isSeniman) return '/beranda-kolektor';
   if (privatKolektor && user.isSeniman) return '/dashboard';
   return null;
+}
+
+ETiketArgs _argsETiket(PesananTiket p) =>
+    ETiketArgs(event: p.event, tiketNama: p.tiketNama, etiket: p.etiket);
+
+/// Mulai wizard "Buat Event" (butuh Pro, lihat widgets/pro_gate.dart).
+Future<void> _mulaiBuatEvent(BuildContext context) async {
+  if (await ensurePro(context, fitur: 'Membuat event pameran')) {
+    if (context.mounted) {
+      StudioStore.instance.mulaiDraftEvent();
+      context.push('/buat-event/1');
+    }
+  }
 }
 
 /// "Beli Sekarang": harus login sebagai pembeli; akun seniman tidak bisa membeli.
@@ -338,6 +357,8 @@ final _router = GoRouter(
         onNavTap: (i) => _goSenimanTab(context, i),
         onKomunitasTap: () => context.push('/komunitas'),
         onBuatLelang: () => context.push('/buat-lelang'),
+        onLelangSaya: () => context.push('/lelang-saya'),
+        onEventSaya: () => context.push('/event-saya'),
         // Event & promosi = fitur Seniman PRO -- pop up upgrade dulu.
         onAdakanEvent: () async {
           if (await ensurePro(context, fitur: 'Membuat event pameran')) {
@@ -525,15 +546,19 @@ final _router = GoRouter(
       path: '/buat-event/3',
       builder: (context, state) => BuatEventStep3Screen(
         onKembali: () => _kembali(context),
-        onTerbitkan: () => context.go('/event-berhasil'),
+        onTerbitkan: (e) => context.go('/event-berhasil', extra: e),
       ),
     ),
     GoRoute(
       path: '/event-berhasil',
-      builder: (context, state) => EventBerhasilScreen(
-        onKelolaEvent: () => context.go('/dashboard'),
-        onKembaliDasbor: () => context.go('/dashboard'),
-      ),
+      builder: (context, state) {
+        final e = state.extra as EventInfo?;
+        return EventBerhasilScreen(
+          event: e,
+          onKelolaEvent: () => e == null ? context.go('/event-saya') : context.go('/event-saya/kelola', extra: e.id),
+          onKembaliDasbor: () => context.go('/dashboard'),
+        );
+      },
     ),
 
     // --- Alur Kolektor ---
@@ -621,20 +646,88 @@ final _router = GoRouter(
       path: '/event',
       builder: (context, state) => EventScreen(
         onBack: () => _kembali(context),
-        onDaftarTap: () => context.push('/event/tiket'),
+        onDetail: (e) => context.push('/event/detail', extra: e.id),
+        onTiketSaya: () => context.push('/tiket-saya'),
       ),
+    ),
+    GoRoute(
+      path: '/event/detail',
+      builder: (context, state) {
+        final id = state.extra as String?;
+        if (id == null) return const _LayarKosong('Event tidak ditemukan.');
+        return EventDetailScreen(
+          eventId: id,
+          onBack: () => _kembali(context),
+          onLogin: () => context.push('/login'),
+          onBeli: (e) => context.push('/event/tiket', extra: e),
+          onKelola: (e) => context.push('/event-saya/kelola', extra: e.id),
+          onTiketSaya: () => context.push('/tiket-saya'),
+        );
+      },
     ),
     GoRoute(
       path: '/event/tiket',
-      builder: (context, state) => TiketCheckoutScreen(
-        onBack: () => _kembali(context),
-        onPaid: () => context.push('/event/e-tiket'),
-      ),
+      builder: (context, state) {
+        final e = state.extra as EventInfo?;
+        if (e == null) return const _LayarKosong('Pilih event dulu.');
+        return TiketCheckoutScreen(
+          event: e,
+          onBack: () => _kembali(context),
+          // pushReplacement: dari layar bayar/e-tiket, kembali tidak boleh membuat pesanan kedua.
+          onDipesan: (p) => p.status == 'dibayar'
+              ? context.pushReplacement('/event/e-tiket', extra: _argsETiket(p))
+              : context.pushReplacement('/event/bayar', extra: p),
+        );
+      },
+    ),
+    GoRoute(
+      path: '/event/bayar',
+      builder: (context, state) {
+        final p = state.extra as PesananTiket?;
+        if (p == null) return const _LayarKosong('Pesanan tiket tidak ditemukan.');
+        return PembayaranTiketScreen(
+          pesanan: p,
+          onBack: () => _kembali(context),
+          onSelesai: (baru) => baru.status == 'dibayar'
+              ? context.pushReplacement('/event/e-tiket', extra: _argsETiket(baru))
+              : context.go('/tiket-saya'),
+        );
+      },
     ),
     GoRoute(
       path: '/event/e-tiket',
-      builder: (context, state) =>
-          ETiketScreen(onDone: () => context.go('/beranda-kolektor')),
+      builder: (context, state) {
+        final a = state.extra as ETiketArgs?;
+        if (a == null) return const _LayarKosong('E-tiket tidak ditemukan.');
+        return ETiketScreen(
+          event: a.event, tiketNama: a.tiketNama, etiket: a.etiket, linkOnline: a.linkOnline,
+          onDone: () => context.go('/tiket-saya'),
+        );
+      },
+    ),
+    GoRoute(
+      path: '/tiket-saya',
+      builder: (context, state) => TiketSayaScreen(
+        onBack: () => _kembali(context),
+        onBuka: (event, nama, etiket, link) =>
+            context.push('/event/e-tiket', extra: ETiketArgs(event: event, tiketNama: nama, etiket: etiket, linkOnline: link)),
+      ),
+    ),
+    GoRoute(
+      path: '/event-saya',
+      builder: (context, state) => EventSayaScreen(
+        onBack: () => _kembali(context),
+        onKelola: (e) => context.push('/event-saya/kelola', extra: e.id),
+        onBuat: () => _mulaiBuatEvent(context),
+      ),
+    ),
+    GoRoute(
+      path: '/event-saya/kelola',
+      builder: (context, state) {
+        final id = state.extra as String?;
+        if (id == null) return const _LayarKosong('Event tidak ditemukan.');
+        return EventKelolaScreen(eventId: id, onBack: () => _kembali(context));
+      },
     ),
     GoRoute(
       path: '/karya/detail',

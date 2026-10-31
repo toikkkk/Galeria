@@ -1,371 +1,170 @@
 import 'package:flutter/material.dart';
 
+import '../../../models/event.dart';
+import '../../../services/auth_service.dart';
+import '../../../services/event_service.dart';
 import '../../../theme/app_theme.dart';
+import '../../../utils/format.dart';
+import '../../../utils/format_waktu.dart';
 
-/// Konversi dari
-/// docs/KOLEKTOR FITUR UTAMA/.../galeria_pendaftaran_pembayaran_tiket_event/code.html
-///
-/// TODO(backend): submit ke endpoint tiket/event nyata -- saat ini simulasi
-/// lokal saja.
+/// Pilih jenis & jumlah tiket, isi nama pemegang, lalu buat pesanan tiket (`POST /api/event/{id}/pesan`).
+/// Tiket gratis langsung terbit; tiket berbayar lanjut ke pembayaran. Kuota dicek server (maks 5 tiket per akun).
 class TiketCheckoutScreen extends StatefulWidget {
-  const TiketCheckoutScreen({
-    super.key,
-    required this.onBack,
-    required this.onPaid,
-  });
+  const TiketCheckoutScreen({super.key, required this.event, required this.onBack, required this.onDipesan, EventService? service})
+      : _service = service;
 
+  final EventInfo event;
   final VoidCallback onBack;
-  final VoidCallback onPaid;
+  final ValueChanged<PesananTiket> onDipesan;
+  final EventService? _service;
 
   @override
   State<TiketCheckoutScreen> createState() => _TiketCheckoutScreenState();
 }
 
 class _TiketCheckoutScreenState extends State<TiketCheckoutScreen> {
-  int _sesi = 1;
-  int _qtyReguler = 0;
-  int _qtyVip = 1;
-  bool _processing = false;
+  late final EventService _service = widget._service ?? EventService();
+  late final _nama = TextEditingController(text: AuthService.instance.user?.displayName ?? '');
+  TiketEvent? _tiket;
+  int _jumlah = 1;
+  bool _kirim = false;
+  String? _error;
 
-  static const _hargaReguler = 50000;
-  static const _hargaVip = 250000;
-  static const _biayaLayanan = 5000;
+  @override
+  void initState() {
+    super.initState();
+    _tiket = widget.event.tiket.where((t) => !t.habis).firstOrNull;
+  }
 
-  int get _total =>
-      _qtyReguler * _hargaReguler + _qtyVip * _hargaVip + _biayaLayanan;
+  @override
+  void dispose() {
+    _nama.dispose();
+    super.dispose();
+  }
 
-  String _rupiah(int v) {
-    final s = v.toString();
-    final buf = StringBuffer();
-    for (int i = 0; i < s.length; i++) {
-      if (i > 0 && (s.length - i) % 3 == 0) buf.write('.');
-      buf.write(s[i]);
+  int get _total => (_tiket?.hargaIdr ?? 0) * _jumlah;
+
+  Future<void> _pesan() async {
+    final t = _tiket;
+    if (t == null) {
+      setState(() => _error = 'Pilih jenis tiket.');
+      return;
     }
-    return 'Rp$buf';
+    if (_nama.text.trim().length < 2) {
+      setState(() => _error = 'Isi nama pemegang tiket.');
+      return;
+    }
+    setState(() {
+      _kirim = true;
+      _error = null;
+    });
+    try {
+      final p = await _service.pesan(widget.event.id, tiketId: t.id, jumlah: _jumlah, namaPemegang: _nama.text.trim());
+      if (mounted) widget.onDipesan(p);
+    } catch (e) {
+      if (mounted) {
+        setState(() {
+          _kirim = false;
+          _error = e.toString();
+        });
+      }
+    }
   }
 
   @override
   Widget build(BuildContext context) {
+    final e = widget.event;
+    final t = _tiket;
+    final maks = t == null ? 1 : (t.sisa < 5 ? t.sisa : 5);
     return Scaffold(
       backgroundColor: AppColors.surface,
       appBar: AppBar(
-        leading: IconButton(
-          onPressed: widget.onBack,
-          icon: const Icon(Icons.arrow_back),
-        ),
-        title: Text(
-          'Pendaftaran Event & Tiket',
-          style: AppTextStyles.headlineSm,
-        ),
+        leading: IconButton(onPressed: widget.onBack, icon: const Icon(Icons.arrow_back)),
+        title: Text('Pesan Tiket', style: AppTextStyles.headlineSm),
       ),
       body: ListView(
-        padding: const EdgeInsets.symmetric(
-          horizontal: AppSpacing.screenGutter,
-          vertical: AppSpacing.sm,
-        ),
+        padding: const EdgeInsets.all(AppSpacing.screenGutter),
         children: [
-          Text('Pilih Sesi Kunjungan', style: AppTextStyles.headlineSm),
+          Text(e.judul, style: AppTextStyles.headlineSm),
+          Text('${formatTanggal(e.mulai)} · ${e.lokasi}', style: AppTextStyles.bodySm.copyWith(color: AppColors.muted)),
+          const SizedBox(height: AppSpacing.md),
+          Text('Jenis Tiket', style: AppTextStyles.headlineSm),
           const SizedBox(height: AppSpacing.xs),
-          _sessionTile(
-            1,
-            'Sesi 1',
-            '10:00 – 14:00 WIB',
-            'Akses Galeri & Pemandu Umum',
-          ),
-          const SizedBox(height: AppSpacing.xs),
-          _sessionTile(
-            2,
-            'Sesi 2',
-            '14:00 – 18:00 WIB',
-            'Diskusi panel bersama kurator & seniman',
-            badge: 'Kurator Talk',
+          for (final x in e.tiket)
+            GestureDetector(
+              onTap: x.habis || _kirim ? null : () => setState(() {
+                    _tiket = x;
+                    if (_jumlah > x.sisa) _jumlah = x.sisa;
+                  }),
+              child: Opacity(
+                opacity: x.habis ? 0.5 : 1,
+                child: Container(
+                  margin: const EdgeInsets.only(bottom: AppSpacing.xs),
+                  padding: const EdgeInsets.all(AppSpacing.sm),
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(AppRadius.md),
+                    border: Border.all(color: _tiket?.id == x.id ? AppColors.accent : AppColors.border, width: _tiket?.id == x.id ? 1.6 : 1),
+                  ),
+                  child: Row(children: [
+                    Icon(_tiket?.id == x.id ? Icons.radio_button_checked : Icons.radio_button_off, color: _tiket?.id == x.id ? AppColors.accent : AppColors.muted, size: 20),
+                    const SizedBox(width: AppSpacing.xs),
+                    Expanded(
+                      child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                        Text(x.nama, style: AppTextStyles.labelMd),
+                        Text(x.habis ? 'Habis' : 'Sisa ${x.sisa}', style: AppTextStyles.bodySm.copyWith(fontSize: 11, color: AppColors.muted)),
+                      ]),
+                    ),
+                    Text(x.gratis ? 'Gratis' : formatRupiah(x.hargaIdr), style: AppTextStyles.labelMd),
+                  ]),
+                ),
+              ),
+            ),
+          const SizedBox(height: AppSpacing.sm),
+          Row(children: [
+            Text('Jumlah', style: AppTextStyles.labelMd),
+            const Spacer(),
+            IconButton(onPressed: _jumlah > 1 && !_kirim ? () => setState(() => _jumlah--) : null, icon: const Icon(Icons.remove_circle_outline)),
+            Text('$_jumlah', style: AppTextStyles.headlineSm),
+            IconButton(onPressed: _jumlah < maks && !_kirim ? () => setState(() => _jumlah++) : null, icon: const Icon(Icons.add_circle_outline)),
+          ]),
+          TextField(
+            controller: _nama,
+            enabled: !_kirim,
+            decoration: const InputDecoration(labelText: 'Nama pemegang tiket', filled: true, fillColor: Colors.white, isDense: true),
           ),
           const SizedBox(height: AppSpacing.md),
-          Text('Kategori Akses Tiket', style: AppTextStyles.headlineSm),
-          const SizedBox(height: AppSpacing.xs),
-          _ticketTile(
-            'Tiket Reguler',
-            'Akses masuk ruang pameran utama & katalog digital.',
-            _hargaReguler,
-            _qtyReguler,
-            (v) => setState(() => _qtyReguler = v),
-          ),
-          const SizedBox(height: AppSpacing.xs),
-          _ticketTile(
-            'Kurator VIP Access',
-            'Katalog fisik bertanda tangan, tur privat, welcome cocktail.',
-            _hargaVip,
-            _qtyVip,
-            (v) => setState(() => _qtyVip = v),
-            featured: true,
-          ),
-          const SizedBox(height: AppSpacing.md),
-          Text('Rincian Transaksi', style: AppTextStyles.headlineSm),
-          const SizedBox(height: AppSpacing.xs),
           Container(
-            padding: const EdgeInsets.all(AppSpacing.md),
-            decoration: BoxDecoration(
-              color: Colors.white,
-              borderRadius: BorderRadius.circular(AppRadius.md),
-              boxShadow: const [
-                BoxShadow(color: Colors.black12, blurRadius: 6),
-              ],
-            ),
-            child: Column(
-              children: [
-                if (_qtyReguler > 0)
-                  _breakdownRow(
-                    '${_qtyReguler}x Tiket Reguler',
-                    _qtyReguler * _hargaReguler,
-                  ),
-                if (_qtyVip > 0)
-                  _breakdownRow(
-                    '${_qtyVip}x Tiket Kurator VIP',
-                    _qtyVip * _hargaVip,
-                  ),
-                _breakdownRow('Biaya Layanan & E-Tiket', _biayaLayanan),
-                const Divider(height: AppSpacing.md),
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    Text('Total Pembayaran', style: AppTextStyles.labelMd),
-                    Text(
-                      _rupiah(_total),
-                      style: AppTextStyles.displayMd.copyWith(fontSize: 20),
-                    ),
-                  ],
-                ),
-              ],
-            ),
+            padding: const EdgeInsets.all(AppSpacing.sm),
+            decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(AppRadius.md)),
+            child: Row(children: [
+              Text('Total', style: AppTextStyles.labelMd),
+              const Spacer(),
+              Text(_total == 0 ? 'Gratis' : formatRupiah(_total), style: AppTextStyles.headlineSm.copyWith(color: AppColors.accent)),
+            ]),
           ),
-          const SizedBox(height: AppSpacing.lg),
-        ],
-      ),
-      bottomSheet: Container(
-        padding: const EdgeInsets.fromLTRB(
-          AppSpacing.screenGutter,
-          AppSpacing.sm,
-          AppSpacing.screenGutter,
-          AppSpacing.md,
-        ),
-        decoration: const BoxDecoration(
-          color: AppColors.surface,
-          border: Border(top: BorderSide(color: AppColors.border)),
-        ),
-        child: Row(
-          children: [
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    'TOTAL',
-                    style: AppTextStyles.overline.copyWith(fontSize: 9),
-                  ),
-                  Text(
-                    _rupiah(_total),
-                    style: AppTextStyles.headlineMd.copyWith(fontSize: 18),
-                  ),
-                ],
-              ),
-            ),
-            ElevatedButton(
-              onPressed: (_qtyReguler + _qtyVip) == 0 || _processing
-                  ? null
-                  : () async {
-                      setState(() => _processing = true);
-                      await Future.delayed(const Duration(milliseconds: 700));
-                      if (context.mounted) widget.onPaid();
-                    },
-              child: _processing
-                  ? const SizedBox(
-                      width: 18,
-                      height: 18,
-                      child: CircularProgressIndicator(
-                        strokeWidth: 2,
-                        color: Colors.white,
-                      ),
-                    )
-                  : const Text('Bayar Tiket Sekarang'),
-            ),
+          if (_error != null) ...[
+            const SizedBox(height: AppSpacing.xs),
+            Text(_error!, style: AppTextStyles.bodySm.copyWith(color: AppColors.error)),
           ],
-        ),
-      ),
-    );
-  }
-
-  Widget _sessionTile(
-    int id,
-    String title,
-    String time,
-    String desc, {
-    String? badge,
-  }) {
-    final selected = _sesi == id;
-    return InkWell(
-      onTap: () => setState(() => _sesi = id),
-      borderRadius: BorderRadius.circular(AppRadius.md),
-      child: Container(
-        padding: const EdgeInsets.all(AppSpacing.sm),
-        decoration: BoxDecoration(
-          color: selected ? AppColors.surfaceContainerLow : Colors.white,
-          borderRadius: BorderRadius.circular(AppRadius.md),
-          border: Border.all(
-            color: selected ? AppColors.primary : AppColors.border,
-          ),
-        ),
-        child: Row(
-          children: [
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
-                    children: [
-                      Text(title, style: AppTextStyles.labelMd),
-                      const SizedBox(width: 6),
-                      Text(
-                        time,
-                        style: AppTextStyles.bodySm.copyWith(
-                          color: AppColors.muted,
-                        ),
-                      ),
-                      if (badge != null) ...[
-                        const SizedBox(width: 6),
-                        Container(
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 6,
-                            vertical: 1,
-                          ),
-                          decoration: BoxDecoration(
-                            color: AppColors.accentSoft,
-                            borderRadius: BorderRadius.circular(AppRadius.full),
-                          ),
-                          child: Text(
-                            badge,
-                            style: AppTextStyles.overline.copyWith(fontSize: 8),
-                          ),
-                        ),
-                      ],
-                    ],
-                  ),
-                  Text(
-                    desc,
-                    style: AppTextStyles.bodySm.copyWith(
-                      color: AppColors.muted,
-                      fontSize: 11,
-                    ),
-                  ),
-                ],
-              ),
+          const SizedBox(height: AppSpacing.md),
+          SizedBox(
+            width: double.infinity,
+            child: ElevatedButton(
+              key: const Key('pesan_tiket'),
+              onPressed: _kirim || t == null ? null : _pesan,
+              child: _kirim
+                  ? const SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2))
+                  : Text(_total == 0 ? 'Daftar & Terbitkan Tiket' : 'Lanjut ke Pembayaran'),
             ),
-            Icon(
-              selected
-                  ? Icons.radio_button_checked
-                  : Icons.radio_button_unchecked,
-              color: selected ? AppColors.primary : AppColors.border,
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _ticketTile(
-    String title,
-    String desc,
-    int price,
-    int qty,
-    ValueChanged<int> onChange, {
-    bool featured = false,
-  }) {
-    return Container(
-      padding: const EdgeInsets.all(AppSpacing.md),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(AppRadius.md),
-        border: featured
-            ? Border.all(color: AppColors.accent, width: 1.5)
-            : null,
-        boxShadow: const [BoxShadow(color: Colors.black12, blurRadius: 6)],
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          if (featured)
-            Padding(
-              padding: const EdgeInsets.only(bottom: 6),
-              child: Container(
-                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-                decoration: BoxDecoration(
-                  color: AppColors.accentSoft,
-                  borderRadius: BorderRadius.circular(AppRadius.full),
-                ),
-                child: Text(
-                  'POPULER & TERKURASI',
-                  style: AppTextStyles.overline.copyWith(fontSize: 8),
-                ),
-              ),
-            ),
-          Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(title, style: AppTextStyles.labelMd),
-                    Text(
-                      desc,
-                      style: AppTextStyles.bodySm.copyWith(
-                        color: AppColors.muted,
-                        fontSize: 11,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-              Text(
-                _rupiah(price),
-                style: AppTextStyles.labelMd.copyWith(fontSize: 14),
-              ),
-            ],
           ),
           const SizedBox(height: AppSpacing.xs),
-          Row(
-            mainAxisAlignment: MainAxisAlignment.end,
-            children: [
-              IconButton(
-                onPressed: qty > 0 ? () => onChange(qty - 1) : null,
-                icon: const Icon(Icons.remove_circle_outline, size: 20),
-              ),
-              Text('$qty', style: AppTextStyles.labelMd),
-              IconButton(
-                onPressed: qty < 4 ? () => onChange(qty + 1) : null,
-                icon: const Icon(
-                  Icons.add_circle_outline,
-                  size: 20,
-                  color: AppColors.accent,
-                ),
-              ),
-            ],
+          Text(
+            _total == 0 ? 'Tiket gratis langsung terbit. Maksimal 5 tiket per akun.' : 'Kuota ditahan 30 menit sejak pesanan dibuat. Maksimal 5 tiket per akun.',
+            style: AppTextStyles.bodySm.copyWith(color: AppColors.muted, fontSize: 11),
           ),
         ],
       ),
     );
   }
-
-  Widget _breakdownRow(String label, int amount) => Padding(
-    padding: const EdgeInsets.symmetric(vertical: 3),
-    child: Row(
-      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-      children: [
-        Text(label, style: AppTextStyles.bodyMd),
-        Text(
-          _rupiah(amount),
-          style: AppTextStyles.bodyMd.copyWith(fontWeight: FontWeight.w600),
-        ),
-      ],
-    ),
-  );
 }

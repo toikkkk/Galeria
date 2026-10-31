@@ -5,7 +5,7 @@ import '../services/katalog_service.dart';
 import '../theme/app_theme.dart';
 import 'karya_image.dart';
 
-/// Pilih karya terverifikasi (dari `GET /api/katalog`).
+/// Pilih karya terverifikasi MILIKMU (dari `GET /api/karya-saya`).
 ///
 /// [multi] = true -> boleh pilih banyak (mis. karya untuk event).
 /// [onUnggahBaru] -> tombol "Unggah baru" (mis. membuka alur unggah karya).
@@ -52,9 +52,10 @@ class _KaryaPickerState extends State<_KaryaPicker> {
       _error = null;
     });
     try {
-      final res = await KatalogService().fetchKatalogTerverifikasi(pageSize: 50);
+      // hanya karya milikmu sendiri yang sudah terverifikasi dan belum terjual
+      final semua = await KatalogService().fetchKaryaSaya();
       if (!mounted) return;
-      setState(() => _items = res.items);
+      setState(() => _items = semua.where((k) => k.statusVerifikasi == 'terverifikasi' && !k.terjual).toList());
     } catch (e) {
       if (!mounted) return;
       setState(() => _error = 'Gagal memuat karya: $e');
