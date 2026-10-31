@@ -78,6 +78,36 @@ class _BerandaKolektorScreenState extends State<BerandaKolektorScreen> {
   Timer? _debounce;
 
   static const _filters = ['Semua', 'Impresionisme', 'Barok', 'Kubisme'];
+  // nama gaya di database untuk tiap chip (indeks 0 = tanpa filter)
+  static const _gayaServer = [null, 'Impressionism', 'Baroque', 'Cubism'];
+
+  /// Hasil filter gaya dari server; null = filter 'Semua' (tampilan rekomendasi/katalog biasa).
+  List<Karya>? _hasilFilter;
+  bool _memuatFilter = false;
+  String? _errorFilter;
+
+  Future<void> _pilihFilter(int i) async {
+    setState(() {
+      _filterIndex = i;
+      _errorFilter = null;
+    });
+    final gaya = _gayaServer[i];
+    if (gaya == null) {
+      setState(() => _hasilFilter = null);
+      return;
+    }
+    setState(() => _memuatFilter = true);
+    try {
+      final service = KatalogService();
+      final nyata = (await _karyaSeniman(service)).where((k) => k.styleName == gaya).toList();
+      final dummy = (await service.fetchKatalogDummy(gaya: gaya)).items;
+      if (mounted && _filterIndex == i) setState(() => _hasilFilter = [...nyata, ...dummy]);
+    } catch (e) {
+      if (mounted && _filterIndex == i) setState(() => _errorFilter = 'Gagal memuat: $e');
+    } finally {
+      if (mounted && _filterIndex == i) setState(() => _memuatFilter = false);
+    }
+  }
 
   @override
   void initState() {
@@ -384,7 +414,7 @@ class _BerandaKolektorScreenState extends State<BerandaKolektorScreen> {
                     return ChoiceChip(
                       label: Text(_filters[i]),
                       selected: active,
-                      onSelected: (_) => setState(() => _filterIndex = i),
+                      onSelected: (_) => _pilihFilter(i),
                       selectedColor: AppColors.primary,
                       backgroundColor: Colors.white,
                       labelStyle: AppTextStyles.labelMd.copyWith(
@@ -415,16 +445,16 @@ class _BerandaKolektorScreenState extends State<BerandaKolektorScreen> {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
-                          'Rekomendasi untukmu',
+                          _hasilFilter != null || _memuatFilter ? _filters[_filterIndex] : 'Rekomendasi untukmu',
                           style: AppTextStyles.headlineMd,
                         ),
                         Text(
-                          _subjudulRekomendasi,
+                          _hasilFilter != null ? '${_hasilFilter!.length} karya' : _subjudulRekomendasi,
                           style: AppTextStyles.bodySm.copyWith(
                             color: AppColors.muted,
                           ),
                         ),
-                        if (_rekomendasi != null)
+                        if (_rekomendasi != null && _hasilFilter == null)
                           Text(
                             'Data contoh',
                             style: AppTextStyles.overline.copyWith(
@@ -457,7 +487,32 @@ class _BerandaKolektorScreenState extends State<BerandaKolektorScreen> {
                 ),
               ),
               const SizedBox(height: AppSpacing.sm),
-              if (_rekomendasi == null && _karya.isEmpty)
+              if (_memuatFilter || _errorFilter != null || (_hasilFilter != null && _hasilFilter!.isEmpty))
+                Padding(
+                  padding: const EdgeInsets.all(AppSpacing.xl),
+                  child: Center(
+                    child: _memuatFilter
+                        ? const CircularProgressIndicator()
+                        : Text(_errorFilter ?? 'Belum ada karya bergaya ini.', textAlign: TextAlign.center, style: AppTextStyles.bodySm.copyWith(color: _errorFilter != null ? AppColors.error : AppColors.muted)),
+                  ),
+                )
+              else if (_hasilFilter != null)
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: AppSpacing.screenGutter),
+                  child: GridView.builder(
+                    shrinkWrap: true,
+                    physics: const NeverScrollableScrollPhysics(),
+                    itemCount: _hasilFilter!.length < 20 ? _hasilFilter!.length : 20,
+                    gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(crossAxisCount: 2, crossAxisSpacing: AppSpacing.sm, mainAxisSpacing: AppSpacing.sm, childAspectRatio: 0.66),
+                    itemBuilder: (context, i) => KaryaGridCard(
+                      karya: _hasilFilter![i],
+                      overline: null,
+                      priceLabel: 'Harga',
+                      onTap: () => widget.onKaryaTap?.call(_hasilFilter![i]),
+                    ),
+                  ),
+                )
+              else if (_rekomendasi == null && _karya.isEmpty)
                 Padding(
                   padding: const EdgeInsets.all(AppSpacing.xl),
                   child: Center(
