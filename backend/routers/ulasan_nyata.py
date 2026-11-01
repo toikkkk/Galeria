@@ -1,12 +1,15 @@
 """Ulasan pembeli yang nyata: ditulis SETELAH pesanan selesai (karya sudah diterima), sekali per pesanan.
 
-Berbeda dari ``routers/ulasan.py`` (data contoh tanpa login). Sentimen tidak dihitung di request ini:
-``sentimen_prediksi`` NULL = menunggu analisis batch IndoBERT (``ml-sentiment/scripts/analisis_ulasan_baru.py``).
+Berbeda dari ``routers/ulasan.py`` (data contoh tanpa login). Sentimen langsung dihitung di request ini oleh model
+ringan TF-IDF+LogReg (``services/sentimen_ringan.py``). Bila bobotnya tidak ada, ``sentimen_prediksi`` tetap NULL
+(= menunggu) dan bisa diisi batch oleh ``ml-sentiment/scripts/analisis_ulasan_baru.py`` (IndoBERT) atau
+``backend/scripts/analisis_ulasan_tertunda.py``.
 """
 
 from __future__ import annotations
 
 import uuid
+from datetime import datetime, timezone
 
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy import func, select
@@ -22,6 +25,7 @@ from models.user import User
 from schemas.ulasan_nyata import UlasanKaryaItem, UlasanKaryaOut, UlasanOut, UlasanPesananIn
 from services.auth_deps import get_current_user
 from services import notifikasi_service as notif
+from services import sentimen_ringan
 from models.engagement import TipeNotifikasi
 
 router = APIRouter(prefix="/api", tags=["ulasan"])
@@ -56,6 +60,10 @@ async def tulis_ulasan(
         id=uuid.uuid4(), transaksi_id=t.id, karya_id=t.karya_id, pembeli_id=user.id, seniman_id=t.penjual_id,
         rating=body.rating, teks=body.teks,
     )
+    hasil = sentimen_ringan.prediksi(body.teks)  # None bila bobot model tidak ada -> tetap 'menunggu analisis'
+    if hasil is not None:
+        u.sentimen_prediksi, u.model_version, u.dihitung_pada = hasil["label"], hasil["model_version"], datetime.now(timezone.utc)
+        u.prob_negatif, u.prob_netral, u.prob_positif = (hasil["prob"][k] for k in ("negatif", "netral", "positif"))
     db.add(u)
     notif.kirim(db, t.penjual_id, TipeNotifikasi.TRANSAKSI, f"Ulasan baru ({body.rating}/5)", body.teks[:120], f"karya:{t.karya_id}")
     try:
@@ -63,7 +71,8 @@ async def tulis_ulasan(
     except IntegrityError:
         await db.rollback()
         raise HTTPException(409, "Kamu sudah mengulas pesanan ini.")
-    return UlasanOut(id=str(u.id), karya_id=str(u.karya_id), rating=u.rating, status="menunggu_analisis")
+    return UlasanOut(id=str(u.id), karya_id=str(u.karya_id), rating=u.rating,
+                     status="menunggu_analisis" if u.sentimen_prediksi is None else "dianalisis")
 
 
 @router.get("/karya/{karya_id}/ulasan", response_model=UlasanKaryaOut)
