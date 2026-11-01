@@ -1,0 +1,13 @@
+# Konteks build = root repo; hanya backend + model v4 yang dibutuhkan
+*
+!backend
+!ml-visual-search/export/v4_11class/model.onnx
+!ml-visual-search/export/v4_11class/label_to_idx__style_name.json
+
+# rahasia & sampah di dalam backend
+backend/.env
+backend/.env.*
+!backend/.env.example
+backend/.venv
+backend/**/__pycache__
+backend/scripts/embedding_backup_*.npz
