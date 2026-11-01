@@ -24,6 +24,7 @@ class Karya {
     this.terjual = false,
     this.artworkId,
     this.lelangId,
+    this.deskripsi,
   });
 
   /// UUID dari database -- kosong ('') untuk [sampleKarya] lokal (belum
@@ -78,6 +79,9 @@ class Karya {
   /// `null` = belum diisi seniman; AR memakai ukuran perkiraan dan melabelinya begitu.
   final double? lebarCm;
   final double? tinggiCm;
+
+  /// Deskripsi dari seniman (bisa kosong).
+  final String? deskripsi;
 
   String get priceFormatted {
     final s = priceIdr.toString();
@@ -137,6 +141,7 @@ class Karya {
       terjual: (json['terjual'] as bool?) ?? false,
       artworkId: json['artwork_id'] as String?,
       lelangId: json['lelang_id'] as String?,
+      deskripsi: json['deskripsi'] as String?,
     );
   }
 }

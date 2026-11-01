@@ -32,6 +32,7 @@ from routers import (
     alamat,
     event,
     favorit,
+    keranjang,
     koleksi,
     komunitas,
     langganan,
@@ -164,6 +165,7 @@ app.include_router(event.router)
 app.include_router(komunitas.router)
 app.include_router(langganan.router)
 app.include_router(favorit.router)
+app.include_router(keranjang.router)
 app.include_router(koleksi.router)
 app.include_router(notifikasi.router)
 app.include_router(ulasan_nyata.router)

@@ -112,6 +112,29 @@ class ApiClient {
     }
   }
 
+  /// `PATCH` ber-auth dengan body JSON (mengubah sebagian field); token diperbarui sekali bila 401.
+  Future<dynamic> patchJson(String path, Map<String, dynamic> body) async {
+    final Uri uri = Uri.parse('$kApiBaseUrl$path');
+    try {
+      var response = await http
+          .patch(uri, headers: await _header(auth: true, json: true), body: jsonEncode(body))
+          .timeout(const Duration(seconds: 15));
+      if (response.statusCode == 401) {
+        response = await http
+            .patch(uri, headers: await _header(auth: true, paksa: true, json: true), body: jsonEncode(body))
+            .timeout(const Duration(seconds: 15));
+      }
+      if (response.statusCode < 200 || response.statusCode >= 300) {
+        throw ApiException(_pesanServer(response));
+      }
+      return jsonDecode(response.body);
+    } on ApiException {
+      rethrow;
+    } catch (e) {
+      throw ApiException('Gagal terhubung ke backend ($path): $e');
+    }
+  }
+
   Future<dynamic> postMultipart(
     String path, {
     File? file,

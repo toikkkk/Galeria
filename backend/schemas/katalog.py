@@ -45,6 +45,7 @@ class KaryaListItem(BaseModel):
     # Ukuran fisik (cm) utk AR; None = belum diisi seniman
     lebar_cm: float | None = None
     tinggi_cm: float | None = None
+    deskripsi: str | None = None
 
 
 class KaryaDetail(KaryaListItem):

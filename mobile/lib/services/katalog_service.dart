@@ -112,6 +112,10 @@ class KatalogService {
     return (data['items'] as List).cast<Map<String, dynamic>>().map(Karya.fromJson).toList();
   }
 
+  /// `PATCH /api/karya/{id}`: ubah judul/harga/gaya/ukuran/galeri/deskripsi karyamu. Kirim hanya field yang berubah.
+  Future<Karya> ubahKarya(String karyaId, Map<String, dynamic> perubahan) async =>
+      Karya.fromJson(await _client.patchJson('/api/karya/$karyaId', perubahan) as Map<String, dynamic>);
+
   /// Hapus karya milikmu (soft-delete di server).
   Future<void> hapusKarya(String karyaId) => _client.delete('/api/karya/$karyaId');
 }

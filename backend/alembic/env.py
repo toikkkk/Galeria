@@ -28,7 +28,7 @@ load_dotenv()
 
 from database import Base  # noqa: E402
 from models.karya import Karya, KaryaEmbedding  # noqa: E402,F401  -- registrasi model ke Base.metadata
-from models.engagement import KoleksiFavorit, Notifikasi, Subscription  # noqa: E402,F401
+from models.engagement import KeranjangItem, KoleksiFavorit, Notifikasi, Subscription  # noqa: E402,F401
 from models.event import Event, EventTiket, EventTiketPembelian  # noqa: E402,F401
 from models.lelang import Lelang, LelangBid  # noqa: E402,F401
 from models.sertifikat import SertifikatKeaslian, SigningKey  # noqa: E402,F401

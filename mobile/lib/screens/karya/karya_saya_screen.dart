@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import 'ubah_karya_screen.dart';
 import '../../models/karya.dart';
 import '../../services/katalog_service.dart';
 import '../../theme/app_theme.dart';
@@ -79,6 +80,19 @@ class _KaryaSayaScreenState extends State<KaryaSayaScreen> {
       if (_filter != 'semua' && k.statusVerifikasi != _filter) return false;
       return q.isEmpty || k.title.toLowerCase().contains(q) || k.styleName.toLowerCase().contains(q);
     }).toList();
+  }
+
+  Future<void> _ubah(Karya karya) async {
+    if (karya.terjual) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Karya yang sudah terjual atau sedang dipesan tidak bisa diubah.')),
+      );
+      return;
+    }
+    final baru = await Navigator.of(context).push<Karya>(MaterialPageRoute(builder: (_) => UbahKaryaScreen(karya: karya)));
+    if (baru == null || !mounted) return;
+    setState(() => _karya = [for (final k in _karya) k.id == baru.id ? baru : k]);
+    ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Perubahan disimpan.')));
   }
 
   Future<void> _hapus(Karya karya) async {
@@ -204,6 +218,7 @@ class _KaryaSayaScreenState extends State<KaryaSayaScreen> {
                         ? () => widget.onKaryaTap!(k)
                         : null,
                     onHapus: () => _hapus(k),
+                    onUbah: () => _ubah(k),
                   );
                 },
               ),
@@ -237,11 +252,12 @@ class _KaryaSayaScreenState extends State<KaryaSayaScreen> {
     };
 
 class _KaryaSayaCard extends StatelessWidget {
-  const _KaryaSayaCard({required this.karya, this.onTap, this.onHapus});
+  const _KaryaSayaCard({required this.karya, this.onTap, this.onHapus, this.onUbah});
 
   final Karya karya;
   final VoidCallback? onTap;
   final VoidCallback? onHapus;
+  final VoidCallback? onUbah;
 
   @override
   Widget build(BuildContext context) {
@@ -302,12 +318,26 @@ class _KaryaSayaCard extends StatelessWidget {
                   Positioned(
                     top: 2,
                     right: 2,
-                    child: IconButton(
-                      onPressed: onHapus,
-                      tooltip: 'Hapus karya',
-                      visualDensity: VisualDensity.compact,
-                      style: IconButton.styleFrom(backgroundColor: Colors.black38),
-                      icon: const Icon(Icons.delete_outline, size: 16, color: Colors.white),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        IconButton(
+                          key: Key('ubah_${karya.id}'),
+                          onPressed: onUbah,
+                          tooltip: 'Ubah karya',
+                          visualDensity: VisualDensity.compact,
+                          style: IconButton.styleFrom(backgroundColor: Colors.black38),
+                          icon: const Icon(Icons.edit_outlined, size: 16, color: Colors.white),
+                        ),
+                        const SizedBox(width: 4),
+                        IconButton(
+                          onPressed: onHapus,
+                          tooltip: 'Hapus karya',
+                          visualDensity: VisualDensity.compact,
+                          style: IconButton.styleFrom(backgroundColor: Colors.black38),
+                          icon: const Icon(Icons.delete_outline, size: 16, color: Colors.white),
+                        ),
+                      ],
                     ),
                   ),
                 ],

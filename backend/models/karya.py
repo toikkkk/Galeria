@@ -85,6 +85,8 @@ class Karya(Base):
     # SHA-256 exact-integrity hash file gambar saat ini -- BEDA dari phash
     # (fuzzy) di karya_fingerprints, lihat backend/CLAUDE.md domain kriptografi.
     file_hash: Mapped[str | None] = mapped_column(Text, nullable=True)
+    # Deskripsi bebas dari seniman (bisa diedit; migrasi 0015). NULL = belum diisi.
+    deskripsi: Mapped[str | None] = mapped_column(Text, nullable=True)
     # Soft-delete -- karya yang pernah terjual/disertifikasi tidak boleh
     # hilang fisik dari tabel (histori pembeli/sertifikat jadi yatim piatu).
     # Naive DateTime (BUKAN timezone=True) -- menyamakan konvensi created_at

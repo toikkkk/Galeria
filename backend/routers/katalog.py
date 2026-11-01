@@ -73,6 +73,7 @@ def to_list_item(karya: Karya, fp: KaryaFingerprint | None = None) -> KaryaListI
         artwork_id=karya.artwork_id,
         lebar_cm=karya.lebar_cm,
         tinggi_cm=karya.tinggi_cm,
+        deskripsi=karya.deskripsi,
     )
 
 

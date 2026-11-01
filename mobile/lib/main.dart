@@ -49,6 +49,8 @@ import 'screens/kolektor/karya/detail_karya_screen.dart';
 import 'screens/kolektor/karya/profil_toko_screen.dart';
 import 'screens/kolektor/karya/semua_karya_screen.dart';
 import 'screens/kolektor/koleksi/koleksi_saya_screen.dart';
+import 'screens/kolektor/keranjang/keranjang_screen.dart';
+import 'services/keranjang_service.dart';
 import 'screens/kolektor/lelang/detail_lelang_screen.dart';
 import 'screens/kolektor/lelang/lelang_screen.dart';
 import 'models/notifikasi.dart';
@@ -92,9 +94,11 @@ void _sinkronStoreLogin() {
   if (masuk) {
     NotifikasiStore.instance.mulai();
     FavoritStore.instance.muat();
+    KeranjangStore.instance.muat();
   } else {
     NotifikasiStore.instance.berhenti();
     FavoritStore.instance.kosongkan();
+    KeranjangStore.instance.kosongkan();
   }
 }
 
@@ -203,7 +207,7 @@ const _prefixSeniman = [
 ];
 const _prefixKolektor = [
   '/beranda-kolektor', '/notifikasi', '/karya/', '/lelang', '/koleksi-saya', '/event', '/toko', '/pesanan',
-  '/pindai', '/profil-kolektor', '/preferensi-genre', '/daftar-kolektor', '/tiket-saya',
+  '/pindai', '/profil-kolektor', '/preferensi-genre', '/daftar-kolektor', '/tiket-saya', '/keranjang',
 ];
 
 /// Halaman "beranda" sesuai peran pengguna di [path]; `/welcome` untuk layar masuk/onboarding.
@@ -250,7 +254,7 @@ const _rutePrivatSeniman = [
 /// Halaman terikat akun kolektor (tamu boleh jelajah katalog/lelang/event, tapi tidak halaman ini).
 const _rutePrivatKolektor = [
   '/profil-kolektor', '/pesanan', '/koleksi-saya', '/notifikasi',
-  '/event/tiket', '/event/bayar', '/event/e-tiket', '/tiket-saya',
+  '/event/tiket', '/event/bayar', '/event/e-tiket', '/tiket-saya', '/keranjang',
 ];
 
 bool _cocok(String path, List<String> daftar) =>
@@ -647,6 +651,18 @@ final _router = GoRouter(
         onLihatSemuaTap: () => context.push('/karya/semua'),
         onProfilTap: () => context.push('/profil-kolektor'),
         onNotifikasiTap: () => context.push('/notifikasi'),
+        onKeranjangTap: () => context.push('/keranjang'),
+      ),
+    ),
+    GoRoute(
+      path: '/keranjang',
+      builder: (context, state) => KeranjangScreen(
+        onBack: () => _kembali(context),
+        onKaryaTap: (item) => context.push('/karya/detail', extra: item.karya),
+        // Satu pesanan -> langsung ke pembayarannya; lebih dari satu -> daftar pesanan (bayar satu per satu).
+        onSelesai: (hasil) => hasil.pesanan.length == 1
+            ? context.pushReplacement('/pesanan/pembayaran', extra: hasil.pesanan.first)
+            : context.pushReplacement('/pesanan'),
       ),
     ),
     GoRoute(

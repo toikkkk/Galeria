@@ -25,12 +25,12 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from database import get_db
 from models.karya import Karya, StatusVerifikasiKarya
-from models.transaksi import Transaksi
+from models.transaksi import StatusTransaksi, Transaksi
 from models.user import User
 from models.verification import KaryaFingerprint
 from routers.katalog import tandai_terjual, to_list_item
 from schemas.katalog import KaryaListItem
-from schemas.karya_upload import KaryaCreated, KaryaSayaPage
+from schemas.karya_upload import KaryaCreated, KaryaSayaPage, KaryaUbah
 from services import storage
 from services.auth_deps import butuh_role
 
@@ -170,3 +170,51 @@ async def hapus_karya(
         raise HTTPException(409, "Karya ini punya lelang, jadi tidak bisa dihapus.")
     karya.deleted_at = datetime.utcnow()
     await db.commit()
+
+
+@router.patch("/karya/{karya_id}", response_model=KaryaListItem)
+async def ubah_karya(
+    karya_id: str,
+    body: KaryaUbah,
+    user: User = Depends(butuh_role("seniman")),
+    db: AsyncSession = Depends(get_db),
+):
+    """Ubah judul, harga, gaya, ukuran, galeri, atau deskripsi karyamu.
+
+    Karya yang sudah terjual / sedang dipesan dikunci (pembeli sudah menyetujui harga & datanya, dan transaksi
+    sudah ditandatangani). Saat karya sedang dilelang, harga dikunci. Gambar tidak bisa diganti di sini.
+    """
+    try:
+        kid = uuid.UUID(karya_id)
+    except ValueError:
+        raise HTTPException(404, "Karya tidak ditemukan")
+    karya = (await db.execute(select(Karya).where(Karya.id == kid).with_for_update())).scalar_one_or_none()
+    if karya is None or karya.deleted_at is not None or karya.seniman_id != user.id:
+        raise HTTPException(404, "Karya tidak ditemukan")  # bukan 403: jangan bocorkan karya orang lain
+
+    terkunci = await db.scalar(select(Transaksi.id).where(Transaksi.karya_id == kid, Transaksi.status != StatusTransaksi.DIBATALKAN).limit(1))
+    if terkunci is not None:
+        raise HTTPException(409, "Karya ini sudah terjual atau sedang dipesan, jadi tidak bisa diubah.")
+
+    data = body.model_dump(exclude_unset=True)
+    if any(data.get(k, 0) is None for k in ("title", "style_name", "gallery_name", "price_idr", "lebar_cm", "tinggi_cm")):
+        raise HTTPException(422, "Isian wajib tidak boleh dikosongkan.")
+    for k in ("title", "style_name", "gallery_name", "deskripsi"):
+        if k in data and data[k] is not None:
+            data[k] = data[k].strip()
+            if k != "deskripsi" and not data[k]:
+                raise HTTPException(422, "Isian tidak boleh kosong.")
+    if "price_idr" in data:
+        from models.lelang import Lelang, StatusLelang
+
+        if await db.scalar(select(Lelang.id).where(Lelang.karya_id == kid, Lelang.status.in_([StatusLelang.AKAN_DATANG, StatusLelang.BERLANGSUNG])).limit(1)) is not None:
+            raise HTTPException(409, "Karya sedang dilelang, harga tidak bisa diubah.")
+    if data.get("deskripsi") == "":
+        data["deskripsi"] = None
+    for k, v in data.items():
+        setattr(karya, k, v)
+    await db.commit()
+    await db.refresh(karya)
+    item = to_list_item(karya)
+    await tandai_terjual(db, [item])
+    return item

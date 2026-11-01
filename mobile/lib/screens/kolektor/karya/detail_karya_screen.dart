@@ -7,8 +7,8 @@ import '../../../models/karya.dart';
 import '../../../theme/app_theme.dart';
 import '../../../widgets/karya_image.dart';
 import '../../../widgets/kolektor/karya_grid_card.dart';
-import '../../../utils/coming_soon.dart';
 import '../../../widgets/favorit_hati.dart';
+import '../../../widgets/keranjang_tombol.dart';
 import '../../../widgets/ulasan_karya_card.dart';
 
 /// Konversi dari
@@ -288,8 +288,10 @@ class DetailKaryaScreen extends StatelessWidget {
                 Text('Cerita Karya', style: AppTextStyles.headlineMd),
                 const SizedBox(height: 4),
                 Text(
-                  'Karya beraliran ${karya.styleName} oleh ${karya.artistName}, ditawarkan oleh ${karya.galleryName}. '
-                  'Karya ini sudah melewati pemeriksaan keaslian digital GALERIA (deteksi duplikat dan deteksi gambar AI).',
+                  (karya.deskripsi != null && karya.deskripsi!.isNotEmpty)
+                      ? karya.deskripsi!
+                      : 'Karya beraliran ${karya.styleName} oleh ${karya.artistName}, ditawarkan oleh ${karya.galleryName}. '
+                          'Karya ini sudah melewati pemeriksaan keaslian digital GALERIA (deteksi duplikat dan deteksi gambar AI).',
                   style: AppTextStyles.bodyMd.copyWith(
                     color: AppColors.onSurface,
                   ),
@@ -352,10 +354,7 @@ class DetailKaryaScreen extends StatelessWidget {
               tooltip: 'Coba di Ruangan (AR)',
             ),
             const SizedBox(width: AppSpacing.xs),
-            IconButton.outlined(
-              onPressed: () => showComingSoon(context, 'Chat dengan penjual'),
-              icon: const Icon(Icons.chat_bubble_outline),
-            ),
+            KeranjangTombol(karya: karya),
             const SizedBox(width: AppSpacing.xs),
             Expanded(
               child: ElevatedButton(

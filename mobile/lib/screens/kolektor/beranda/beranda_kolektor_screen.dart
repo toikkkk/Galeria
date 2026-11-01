@@ -1,3 +1,4 @@
+import '../../../widgets/keranjang_tombol.dart';
 import '../../../services/auth_service.dart';
 import 'dart:async';
 
@@ -40,6 +41,7 @@ class BerandaKolektorScreen extends StatefulWidget {
     this.onLihatSemuaTap,
     this.onProfilTap,
     this.onNotifikasiTap,
+    this.onKeranjangTap,
   });
 
   final ValueChanged<int>? onNavTap;
@@ -51,6 +53,7 @@ class BerandaKolektorScreen extends StatefulWidget {
   final VoidCallback? onLihatSemuaTap;
   final VoidCallback? onProfilTap;
   final VoidCallback? onNotifikasiTap;
+  final VoidCallback? onKeranjangTap;
 
   @override
   State<BerandaKolektorScreen> createState() => _BerandaKolektorScreenState();
@@ -221,6 +224,7 @@ class _BerandaKolektorScreenState extends State<BerandaKolektorScreen> {
           ],
         ),
         actions: [
+          if (widget.onKeranjangTap != null) KeranjangIkon(onTap: widget.onKeranjangTap!),
           Stack(
             alignment: Alignment.center,
             children: [
