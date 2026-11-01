@@ -225,31 +225,40 @@ class _PromosikanKaryaScreenState extends State<PromosikanKaryaScreen> {
               boxShadow: [BoxShadow(color: Colors.black12, blurRadius: 8)]),
           child: Row(
             children: [
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text('TOTAL BIAYA PROMOSI',
-                      style: AppTextStyles.overline.copyWith(color: AppColors.muted)),
-                  Text(_rupiah(priceFmt), style: AppTextStyles.headlineMd),
-                ],
-              ),
-              const Spacer(),
-              ElevatedButton(
-                onPressed: _kirim ? null : _aktifkan,
-                // Tema global ElevatedButton pakai minimumSize lebar tak
-                // terhingga (utk tombol full-width) -- di sini tombolnya
-                // jadi anak Row (bukan Expanded), jadi lebarnya harus
-                // dibatasi ke ukuran isinya sendiri, kalau tidak Flutter
-                // gagal layout ("BoxConstraints forces an infinite width").
-                style: ElevatedButton.styleFrom(minimumSize: Size.zero),
-                child: Row(
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
                   mainAxisSize: MainAxisSize.min,
-                  children: const [
-                    Text('Aktifkan Promosi'),
-                    SizedBox(width: AppSpacing.xs),
-                    Icon(Icons.arrow_forward, size: 16, color: AppColors.accentSoft),
+                  children: [
+                    Text('TOTAL BIAYA PROMOSI',
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: AppTextStyles.overline.copyWith(color: AppColors.muted)),
+                    Text(_rupiah(priceFmt), style: AppTextStyles.headlineMd),
                   ],
                 ),
+              ),
+              const SizedBox(width: AppSpacing.sm),
+              // Tema global ElevatedButton pakai minimumSize lebar tak terhingga (utk tombol
+              // full-width); di dalam Row lebarnya harus dibatasi eksplisit, kalau tidak layar
+              // gagal layout dan bilah bawah tampil kacau.
+              ElevatedButton(
+                onPressed: _kirim ? null : _aktifkan,
+                style: ElevatedButton.styleFrom(
+                  minimumSize: const Size(0, 48),
+                  maximumSize: const Size(220, 48),
+                  padding: const EdgeInsets.symmetric(horizontal: AppSpacing.md),
+                ),
+                child: _kirim
+                    ? const SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2))
+                    : const Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Flexible(child: Text('Aktifkan Promosi', maxLines: 1, overflow: TextOverflow.ellipsis)),
+                          SizedBox(width: AppSpacing.xs),
+                          Icon(Icons.arrow_forward, size: 16, color: AppColors.accentSoft),
+                        ],
+                      ),
               ),
             ],
           ),
