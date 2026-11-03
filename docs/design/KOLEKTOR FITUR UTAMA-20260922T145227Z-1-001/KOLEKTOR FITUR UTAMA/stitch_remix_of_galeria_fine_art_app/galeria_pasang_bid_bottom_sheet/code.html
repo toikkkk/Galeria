@@ -1,0 +1,255 @@
+<!DOCTYPE html><html lang="id"><head>
+<meta charset="utf-8">
+<meta content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" name="viewport">
+<title>GALERIA - Pasang Bid</title>
+<!-- Tailwind CSS CDN with forms and container plugins -->
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<!-- Google Fonts: Cormorant Garamond & Plus Jakarta Sans -->
+<link href="https://fonts.googleapis.com" rel="preconnect">
+<link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect">
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,500;0,600;0,700;1,400&amp;family=Plus+Jakarta+Sans:wght@400;500;600;700&amp;display=swap" rel="stylesheet">
+<!-- Tailwind Custom Configuration -->
+<script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          fontFamily: {
+            serif: ['"Cormorant Garamond"', 'Georgia', 'serif'],
+            sans: ['"Plus Jakarta Sans"', '-apple-system', 'BlinkMacSystemFont', 'sans-serif'],
+          },
+          colors: {
+            galeria: {
+              gold: '#8C6D1F',
+              'gold-light': '#FAF7F0',
+              'gold-border': '#E8DFC9',
+              'gold-hover': '#785D19',
+              dark: '#1C1C1C',
+              surface: '#FBF9F6',
+              border: '#E5E0D8',
+            }
+          }
+        }
+      }
+    }
+  </script>
+<!-- Global Custom Styles -->
+<style data-purpose="custom-scroll-and-touch">
+    /* iOS smooth scrolling and container lock */
+    body {
+      -webkit-tap-highlight-color: transparent;
+      user-select: none;
+    }
+    .hide-scrollbar::-webkit-scrollbar {
+      display: none;
+    }
+    .hide-scrollbar {
+      -ms-overflow-style: none;
+      scrollbar-width: none;
+    }
+  </style>
+</head>
+<body class="bg-neutral-900 font-sans antialiased text-neutral-800 flex justify-center items-center min-h-screen p-0 sm:p-4">
+<!-- BEGIN: MobileDeviceFrame -->
+<main class="relative w-full max-w-[393px] h-[852px] max-h-[100vh] bg-[#FAF8F5] overflow-hidden sm:rounded-[44px] sm:shadow-2xl flex flex-col justify-end">
+<!-- BEGIN: BackgroundAuctionScreen (Dimmed Context) -->
+<div class="absolute inset-0 z-0 select-none pointer-events-none filter blur-[4px] opacity-75" data-purpose="background-context">
+<!-- Top Navigation Mock -->
+<div class="flex items-center justify-between px-5 pt-12 pb-3 bg-white/70 border-b border-neutral-200">
+<div class="w-8 h-8 rounded-full bg-neutral-200 flex items-center justify-center text-neutral-600">←</div>
+<div class="font-serif text-lg font-bold text-neutral-900 tracking-wide">Ajukan Tawaran</div>
+<div class="flex gap-3 text-neutral-600">
+<span class="w-6 h-6 rounded-full bg-neutral-200 block"></span>
+<span class="w-6 h-6 rounded-full bg-neutral-200 block"></span>
+</div>
+</div>
+<!-- Artwork Hero Mock -->
+<div class="p-4 flex flex-col items-center">
+<div class="relative w-full aspect-[4/5] bg-neutral-800 rounded-2xl overflow-hidden shadow-md flex items-center justify-center">
+<img alt="Sang Putri Mahkota Renaisans Background Artwork" class="w-full h-full object-cover brightness-75" src="https://lh3.googleusercontent.com/aida-public/AB6AXuDLlyz4JwUYByCZVTzKBJK-l9a1DABFwNYbh0Tnr3twSxHVIvXtNasQi59D1jQO3P8IzQ1WeelVrZxlCTjK_PTsgMhgrQ9638NkHP3EP1XrHB-hcBNZkcTQfoQcfH_uXBMb-WzPRcxwBdL_sJLSNnGLh1KOlDXHTd0qwsUxXQYxrGaWqUFFDLKrWBs13bjlRA1sGB0AraIgUq-4jFUMK29Hbl_DWsZ5MUi837VPBxg68N3T8TTqWAro">
+<div class="absolute top-3 left-3 bg-neutral-900/80 backdrop-blur px-3 py-1 rounded-full text-[11px] text-amber-200 flex items-center gap-1.5">
+<span class="w-2 h-2 rounded-full bg-amber-400"></span>
+            LOT NO. 104 · LELANG LANGSUNG
+          </div>
+<div class="absolute bottom-3 bg-neutral-950/90 text-amber-300 font-mono text-xs px-3 py-1.5 rounded-full flex items-center gap-1">
+            ⏱ Berakhir dalam 02:14:32 🔴
+          </div>
+</div>
+<!-- Artwork Title Mock -->
+<div class="w-full mt-4 text-left">
+<p class="text-[10px] uppercase tracking-widest text-neutral-500 font-semibold">Karya Kurasi Unggulan</p>
+<h1 class="font-serif text-2xl font-bold text-neutral-900 mt-1">Sang Putri Mahkota Renaisans</h1>
+</div>
+</div>
+</div>
+<!-- END: BackgroundAuctionScreen -->
+<!-- BEGIN: ModalBackdropOverlay -->
+<div class="absolute inset-0 bg-[#0F0C09]/70 backdrop-blur-sm z-10 transition-opacity" data-purpose="dark-overlay"></div>
+<!-- END: ModalBackdropOverlay -->
+<!-- BEGIN: BidBottomSheet -->
+<section class="relative z-20 w-full bg-[#FBF9F6] rounded-t-[32px] shadow-[0_-10px_40px_rgba(0,0,0,0.35)] flex flex-col max-h-[92%] border-t border-[#EAE4DC]" data-purpose="bid-bottom-sheet">
+<!-- Sheet Drag Handle -->
+<div class="pt-3 pb-1 flex justify-center w-full cursor-grab">
+<span class="w-12 h-1.5 bg-[#D6CEBF] rounded-full"></span>
+</div>
+<!-- Header Section -->
+<header class="px-5 pt-1 pb-3 border-b border-neutral-200/70 flex justify-between items-center">
+<div>
+<h2 class="font-serif text-2xl font-bold text-galeria-dark tracking-tight">Pasang Bid</h2>
+<div class="flex items-center gap-1.5 mt-0.5 text-xs text-neutral-500">
+<span class="inline-block w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
+<span>Bid tertinggi: <strong class="text-neutral-800">Rp 4.500.000</strong></span>
+<span class="text-neutral-300">·</span>
+<span class="text-galeria-gold font-medium">Min. Rp 4.600.000</span>
+</div>
+</div>
+<button aria-label="Tutup Lembar Bid" class="w-8 h-8 rounded-full bg-neutral-200/80 hover:bg-neutral-300 flex items-center justify-center text-neutral-600 transition-colors" type="button">
+<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+<path d="M6 18L18 6M6 6l12 12" stroke-linecap="round" stroke-linejoin="round" stroke-width="2.2"></path>
+</svg>
+</button>
+</header>
+<!-- Sheet Scrollable Content Container -->
+<div class="overflow-y-auto hide-scrollbar px-5 py-4 space-y-4">
+<!-- Artwork Micro-Context Card -->
+<article class="flex items-center gap-3 bg-white p-2.5 rounded-xl border border-galeria-border shadow-sm" data-purpose="artwork-micro-summary">
+<img alt="Miniatur Sang Putri Mahkota Renaisans" class="w-12 h-12 rounded-lg object-cover border border-neutral-200 shrink-0" src="https://lh3.googleusercontent.com/aida-public/AB6AXuA9RvSO4fht6lNNtseAUtTId_ngPPd-CfBzrucbRKGJ1WC1M93iCRLs30OMTZ43JLliZIEmMq3HT4kqWF2eD0JhJ3ajjsD9mZ_-MSw6lHfFtHvYInqnRF8fGHFHo8t714dvlfb5E09S4kOWVnkhHTSZn5hmM4EtxOoJjuEkIAlEBr21QvE-liVOWGlu5NQz2dj6Xaywds02eRa54SBJ8VGBNsadgRxJ5m55PSwGIARrDIBB7e3NMB64">
+<div class="flex-1 min-w-0">
+<div class="flex items-center justify-between">
+<span class="text-[10px] font-semibold tracking-wider uppercase text-neutral-400">LOT NO. 104</span>
+<span class="text-[10px] font-mono text-amber-800 bg-amber-50 px-1.5 py-0.5 rounded border border-amber-200">⏱ 02:14:32</span>
+</div>
+<h3 class="font-serif text-sm font-bold text-neutral-900 truncate">Sang Putri Mahkota Renaisans</h3>
+<p class="text-[11px] text-neutral-500 truncate">Penawar teratas: <span class="font-medium text-neutral-700">rani_k***</span></p>
+</div>
+</article>
+<!-- Stepper Component: Numerical Bid Input -->
+<div class="bg-white rounded-2xl p-4 border border-galeria-border text-center shadow-sm" data-purpose="bidding-stepper">
+<span class="text-[11px] uppercase tracking-wider text-neutral-400 font-semibold block mb-1">Nominal Tawaran Anda</span>
+<div class="flex items-center justify-between gap-3 my-2">
+<!-- Minus Button -->
+<button aria-label="Kurangi Bid" class="w-12 h-12 rounded-full border border-neutral-300 bg-neutral-50 text-neutral-700 flex items-center justify-center text-2xl font-semibold hover:bg-neutral-100 active:scale-95 transition" type="button">
+              −
+            </button>
+<!-- Center Price Display -->
+<div class="flex items-baseline justify-center gap-1.5 flex-1 select-text">
+<span class="text-base font-semibold text-neutral-400">Rp</span>
+<span class="font-serif text-3xl font-bold text-neutral-900 tracking-tight">4.600.000</span>
+</div>
+<!-- Plus Button -->
+<button aria-label="Tambah Bid" class="w-12 h-12 rounded-full bg-galeria-dark text-white flex items-center justify-center text-2xl font-semibold hover:bg-neutral-800 active:scale-95 shadow-md transition" type="button">
+              +
+            </button>
+</div>
+<p class="text-[11px] text-emerald-700 bg-emerald-50 py-1 px-2.5 rounded-full inline-flex items-center gap-1 mt-1">
+<svg class="w-3 h-3 text-emerald-600" fill="currentColor" viewBox="0 0 20 20">
+<path clip-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" fill-rule="evenodd"></path>
+</svg>
+            Tawaran memenuhi kelipatan sah (+Rp 100.000)
+          </p>
+</div>
+<!-- Quick Increments Pills -->
+<div class="flex gap-2" data-purpose="quick-increments">
+<button class="flex-1 py-2 px-3 rounded-xl bg-galeria-gold-light border border-galeria-gold text-galeria-gold font-semibold text-xs text-center shadow-sm active:scale-95 transition" type="button">
+            + Rp 100.000
+          </button>
+<button class="flex-1 py-2 px-3 rounded-xl bg-white border border-galeria-border text-neutral-700 font-medium text-xs text-center hover:bg-neutral-50 active:scale-95 transition" type="button">
+            + Rp 250.000
+          </button>
+<button class="flex-1 py-2 px-3 rounded-xl bg-white border border-galeria-border text-neutral-700 font-medium text-xs text-center hover:bg-neutral-50 active:scale-95 transition" type="button">
+            + Rp 500.000
+          </button>
+</div>
+<!-- Subtle Divider -->
+<hr class="border-t border-neutral-200/80 my-2">
+<!-- Auto-Bid Feature Accordion / Card -->
+<div class="bg-[#FAF7F0] border border-[#E8DFC9] rounded-2xl p-3.5 space-y-3" data-purpose="autobid-container">
+<div class="flex items-start justify-between gap-3">
+<div class="flex items-start gap-2.5">
+<!-- AI Agent Icon -->
+<div class="w-8 h-8 rounded-lg bg-amber-100/80 border border-amber-300 text-galeria-gold flex items-center justify-center shrink-0">
+<svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+<rect height="10" rx="2" width="18" x="3" y="11"></rect>
+<circle cx="12" cy="5" r="2"></circle>
+<path d="M12 7v4"></path>
+<line x1="8" x2="8.01" y1="16" y2="16"></line>
+<line x1="16" x2="16.01" y1="16" y2="16"></line>
+</svg>
+</div>
+<div>
+<div class="flex items-center gap-1.5">
+<span class="font-semibold text-neutral-900 text-sm">Aktifkan Auto-Bid</span>
+<span class="bg-amber-200/70 text-amber-900 text-[9px] font-bold px-1.5 py-0.2 rounded tracking-wide uppercase">AI Agent</span>
+</div>
+<p class="text-xs text-neutral-600 leading-snug mt-0.5">
+                  Agen akan menaikkan bid otomatis untukmu sampai batas maksimum.
+                </p>
+</div>
+</div>
+<!-- Active Toggle Switch -->
+<label class="relative inline-flex items-center cursor-pointer shrink-0 mt-0.5">
+<input checked="" class="sr-only peer" type="checkbox">
+<div class="w-11 h-6 bg-neutral-300 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-galeria-gold"></div>
+</label>
+</div>
+<!-- Auto-Bid Subpanel Parameters (Active state) -->
+<div class="pt-2 border-t border-[#E8DFC9]/70 flex flex-col gap-1.5">
+<div class="flex justify-between items-center text-xs">
+<span class="text-neutral-600 font-medium">Batas Maksimum</span>
+<button class="text-galeria-gold hover:underline font-semibold text-[11px]" type="button">Ubah Nominal</button>
+</div>
+<div class="flex items-center justify-between bg-white border border-[#DDD3BC] rounded-xl px-3 py-2">
+<span class="text-xs text-neutral-400">Hingga</span>
+<span class="font-serif font-bold text-base text-neutral-900">Rp 6.000.000</span>
+<span class="text-[10px] text-neutral-500 bg-neutral-100 px-1.5 py-0.5 rounded">Maks. 15 Tawaran</span>
+</div>
+<div class="flex items-center gap-1.5 text-[11px] text-neutral-500 italic mt-0.5">
+<svg class="w-3.5 h-3.5 text-neutral-400 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+<circle cx="12" cy="12" r="10" stroke-width="2"></circle>
+<path d="M12 16v-4m0-4h.01" stroke-width="2"></path>
+</svg>
+<span>Agen berhenti di batas ini dan tidak akan melewatinya.</span>
+</div>
+</div>
+</div>
+<!-- Terms / Commitment Checkbox -->
+<label class="flex items-start gap-2.5 cursor-pointer pt-1">
+<input checked="" class="rounded border-neutral-300 text-galeria-gold focus:ring-galeria-gold w-4 h-4 mt-0.5 cursor-pointer" type="checkbox">
+<span class="text-xs text-neutral-700 leading-tight">
+            Saya memahami <span class="font-semibold text-neutral-900">bid tidak dapat dibatalkan</span> sesuai regulasi kuratorial Balai Lelang GALERIA.
+          </span>
+</label>
+</div>
+<!-- Sticky Action Footer -->
+<footer class="p-4 bg-white border-t border-neutral-200/80 shadow-lg space-y-2.5">
+<!-- Main Confirmation Button -->
+<button class="w-full bg-[#8A6D1F] hover:bg-galeria-gold-hover active:scale-[0.99] text-white font-medium py-3.5 px-5 rounded-xl shadow-md flex items-center justify-between transition-all" type="button">
+<span class="text-sm font-semibold tracking-wide">Konfirmasi Bid</span>
+<div class="flex items-center gap-1.5">
+<span class="font-serif text-lg font-bold">Rp 4.600.000</span>
+<svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24">
+<path d="M13.5 4.5L21 12m0 0l-7.5 7.5M21 12H3" stroke-linecap="round" stroke-linejoin="round"></path>
+</svg>
+</div>
+</button>
+<!-- Security & Legal Trust Badges -->
+<div class="flex items-center justify-center gap-3 text-[10px] text-neutral-500 font-medium">
+<span class="flex items-center gap-1">
+<svg class="w-3 h-3 text-galeria-gold" fill="currentColor" viewBox="0 0 20 20">
+<path clip-rule="evenodd" d="M2.166 4.999A11.954 11.954 0 0010 1.944 11.954 11.954 0 0017.834 5c.11.65.166 1.32.166 2.001 0 5.225-3.34 9.67-8 11.317C5.34 16.67 2 12.225 2 7c0-.682.057-1.35.166-2.001zm11.541 3.708a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" fill-rule="evenodd"></path>
+</svg>
+            Escrow Terproteksi
+          </span>
+<span class="text-neutral-300">•</span>
+<span class="flex items-center gap-1">
+<svg class="w-3 h-3 text-galeria-gold" fill="currentColor" viewBox="0 0 20 20">
+<path clip-rule="evenodd" d="M6.267 3.455a3.066 3.066 0 001.745-.723 3.066 3.066 0 013.976 0 3.066 3.066 0 001.745.723 3.066 3.066 0 012.812 2.812c.051.643.304 1.254.723 1.745a3.066 3.066 0 010 3.976 3.066 3.066 0 00-.723 1.745 3.066 3.066 0 01-2.812 2.812 3.066 3.066 0 00-1.745.723 3.066 3.066 0 01-3.976 0 3.066 3.066 0 00-1.745-.723 3.066 3.066 0 01-2.812-2.812 3.066 3.066 0 00-.723-1.745 3.066 3.066 0 010-3.976 3.066 3.066 0 00.723-1.745 3.066 3.066 0 012.812-2.812zm7.44 5.252a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" fill-rule="evenodd"></path>
+</svg>
+            Audit Provenansi Terverifikasi
+          </span>
+</div>
+</footer>
+</section>
+<!-- END: BidBottomSheet -->
+</main>
+<!-- END: MobileDeviceFrame -->
+</body></html>

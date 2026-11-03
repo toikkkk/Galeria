@@ -1,0 +1,282 @@
+<!DOCTYPE html><html lang="id" style=""><head><meta charset="utf-8"><meta content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" name="viewport"><link href="https://fonts.googleapis.com/css2?family=EB+Garamond:ital,wght@0,400;0,500;0,600;1,400&amp;family=Manrope:wght@400;500;600;700&amp;display=swap" rel="stylesheet"><link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"><script src="https://cdn.tailwindcss.com"></script><script id="tailwind-config">tailwind.config = { darkMode: "class", theme: { extend: { colors: { "tertiary-fixed-dim": "#88d6af", "outline": "#747878", "on-secondary-container": "#735a00", "error": "#ba1a1a", "on-primary-fixed": "#1b1b1b", "surface-tint": "#5f5e5e", "inverse-primary": "#c8c6c5", "on-error": "#ffffff", "surface-bright": "#fbf9f6", "surface-variant": "#e4e2df", "tertiary-container": "#002113", "on-primary-fixed-variant": "#474746", "on-secondary-fixed": "#241a00", "on-surface": "#1b1c1a", "background": "#fbf9f6", "on-background": "#1b1c1a", "tertiary-fixed": "#a4f3ca", "error-container": "#ffdad6", "on-secondary-fixed-variant": "#584400", "tertiary": "#000000", "surface-container-highest": "#e4e2df", "on-primary-container": "#858484", "on-tertiary-fixed": "#002113", "primary-fixed-dim": "#c8c6c5", "secondary-fixed": "#ffe08e", "on-error-container": "#93000a", "inverse-on-surface": "#f2f0ed", "secondary-container": "#fed255", "surface-container-high": "#eae8e5", "surface-container-lowest": "#ffffff", "outline-variant": "#c4c7c7", "on-primary": "#ffffff", "primary-container": "#1c1c1c", "on-surface-variant": "#444748", "primary": "#010101", "on-secondary": "#ffffff", "surface-container-low": "#f5f3f0", "on-tertiary-container": "#45926f", "secondary-fixed-dim": "#ecc246", "surface-container": "#efeeeb", "surface-dim": "#dbdad7", "on-tertiary": "#ffffff", "on-tertiary-fixed-variant": "#005236", "surface": "#fbf9f6", "inverse-surface": "#30312f", "primary-fixed": "#e5e2e1", "secondary": "#755b00" }, borderRadius: { "DEFAULT": "0.125rem", "lg": "0.25rem", "xl": "0.5rem", "full": "0.75rem" }, spacing: { "space-sm": "0.75rem", "space-2xl": "3rem", "space-xs": "0.5rem", "space-xxs": "0.25rem", "space-xl": "2rem", "gutter-screen": "1.5rem", "bottom-nav-height": "4.5rem", "space-3xl": "4rem", "card-inner": "1.25rem", "margin-edge": "1.5rem", "space-md": "1rem", "space-lg": "1.5rem", "touch-target": "3rem" }, fontFamily: { "label-sm": ["Manrope"], "overline": ["Manrope"], "headline-md": ["EB Garamond"], "display-lg": ["EB Garamond"], "body-md": ["Manrope"], "price-display": ["Manrope"], "price-card": ["Manrope"], "display-md": ["EB Garamond"], "body-sm": ["Manrope"], "headline-sm": ["EB Garamond"], "headline-lg": ["EB Garamond"], "label-md": ["Manrope"], "body-lg": ["Manrope"] }, fontSize: { "label-sm": ["11px", { "lineHeight": "16px", "letterSpacing": "0.06em", "fontWeight": "600" }], "overline": ["10px", { "lineHeight": "14px", "letterSpacing": "0.12em", "fontWeight": "700" }], "headline-md": ["22px", { "lineHeight": "28px", "letterSpacing": "0em", "fontWeight": "500" }], "display-lg": ["36px", { "lineHeight": "44px", "letterSpacing": "-0.02em", "fontWeight": "400" }], "body-md": ["14px", { "lineHeight": "22px", "letterSpacing": "0.01em", "fontWeight": "400" }], "price-display": ["24px", { "lineHeight": "32px", "letterSpacing": "-0.02em", "fontWeight": "600" }], "price-card": ["16px", { "lineHeight": "22px", "letterSpacing": "-0.01em", "fontWeight": "600" }], "display-md": ["30px", { "lineHeight": "38px", "letterSpacing": "-0.015em", "fontWeight": "400" }], "body-sm": ["12px", { "lineHeight": "18px", "letterSpacing": "0.015em", "fontWeight": "400" }], "headline-sm": ["18px", { "lineHeight": "24px", "letterSpacing": "0.01em", "fontWeight": "600" }], "headline-lg": ["26px", { "lineHeight": "34px", "letterSpacing": "-0.01em", "fontWeight": "500" }], "label-md": ["13px", { "lineHeight": "18px", "letterSpacing": "0.02em", "fontWeight": "600" }], "body-lg": ["16px", { "lineHeight": "26px", "letterSpacing": "0em", "fontWeight": "400" }] } } } }</script><style>@layer base{html,body{width:100%;margin:0;padding:0;background-color:#fbf9f6;color:#1b1c1a;-webkit-tap-highlight-color:transparent;}body{overscroll-behavior-y:none;}.pb-safe{padding-bottom:env(safe-area-inset-bottom,0px);}.pt-safe{padding-top:env(safe-area-inset-top,0px);}main>:first-child{margin-top:0!important;}main>:last-child{margin-bottom:0!important;}}::-webkit-scrollbar{display:none;}</style></head><body class="bg-surface font-body-md text-body-md text-on-surface flex flex-col min-h-screen"><main class="flex-1 flex flex-col relative w-full pb-28 px-gutter-screen bg-surface pt-safe"><div class="flex flex-col w-full space-y-6">
+<!-- Profile Sub-Header Actions -->
+<div class="flex items-center justify-between pt-1">
+<div>
+<span class="font-overline text-overline uppercase tracking-widest text-secondary block">Akun Kolektor</span>
+<h2 class="font-headline-lg text-headline-lg text-primary tracking-tight">Profil Saya</h2>
+</div>
+<div class="flex items-center gap-space-xs">
+<button aria-label="Preferensi Kuratorial" class="w-10 h-10 rounded-full bg-surface-container flex items-center justify-center text-on-surface-variant hover:text-primary transition-colors shadow-sm">
+<span class="material-symbols-outlined text-[20px]">tune</span>
+</button>
+<button aria-label="Pengaturan Akun" class="w-10 h-10 rounded-full bg-surface-container flex items-center justify-center text-on-surface-variant hover:text-primary transition-colors shadow-sm">
+<span class="material-symbols-outlined text-[20px]">settings</span>
+</button>
+</div>
+</div>
+<!-- Collector Identity Card -->
+<div class="w-full bg-surface-container-lowest rounded-xl p-space-md shadow-[0_8px_24px_-4px_rgba(28,28,28,0.06)] relative overflow-hidden">
+<div class="absolute -right-8 -top-8 w-36 h-36 bg-secondary-container/20 rounded-full blur-2xl pointer-events-none"></div>
+<div class="flex items-start gap-space-md relative z-10">
+<div class="relative shrink-0">
+<img alt="Rani Paramitha - Kolektor Seni" class="w-20 h-20 rounded-full object-cover shadow-md shadow-primary/10 ring-2 ring-secondary" src="https://lh3.googleusercontent.com/aida-public/AB6AXuDbYZ2qY_1AsNG22H3MaY5s_XwnFa8SCTGlSMS9tm6GBKL2_nyITS2vaSiFlX5wM0_xUZTECIJB1Mp_z9Z17FCwzJIKTsOqDT2-Qd2X0x4bd_ZOhX1NpKn09PKYsbSNj9t7cSApWUnqdduHMqaEk02EJ12b1hHIuqo4Lsz3DoEHvTU50CwwtZQqp8GifdCwhJv6OgCo0s0afVADObzmXx-kLUFT5jf7XflCe0HeCzje0AO8GvTTIA">
+<span class="absolute bottom-0 right-0 w-6 h-6 rounded-full bg-secondary text-surface-container-lowest flex items-center justify-center shadow-sm" title="Terverifikasi">
+<span class="material-symbols-outlined text-[14px]" style="font-variation-settings: 'FILL' 1;">verified</span>
+</span>
+</div>
+<div class="min-w-0 flex-1">
+<div class="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-surface-container-low text-secondary">
+<span class="material-symbols-outlined text-[13px]" style="font-variation-settings: 'FILL' 1;">shield</span>
+<span class="font-label-sm text-label-sm tracking-wide uppercase text-secondary">Kolektor Terverifikasi</span>
+</div>
+<h3 class="font-headline-md text-headline-md text-primary mt-1 truncate">Rani Paramitha</h3>
+<p class="font-body-sm text-body-sm text-on-surface-variant line-clamp-1">Patron Seni Kontemporer &amp; Modern</p>
+<span class="font-label-sm text-label-sm text-outline block mt-0.5">ID Kolektor: #GAL-8829-ID</span>
+</div>
+</div>
+<!-- Quick Stats Grid -->
+<div class="grid grid-cols-3 gap-2 mt-space-md pt-space-sm bg-surface-container-low rounded-lg p-space-sm text-center">
+<div class="flex flex-col items-center">
+<span class="font-headline-sm text-headline-sm text-primary">8</span>
+<span class="font-overline text-overline uppercase text-on-surface-variant mt-0.5">Karya Dikoleksi</span>
+</div>
+<div class="flex flex-col items-center">
+<span class="font-headline-sm text-headline-sm text-primary">14</span>
+<span class="font-overline text-overline uppercase text-on-surface-variant mt-0.5">Tawaran Lelang</span>
+</div>
+<div class="flex flex-col items-center">
+<span class="font-headline-sm text-headline-sm text-primary">3</span>
+<span class="font-overline text-overline uppercase text-on-surface-variant mt-0.5">Pameran Dihadiri</span>
+</div>
+</div>
+</div>
+<!-- VIP Patron Membership Banner -->
+<div class="w-full bg-primary-container text-on-primary rounded-xl p-space-md shadow-md relative overflow-hidden">
+<div class="absolute -right-6 -bottom-6 w-32 h-32 bg-secondary/30 rounded-full blur-xl pointer-events-none"></div>
+<div class="flex items-center justify-between relative z-10">
+<div class="flex items-center gap-space-sm">
+<div class="w-11 h-11 rounded-lg bg-secondary-container text-on-secondary-fixed flex items-center justify-center shrink-0 shadow-sm">
+<span class="material-symbols-outlined text-[24px]">workspace_premium</span>
+</div>
+<div>
+<span class="font-overline text-overline uppercase tracking-widest text-secondary-fixed block">Tingkat Kuratorial</span>
+<h4 class="font-headline-sm text-headline-sm text-surface-container-lowest leading-tight">GALERIA Premier Patron</h4>
+</div>
+</div>
+<span class="material-symbols-outlined text-secondary-fixed-dim text-[20px]">chevron_right</span>
+</div>
+<div class="mt-space-sm pt-space-xs flex items-center justify-between text-on-primary-container text-label-sm font-label-sm">
+<span class="flex items-center gap-1">
+<span class="material-symbols-outlined text-[14px] text-secondary-fixed">check_circle</span>
+        Akses Awal Ruang Lelang Privat
+      </span>
+<span class="text-secondary-fixed font-label-sm">Concierge Aktif</span>
+</div>
+</div>
+<!-- Riwayat Pesanan Seni Section -->
+<div class="flex flex-col space-y-3">
+<div class="flex items-baseline justify-between">
+<div class="flex items-center gap-1.5">
+<span class="material-symbols-outlined text-secondary text-[20px]">palette</span>
+<h3 class="font-headline-sm text-headline-sm text-primary">Riwayat Pesanan Seni</h3>
+</div>
+<a class="font-label-md text-label-md text-secondary hover:text-on-secondary-container transition-colors flex items-center gap-0.5" data-path="pesanan" href="#">
+        Lihat Semua (5)
+        <span class="material-symbols-outlined text-[16px]">arrow_forward</span>
+</a>
+</div>
+<!-- Active In-Transit Artwork Card -->
+<div class="w-full bg-surface-container-lowest rounded-xl p-space-md shadow-[0_8px_24px_-4px_rgba(28,28,28,0.04)] space-y-space-sm">
+<div class="flex items-start justify-between gap-space-sm">
+<div class="flex items-center gap-space-xs">
+<span class="px-2.5 py-1 rounded-full bg-tertiary-fixed text-tertiary-container font-label-sm text-label-sm flex items-center gap-1">
+<span class="w-1.5 h-1.5 rounded-full bg-on-tertiary-container animate-pulse"></span>
+            Sedang Dikirim
+          </span>
+<span class="font-body-sm text-body-sm text-outline">Lelang #4810</span>
+</div>
+<span class="font-price-card text-price-card text-primary">Rp 120.000.000</span>
+</div>
+<div class="flex gap-space-sm items-center pt-1">
+<div class="w-16 h-16 rounded-lg bg-surface-container-low shrink-0 flex items-center justify-center relative overflow-hidden">
+<img class="w-full h-full object-cover" data-alt="Classic Renaissance style oil painting of a crowned princess in ornate velvet gold attire, dramatic warm chiaroscuro gallery lighting, framed archival canvas presentation" src="https://lh3.googleusercontent.com/aida-public/AB6AXuDJ6TrWP7vh4c16sh4d5mWIn02GJhFSYB_FUTP8K65yEyxJsMLWscGocNZTF1wSvrYN4Q4T3ozaI9DL-uYaMNclm7aVqYgqXPeb4yPhktmUvSjGQSWc7KL6A8heGQYooT8eCDEF2EFEPVP57OvWSLNr9es33sbi5n259CsAFOSiGgN66DMye9R2wos-GFqhPYSfkb3cUfCBnB9rPaB-IzsJQDSLAtBo2YCy8UOg1uy0dSJAqlY6bg">
+</div>
+<div class="min-w-0 flex-1">
+<h4 class="font-headline-sm text-headline-sm text-primary italic truncate">Sang Putri Mahkota Renaisans</h4>
+<p class="font-body-sm text-body-sm text-on-surface-variant truncate">Cat Minyak di atas Kanvas · 120 × 90 cm</p>
+<div class="flex items-center gap-1 text-outline font-label-sm text-label-sm mt-1">
+<span class="material-symbols-outlined text-[14px]">local_shipping</span>
+<span class="truncate">JNE Art Cargo #0088123456789</span>
+</div>
+</div>
+</div>
+<!-- Tracking status step -->
+<div class="bg-surface-container-low p-space-xs rounded-lg flex items-center justify-between text-body-sm font-body-sm text-on-surface-variant">
+<div class="flex items-center gap-2 truncate">
+<span class="material-symbols-outlined text-secondary text-[18px]">verified_user</span>
+<span class="truncate text-label-sm font-label-sm">Peti Berinsulasi Khusus · Tiba Besok</span>
+</div>
+<span class="font-label-sm text-label-sm text-secondary shrink-0">Transit Jakarta</span>
+</div>
+<div class="flex items-center gap-space-xs pt-1">
+<button class="flex-1 h-10 rounded-lg bg-secondary text-on-primary font-label-md text-label-md flex items-center justify-center gap-1 hover:brightness-105 active:scale-95 transition-all shadow-sm">
+<span class="material-symbols-outlined text-[16px]">pin_drop</span>
+          Lacak Pengiriman
+        </button>
+<button class="flex-1 h-10 rounded-lg bg-surface-container text-primary font-label-md text-label-md flex items-center justify-center gap-1 hover:bg-surface-container-high transition-colors">
+          Detail Pesanan
+        </button>
+</div>
+</div>
+<!-- Completed Artwork Card -->
+<div class="w-full bg-surface-container-lowest rounded-xl p-space-md shadow-[0_8px_24px_-4px_rgba(28,28,28,0.04)] space-y-space-xs">
+<div class="flex items-start justify-between gap-space-sm">
+<div class="flex items-center gap-space-xs">
+<span class="px-2.5 py-0.5 rounded-full bg-surface-container text-on-surface-variant font-label-sm text-label-sm flex items-center gap-1">
+<span class="material-symbols-outlined text-[14px] text-tertiary-fixed-dim">task_alt</span>
+            Selesai &amp; Diterima
+          </span>
+<span class="font-body-sm text-body-sm text-outline">18 Jan 2025</span>
+</div>
+<span class="font-price-card text-price-card text-primary">Rp 85.000.000</span>
+</div>
+<div class="flex gap-space-sm items-center pt-1">
+<div class="w-14 h-14 rounded-lg bg-surface-container-low shrink-0 flex items-center justify-center overflow-hidden">
+<img class="w-full h-full object-cover" data-alt="Modern abstract fine art composition with radiant gold leaf foil and deep azure lapis lazuli pigments, refined museum lighting, elegant brushwork on linen" src="https://lh3.googleusercontent.com/aida-public/AB6AXuDhr1zAY90YZCKSEn4gEpWL920qAdjyy8MWWBDUag2uzBtf5uDfjWVmPg2PeNwnbsDqCvEfc-l-YM9l9kMEYKyDjYeeZHQ8_7-IKMCg-IBOCV0RbYhyrLfodvEckhi9nqvka_V9bF2v9oKPPPdGL-w7GQ5-644uEzaPNWjt4KiHs7tkv05sGecEU5xE5ACLgAEfEAxxsP8mNxDvUd-oupEL0LxVg7jIwmmRLvb7NKERVc7w5D5_rQ">
+</div>
+<div class="min-w-0 flex-1">
+<h4 class="font-headline-sm text-headline-sm text-primary italic truncate">Komposisi Emas &amp; Lapis Lazuli</h4>
+<p class="font-body-sm text-body-sm text-on-surface-variant truncate">Akrilik &amp; Lembaran Emas 24K · 100 × 100 cm</p>
+<div class="inline-flex items-center gap-1 text-secondary font-label-sm text-label-sm mt-0.5">
+<span class="material-symbols-outlined text-[14px]">verified</span>
+            Sertifikat COA Digital Terbit
+          </div>
+</div>
+<button aria-label="Lihat Sertifikat" class="w-9 h-9 rounded-full bg-surface-container-low flex items-center justify-center text-on-surface-variant hover:text-primary transition-colors">
+<span class="material-symbols-outlined text-[18px]">workspace_premium</span>
+</button>
+</div>
+</div>
+</div>
+<!-- Alamat Tersimpan Section -->
+<div class="flex flex-col space-y-3">
+<div class="flex items-baseline justify-between">
+<div class="flex items-center gap-1.5">
+<span class="material-symbols-outlined text-secondary text-[20px]">home_pin</span>
+<h3 class="font-headline-sm text-headline-sm text-primary">Alamat Tersimpan</h3>
+</div>
+<button class="font-label-md text-label-md text-secondary hover:text-on-secondary-container transition-colors flex items-center gap-0.5">
+<span class="material-symbols-outlined text-[16px]">add_circle</span>
+        Tambah Baru
+      </button>
+</div>
+<!-- Primary Address Card -->
+<div class="w-full bg-surface-container-lowest rounded-xl p-space-md shadow-[0_8px_24px_-4px_rgba(28,28,28,0.04)] space-y-space-sm relative">
+<div class="flex items-center justify-between">
+<span class="px-2.5 py-0.5 rounded-full bg-secondary-container text-on-secondary-fixed font-label-sm text-label-sm font-semibold flex items-center gap-1">
+<span class="material-symbols-outlined text-[13px]">star</span>
+          Utama · Pengiriman Kuratorial
+        </span>
+<span class="font-label-sm text-label-sm text-outline">Apartemen Pribadi</span>
+</div>
+<div>
+<h4 class="font-headline-sm text-headline-sm text-primary">Apartemen &amp; Galeri Pribadi (Jakarta)</h4>
+<p class="font-label-md text-label-md text-on-surface mt-0.5">Rani Paramitha <span class="text-outline font-normal">· +62 812-3456-7890</span></p>
+<p class="font-body-sm text-body-sm text-on-surface-variant mt-1 leading-relaxed">
+          Apartemen Senopati Suites, Tower 2 Lt. 18, Jl. Senopati No. 41, Kebayoran Baru, Jakarta Selatan, DKI Jakarta 12190
+        </p>
+</div>
+<!-- Curatorial Handling Note -->
+<div class="p-space-xs rounded-lg bg-surface-container-low flex items-start gap-2">
+<span class="material-symbols-outlined text-secondary text-[16px] mt-0.5 shrink-0">inventory_2</span>
+<p class="font-body-sm text-body-sm text-on-surface-variant">
+<strong class="font-label-sm text-label-sm text-primary block">Instruksi Kuratorial Khusus:</strong>
+          Penanganan Khusus Karya Seni (Lift Barang &amp; Peti Kayu Bersertifikat, Suhu Terkontrol).
+        </p>
+</div>
+<div class="flex items-center gap-space-xs pt-1">
+<button class="flex-1 h-9 rounded-lg bg-surface-container text-primary font-label-md text-label-md flex items-center justify-center gap-1 hover:bg-surface-container-high transition-colors">
+<span class="material-symbols-outlined text-[16px]">edit</span>
+          Ubah
+        </button>
+<button class="flex-1 h-9 rounded-lg bg-surface-container text-primary font-label-md text-label-md flex items-center justify-center gap-1 hover:bg-surface-container-high transition-colors">
+<span class="material-symbols-outlined text-[16px]">location_searching</span>
+          Atur Peta Presisi
+        </button>
+</div>
+</div>
+<!-- Secondary Address Card -->
+
+</div>
+<!-- Preferences & Curatorial Settings Menu -->
+<div class="flex flex-col space-y-2">
+<div class="flex items-center gap-1.5">
+<span class="material-symbols-outlined text-secondary text-[20px]">account_circle</span>
+<h3 class="font-headline-sm text-headline-sm text-primary">Preferensi &amp; Layanan Kolektor</h3>
+</div>
+<div class="w-full bg-surface-container-lowest rounded-xl shadow-[0_8px_24px_-4px_rgba(28,28,28,0.04)] overflow-hidden">
+<!-- Item 1: Payment & Escrow -->
+<a class="w-full p-space-md flex items-center justify-between hover:bg-surface-container-low transition-colors" href="#">
+<div class="flex items-center gap-space-sm min-w-0">
+<div class="w-10 h-10 rounded-lg bg-surface-container flex items-center justify-center text-secondary shrink-0">
+<span class="material-symbols-outlined text-[20px]">account_balance_wallet</span>
+</div>
+<div class="min-w-0">
+<h5 class="font-headline-sm text-headline-sm text-primary truncate">Metode Pembayaran &amp; Escrow Seni</h5>
+<p class="font-body-sm text-body-sm text-on-surface-variant truncate">BCA Prioritas, Kartu Kredit Terdaftar (Visa Signature)</p>
+</div>
+</div>
+<span class="material-symbols-outlined text-outline-variant text-[20px]">chevron_right</span>
+</a>
+<div class="h-[1px] bg-surface-container w-full"></div>
+<!-- Item 2: Digital COA Vault -->
+<a class="w-full p-space-md flex items-center justify-between hover:bg-surface-container-low transition-colors" href="#">
+<div class="flex items-center gap-space-sm min-w-0">
+<div class="w-10 h-10 rounded-lg bg-surface-container flex items-center justify-center text-secondary shrink-0">
+<span class="material-symbols-outlined text-[20px]">history_edu</span>
+</div>
+<div class="min-w-0">
+<div class="flex items-center gap-2">
+<h5 class="font-headline-sm text-headline-sm text-primary truncate">Sertifikat Keaslian (COA) Digital</h5>
+
+</div>
+<p class="font-body-sm text-body-sm text-on-surface-variant truncate">Kriptografis &amp; Terverifikasi Kurator Galeri</p>
+</div>
+</div>
+<span class="material-symbols-outlined text-outline-variant text-[20px]">chevron_right</span>
+</a>
+<div class="h-[1px] bg-surface-container w-full"></div>
+<!-- Item 3: Genre & Curator Preferences -->
+<a class="w-full p-space-md flex items-center justify-between hover:bg-surface-container-low transition-colors" href="#">
+<div class="flex items-center gap-space-sm min-w-0">
+<div class="w-10 h-10 rounded-lg bg-surface-container flex items-center justify-center text-secondary shrink-0">
+<span class="material-symbols-outlined text-[20px]">auto_awesome</span>
+</div>
+<div class="min-w-0">
+<h5 class="font-headline-sm text-headline-sm text-primary truncate">Preferensi Genre &amp; Kurator Favorit</h5>
+<p class="font-body-sm text-body-sm text-on-surface-variant truncate">Abstrak, Surealisme, Patung Perunggu</p>
+</div>
+</div>
+<span class="material-symbols-outlined text-outline-variant text-[20px]">chevron_right</span>
+</a>
+
+<!-- Item 4: 24/7 Concierge -->
+
+</div>
+</div>
+<!-- Logout Action -->
+<div class="pt-2 pb-6">
+<button class="w-full h-12 rounded-xl bg-surface-container text-error hover:bg-error-container hover:text-on-error-container font-label-md text-label-md flex items-center justify-center gap-2 transition-all active:scale-[0.99] shadow-sm">
+<span class="material-symbols-outlined text-[20px]">logout</span>
+      Keluar dari Akun Kolektor
+    </button>
+<p class="text-center font-overline text-overline uppercase text-outline mt-3 tracking-wider">
+      GALERIA Mobile Salons · Versi 3.4.2 · Hak Cipta Terlindungi
+    </p>
+</div>
+</div></main><nav class="fixed bottom-0 w-full z-50 pb-safe bg-surface/90 backdrop-blur-xl shadow-[0_-4px_20px_rgba(28,28,28,0.04)]" data-active-classes="text-secondary"><div class="flex items-center justify-around h-20 px-space-xs relative"><a class="flex flex-col items-center justify-center min-w-[56px] h-touch-target gap-1 text-on-surface-variant hover:text-primary transition-colors" data-path="beranda" href="#"><span class="material-symbols-outlined text-[24px]">explore</span><span class="font-label-sm text-label-sm">Beranda</span></a><a class="flex flex-col items-center justify-center min-w-[56px] h-touch-target gap-1 text-on-surface-variant hover:text-primary transition-colors" data-path="lelang" href="#"><span class="material-symbols-outlined text-[24px]">gavel</span><span class="font-label-sm text-label-sm">Lelang</span></a><div class="flex flex-col items-center justify-center -mt-6"><a aria-label="Pindai AR" class="w-14 h-14 rounded-full bg-secondary-container text-on-secondary-fixed flex items-center justify-center shadow-[0_8px_20px_rgba(254,210,85,0.35)] hover:brightness-105 active:scale-95 transition-all" data-path="scan-ar" href="#"><span class="material-symbols-outlined text-[28px]">view_in_ar</span></a><span class="font-overline text-overline uppercase tracking-wider text-secondary mt-1">Pindai</span></div><a class="flex flex-col items-center justify-center min-w-[56px] h-touch-target gap-1 text-on-surface-variant hover:text-primary transition-colors" data-path="pesanan" href="#"><span class="material-symbols-outlined text-[24px]">receipt_long</span><span class="font-label-sm text-label-sm">Pesanan</span></a><a aria-current="page" class="flex flex-col items-center justify-center min-w-[56px] h-touch-target gap-1 transition-colors text-secondary" data-path="profil-kolektor" href="#"><span class="material-symbols-outlined text-[24px]">person_outline</span><span class="font-label-sm text-label-sm">Profil</span></a></div></nav>
+
+
+
+</body></html>

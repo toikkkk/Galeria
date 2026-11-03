@@ -1,0 +1,391 @@
+<!DOCTYPE html><html class="h-full" lang="id"><head><meta charset="utf-8"><meta content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" name="viewport"><link href="https://fonts.googleapis.com" rel="preconnect"><link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect"><link href="https://fonts.googleapis.com/css2?family=EB+Garamond:ital,wght@0,400;0,500;0,600;1,400;1,500&amp;family=Manrope:wght@400;500;600;700&amp;display=swap" rel="stylesheet"><link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@24,400,0,0" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"><script src="https://cdn.tailwindcss.com"></script><script id="tailwind-config">tailwind.config = { darkMode: "class", theme: { extend: { "colors": { "inverse-primary": "#c8c6c5", "surface-variant": "#e4e2df", "surface-container-highest": "#e4e2df", "error": "#ba1a1a", "surface-container": "#efeeeb", "on-tertiary-container": "#45926f", "on-surface-variant": "#444748", "surface-container-lowest": "#ffffff", "on-error-container": "#93000a", "on-secondary-fixed": "#241a00", "on-primary-container": "#858484", "on-tertiary": "#ffffff", "primary-fixed-dim": "#c8c6c5", "on-background": "#1b1c1a", "on-secondary-container": "#735a00", "on-primary": "#ffffff", "inverse-on-surface": "#f2f0ed", "outline-variant": "#c4c7c7", "on-secondary": "#ffffff", "background": "#fbf9f6", "secondary-fixed": "#ffe08e", "on-secondary-fixed-variant": "#584400", "on-primary-fixed": "#1b1b1b", "tertiary-fixed": "#a4f3ca", "surface-bright": "#fbf9f6", "on-surface": "#1b1c1a", "on-error": "#ffffff", "surface": "#fbf9f6", "outline": "#747878", "surface-container-high": "#eae8e5", "surface-dim": "#dbdad7", "primary-fixed": "#e5e2e1", "error-container": "#ffdad6", "tertiary-fixed-dim": "#88d6af", "on-primary-fixed-variant": "#474746", "primary": "#010101", "surface-tint": "#5f5e5e", "inverse-surface": "#30312f", "secondary-fixed-dim": "#ecc246", "tertiary-container": "#002113", "surface-container-low": "#f5f3f0", "primary-container": "#1c1c1c", "on-tertiary-fixed": "#002113", "on-tertiary-fixed-variant": "#005236", "tertiary": "#000000", "secondary-container": "#fed255", "secondary": "#755b00" }, "borderRadius": { "DEFAULT": "0.125rem", "lg": "0.25rem", "xl": "0.5rem", "full": "0.75rem" }, "spacing": { "space-3xl": "4rem", "gutter-screen": "1.5rem", "space-sm": "0.75rem", "card-inner": "1.25rem", "space-2xl": "3rem", "space-xs": "0.5rem", "touch-target": "3rem", "bottom-nav-height": "4.5rem", "space-md": "1rem", "space-lg": "1.5rem", "margin-edge": "1.5rem", "space-xxs": "0.25rem", "space-xl": "2rem" }, "fontFamily": { "body-md": ["Manrope"], "label-sm": ["Manrope"], "display-lg": ["EB Garamond"], "label-md": ["Manrope"], "headline-sm": ["EB Garamond"], "body-sm": ["Manrope"], "body-lg": ["Manrope"], "headline-lg": ["EB Garamond"], "price-card": ["Manrope"], "display-md": ["EB Garamond"], "headline-md": ["EB Garamond"], "price-display": ["Manrope"], "overline": ["Manrope"] }, "fontSize": { "body-md": ["14px", { "lineHeight": "22px", "letterSpacing": "0.01em", "fontWeight": "400" }], "label-sm": ["11px", { "lineHeight": "16px", "letterSpacing": "0.06em", "fontWeight": "600" }], "display-lg": ["36px", { "lineHeight": "44px", "letterSpacing": "-0.02em", "fontWeight": "400" }], "label-md": ["13px", { "lineHeight": "18px", "letterSpacing": "0.02em", "fontWeight": "600" }], "headline-sm": ["18px", { "lineHeight": "24px", "letterSpacing": "0.01em", "fontWeight": "600" }], "body-sm": ["12px", { "lineHeight": "18px", "letterSpacing": "0.015em", "fontWeight": "400" }], "body-lg": ["16px", { "lineHeight": "26px", "letterSpacing": "0em", "fontWeight": "400" }], "headline-lg": ["26px", { "lineHeight": "34px", "letterSpacing": "-0.01em", "fontWeight": "500" }], "price-card": ["16px", { "lineHeight": "22px", "letterSpacing": "-0.01em", "fontWeight": "600" }], "display-md": ["30px", { "lineHeight": "38px", "letterSpacing": "-0.015em", "fontWeight": "400" }], "headline-md": ["22px", { "lineHeight": "28px", "letterSpacing": "0em", "fontWeight": "500" }], "price-display": ["24px", { "lineHeight": "32px", "letterSpacing": "-0.02em", "fontWeight": "600" }], "overline": ["10px", { "lineHeight": "14px", "letterSpacing": "0.12em", "fontWeight": "700" }] } } } };</script><style>@layer base{html,body{width:100%;margin:0;padding:0;}body{overscroll-behavior:none;}.pb-safe{padding-bottom:env(safe-area-inset-bottom,0px);}.pt-safe{padding-top:env(safe-area-inset-top,0px);}main>:first-child{margin-top:0!important;}main>:last-child{margin-bottom:0!important;}}::-webkit-scrollbar{display:none;}</style></head><body class="bg-surface font-body-md text-body-md text-on-surface antialiased min-h-screen flex flex-col selection:bg-secondary-container selection:text-on-secondary-container"><header class="fixed top-0 inset-x-0 z-50 pt-safe bg-surface/80 backdrop-blur-xl shadow-[0_1px_8px_rgba(0,0,0,0.03)]"><div class="h-16 px-gutter-screen flex items-center justify-between"><div class="flex items-center gap-space-xs"><button aria-label="Kembali" class="w-11 h-11 -ml-2 rounded-full flex items-center justify-center text-on-surface hover:bg-surface-container transition-colors" onclick="history.back()" type="button"><span class="material-symbols-outlined text-[22px]">arrow_back</span></button><div class="flex flex-col"><span class="font-overline text-overline uppercase text-on-surface-variant tracking-widest">Galeria Detail</span><h1 class="font-headline-sm text-headline-sm text-on-surface tracking-tight truncate max-w-[200px]">Detail Karya</h1></div></div><div class="flex items-center gap-space-xs"><button aria-label="Bagikan Karya" class="w-11 h-11 rounded-full flex items-center justify-center text-on-surface-variant hover:text-on-surface hover:bg-surface-container transition-colors" type="button"><span class="material-symbols-outlined text-[20px]">share</span></button><button aria-label="Simpan Koleksi" class="w-11 h-11 rounded-full flex items-center justify-center text-on-surface-variant hover:text-on-surface hover:bg-surface-container transition-colors" type="button"><span class="material-symbols-outlined text-[20px]">bookmark</span></button><div class="w-8 h-8 rounded-full bg-primary flex items-center justify-center ml-1"><span class="material-symbols-outlined text-on-primary text-[18px]">person</span></div></div></div></header><main class="flex-1 flex flex-col relative w-full pt-16 pb-28 bg-surface"><div class="flex flex-col w-full pb-10 selection:bg-secondary-container selection:text-on-secondary-container">
+<!-- Top Visual Carousel Container -->
+<section class="relative w-full overflow-hidden bg-surface-container-high">
+<div class="relative w-full aspect-[4/5] max-h-[520px] select-none touch-pan-x flex items-center justify-center overflow-hidden" id="artworkCarousel">
+<!-- Active Canvas Slide -->
+<div class="relative w-full h-full flex items-center justify-center transition-transform duration-500 ease-out" id="slideImageWrapper">
+<img alt="Sang Putri Mahkota Renaisans" class="w-full h-full object-cover object-center transform transition-transform duration-700 ease-out" id="mainCarouselImg" src="https://lh3.googleusercontent.com/aida/AEtjO1UtIHZMEjOtCmYg1kN6JTUmR4yHN4zXI4O1objHnJDr5sV-qIoUavX2nL8x2e_grfJrUCROQ3bb3Bg7ISFZ_pcDpKhoXoftvLIoIyQm6NcecSPnVQThl02zg5exQ15RNh1Y6vbY0K1HbYRLakE5HkdmIUzDo1TLZCZzXCZKpBkB9Y6cBmkVcA82iXnDXf6h2Fe_GB04LJVQ9YRn112sC-xi2QCAYZEDXGvjJND4t744mdKfmEhbUos-">
+<!-- Subtle Ambient Museum Spot Vignette -->
+<div class="absolute inset-0 pointer-events-none bg-gradient-to-t from-primary/60 via-transparent to-primary/20 mix-blend-multiply opacity-40"></div>
+</div>
+<!-- Floating Controls: Back, Share, Wishlist -->
+<div class="absolute top-4 inset-x-4 flex items-center justify-between pointer-events-auto z-20">
+<button aria-label="Kembali" class="w-10 h-10 rounded-full bg-surface-container-lowest/80 backdrop-blur-md text-on-surface flex items-center justify-center shadow-[0_2px_12px_rgba(0,0,0,0.08)] active:scale-95 transition-all" onclick="history.back()" type="button">
+<span class="material-symbols-outlined text-[20px]">arrow_back</span>
+</button>
+<div class="flex items-center gap-space-xs">
+<button aria-label="Bagikan Karya" class="w-10 h-10 rounded-full bg-surface-container-lowest/80 backdrop-blur-md text-on-surface flex items-center justify-center shadow-[0_2px_12px_rgba(0,0,0,0.08)] active:scale-95 transition-all" id="shareBtn" type="button">
+<span class="material-symbols-outlined text-[19px]">share</span>
+</button>
+<button aria-label="Simpan Favorit" class="w-10 h-10 rounded-full bg-surface-container-lowest/80 backdrop-blur-md text-on-surface flex items-center justify-center shadow-[0_2px_12px_rgba(0,0,0,0.08)] active:scale-95 transition-all group" id="wishlistBtn" type="button">
+<span class="material-symbols-outlined text-[20px] transition-colors group-hover:text-error" id="wishlistIcon">favorite</span>
+</button>
+</div>
+</div>
+<!-- Bottom Interactive Badges & Indicators -->
+<div class="absolute bottom-4 inset-x-4 flex items-end justify-between pointer-events-auto z-20">
+<!-- Dot Navigation Indicators -->
+<div class="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-surface-container-lowest/75 backdrop-blur-md shadow-sm">
+<button aria-label="Slide 1" class="carousel-dot w-5 h-1.5 rounded-full bg-secondary transition-all" onclick="switchSlide(0)" type="button"></button>
+<button aria-label="Slide 2" class="carousel-dot w-1.5 h-1.5 rounded-full bg-outline-variant transition-all" onclick="switchSlide(1)" type="button"></button>
+<button aria-label="Slide 3" class="carousel-dot w-1.5 h-1.5 rounded-full bg-outline-variant transition-all" onclick="switchSlide(2)" type="button"></button>
+</div>
+<!-- High-Res Zoom Prompt Chip -->
+<button class="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-surface-container-lowest/85 backdrop-blur-md text-on-surface shadow-[0_2px_10px_rgba(0,0,0,0.1)] active:scale-95 transition-all" id="zoomToggleBtn" type="button">
+<span class="material-symbols-outlined text-[16px] text-secondary">zoom_in</span>
+<span class="font-overline text-overline uppercase tracking-wider text-on-surface">Resolusi Tinggi</span>
+</button>
+</div>
+</div>
+</section>
+<!-- Main Editorial Content Stack -->
+<div class="flex flex-col px-gutter-screen pt-space-md gap-space-xl">
+<!-- 1. Artwork Header & Price Block -->
+<header class="flex flex-col gap-space-xs">
+<div class="flex items-center justify-between">
+<span class="font-overline text-overline uppercase text-on-surface-variant tracking-widest flex items-center gap-1">
+<span class="w-1.5 h-1.5 rounded-full bg-secondary"></span>
+          Koleksi Mahakarya Primer
+        </span>
+<span class="font-label-sm text-label-sm text-on-surface-variant bg-surface-container px-2 py-0.5 rounded-md">Lot No. 104</span>
+</div>
+<h1 class="font-headline-lg text-headline-lg text-on-surface tracking-tight leading-snug">
+        Sang Putri Mahkota Renaisans
+      </h1>
+<div class="flex flex-col mt-space-xxs">
+<div class="flex items-baseline gap-1.5">
+<span class="font-body-md text-body-md text-secondary font-semibold">Rp</span>
+<span class="font-price-display text-price-display text-on-surface tracking-tight font-bold">145.000.000</span>
+</div>
+<p class="font-body-sm text-body-sm text-on-surface-variant flex items-center gap-1 mt-0.5">
+<span class="material-symbols-outlined text-[14px] text-on-tertiary-container">verified</span>
+          Termasuk Pajak Kurasi, Asuransi Transit &amp; Sertifikasi Resmi
+        </p>
+</div>
+<!-- Artwork Metadata Tags -->
+<div class="flex flex-wrap items-center gap-space-xs pt-space-xs">
+<span class="px-2.5 py-1 rounded-lg bg-surface-container-high text-on-surface font-label-sm text-label-sm flex items-center gap-1">
+<span class="material-symbols-outlined text-[14px] text-on-surface-variant">aspect_ratio</span>
+          120 × 90 cm
+        </span>
+<span class="px-2.5 py-1 rounded-lg bg-surface-container-high text-on-surface font-label-sm text-label-sm flex items-center gap-1">
+<span class="material-symbols-outlined text-[14px] text-on-surface-variant">palette</span>
+          Cat Minyak
+        </span>
+<span class="px-2.5 py-1 rounded-lg bg-surface-container-high text-on-surface font-label-sm text-label-sm flex items-center gap-1">
+<span class="material-symbols-outlined text-[14px] text-on-surface-variant">calendar_today</span>
+          2024
+        </span>
+<span class="px-2.5 py-1 rounded-lg bg-surface-container-high text-on-surface font-label-sm text-label-sm flex items-center gap-1">
+<span class="material-symbols-outlined text-[14px] text-on-surface-variant">texture</span>
+          Kanvas Linen Belgia
+        </span>
+</div>
+</header>
+<!-- 2. Digital Authenticity Card (Kartu Sertifikasi Keaslian) -->
+<section class="rounded-xl bg-secondary-fixed/20 p-space-md flex flex-col gap-space-xs relative overflow-hidden shadow-[0_4px_20px_rgba(117,91,0,0.04)]">
+<div class="flex items-start justify-between">
+<div class="flex items-center gap-2">
+<div class="w-8 h-8 rounded-full bg-secondary-container flex items-center justify-center text-on-secondary-container shadow-xs">
+<span class="material-symbols-outlined text-[18px]">verified_user</span>
+</div>
+<div class="flex flex-col">
+<span class="font-overline text-overline uppercase tracking-wider text-secondary">Terautentikasi Galeria</span>
+<h2 class="font-headline-sm text-headline-sm text-on-surface">Sertifikat Keaslian Digital</h2>
+</div>
+</div>
+<span class="px-2 py-0.5 rounded-full bg-secondary/15 text-secondary font-overline text-overline uppercase tracking-widest font-bold">
+          Asli
+        </span>
+</div>
+<div class="bg-surface-container-lowest/90 rounded-lg p-2.5 flex items-center justify-between gap-2 mt-1">
+<div class="flex flex-col min-w-0">
+<span class="font-overline text-overline uppercase text-on-surface-variant">ID Kriptografis Unik</span>
+<span class="font-mono text-label-sm text-on-surface tracking-wider font-semibold truncate">GAL-2026-8F3A-21C7</span>
+</div>
+<button class="w-7 h-7 rounded-md bg-surface-container text-on-surface-variant hover:text-on-surface flex items-center justify-center transition-colors" onclick="navigator.clipboard &amp;&amp; navigator.clipboard.writeText('GAL-2026-8F3A-21C7')" title="Salin ID" type="button">
+<span class="material-symbols-outlined text-[16px]">content_copy</span>
+</button>
+</div>
+<a class="flex items-center justify-between pt-1 text-on-secondary-container group" href="#modal-sertifikat">
+<span class="font-label-md text-label-md underline underline-offset-4 decoration-secondary">Periksa Ledger Keaslian &amp; Hak Cipta</span>
+<span class="material-symbols-outlined text-[18px] group-hover:translate-x-0.5 transition-transform">arrow_forward</span>
+</a>
+</section>
+<!-- 3. Artist & Gallery Profile Row -->
+<section class="flex items-center justify-between p-space-md rounded-xl bg-surface-container-low shadow-[0_2px_12px_rgba(0,0,0,0.02)]">
+<div class="flex items-center gap-3 min-w-0">
+<div class="relative w-12 h-12 rounded-full overflow-hidden flex-shrink-0 bg-surface-container-highest"><div class="w-full h-full bg-primary flex items-center justify-center text-on-primary font-headline-sm text-[16px] font-semibold tracking-wider">SR</div><div class="absolute bottom-0 right-0 w-3.5 h-3.5 bg-secondary-container rounded-full flex items-center justify-center"><span class="material-symbols-outlined text-[10px] text-on-secondary-container">check</span></div></div>
+<div class="flex flex-col min-w-0">
+<div class="flex items-center gap-1 truncate">
+<span class="font-headline-sm text-headline-sm text-on-surface truncate">Sanggar Rupa Nusantara</span>
+</div>
+<span class="font-body-sm text-body-sm text-on-surface-variant truncate">
+            12.4 rb Pengikut · Jakarta Selatan
+          </span>
+</div>
+</div>
+<button class="flex-shrink-0 px-3 py-1.5 rounded-lg bg-surface-container-highest text-on-surface font-label-sm text-label-sm hover:bg-surface-variant transition-colors" type="button">
+        Kunjungi Galeri
+      </button>
+</section>
+<!-- 4. Story of the Artwork ("Cerita Karya") -->
+<section class="flex flex-col gap-space-xs">
+<div class="flex items-center justify-between">
+<h2 class="font-headline-md text-headline-md text-on-surface">Cerita Karya</h2>
+<span class="font-overline text-overline uppercase tracking-widest text-on-surface-variant">Kuratorial</span>
+</div>
+<div class="relative">
+<p class="font-body-md text-body-md text-on-surface leading-relaxed text-justify line-clamp-4 transition-all" id="storyContent">
+          Mahakarya ini merefleksikan keanggunan abadi bangsawan Jawa melalui tata busana ningrat berpadu sentuhan kanon Renaisans Eropa. Komposisi menggunakan sapuan kuas chiaroscuro pekat yang menonjolkan tekstur beludru merah kirmizi serta pantulan tiara bersepuh emas murni. Seniman mengeksplorasi ketegangan filosofis antara kuasa monarki tradisional dan kerapuhan batin manusia modern. Diproduksi selama sembilan bulan di atas linen Belgia dengan pigmen alami lapis lazuli dan terakota tanah Jawa.
+        </p>
+<button class="mt-2 flex items-center gap-1 font-label-md text-label-md text-secondary hover:text-on-secondary-container transition-colors" id="toggleStoryBtn" type="button">
+<span id="toggleStoryText" class="">Selengkapnya</span>
+<span class="material-symbols-outlined text-[16px] transition-transform" id="toggleStoryIcon">keyboard_arrow_down</span>
+</button>
+</div>
+</section>
+<!-- 5. Provenance & Technical Ledger (Bento Accent) -->
+<section class="grid grid-cols-2 gap-space-xs">
+<div class="p-space-sm rounded-xl bg-surface-container-low flex flex-col gap-1">
+<span class="font-overline text-overline uppercase text-on-surface-variant">Kondisi Fisik</span>
+<span class="font-label-md text-label-md text-on-surface">Sempurna (A+)</span>
+<span class="font-body-sm text-body-sm text-on-surface-variant">Restorasi nihil, kanvas tegang optimal</span>
+</div>
+<div class="p-space-sm rounded-xl bg-surface-container-low flex flex-col gap-1">
+<span class="font-overline text-overline uppercase text-on-surface-variant">Kepemilikan Sebelumnya</span>
+<span class="font-label-md text-label-md text-on-surface">Koleksi Privat</span>
+<span class="font-body-sm text-body-sm text-on-surface-variant">Diakuisisi langsung dari studio</span>
+</div>
+</section>
+<!-- 6. Shipping & Handling Details ("Detail Pengiriman") -->
+<section class="flex flex-col gap-space-sm">
+<div class="flex items-center justify-between">
+<h2 class="font-headline-md text-headline-md text-on-surface">Detail Pengiriman</h2>
+<span class="font-overline text-overline uppercase text-on-surface-variant tracking-widest">Penanganan Khusus</span>
+</div>
+<div class="flex flex-col gap-space-xs">
+<!-- Item 1: Museum Packing -->
+<div class="flex items-start gap-3 p-space-sm rounded-xl bg-surface-container">
+<div class="w-10 h-10 rounded-lg bg-surface-container-highest flex items-center justify-center text-on-surface flex-shrink-0">
+<span class="material-symbols-outlined text-[20px]">inventory_2</span>
+</div>
+<div class="flex flex-col">
+<h3 class="font-label-md text-label-md text-on-surface font-semibold">Packing Kayu Bersertifikasi Museum</h3>
+<p class="font-body-sm text-body-sm text-on-surface-variant mt-0.5">
+              Peti kayu lapis termal khusus dengan bantalan polietilena tahan guncangan dan kedap kelembaban udara tropis.
+            </p>
+</div>
+</div>
+<!-- Item 2: All Risk Insurance -->
+<div class="flex items-start gap-3 p-space-sm rounded-xl bg-surface-container">
+<div class="w-10 h-10 rounded-lg bg-secondary-container flex items-center justify-center text-on-secondary-container flex-shrink-0">
+<span class="material-symbols-outlined text-[20px]">shield</span>
+</div>
+<div class="flex flex-col">
+<h3 class="font-label-md text-label-md text-on-surface font-semibold">Asuransi Pengiriman Penuh (All-Risk)</h3>
+<p class="font-body-sm text-body-sm text-on-surface-variant mt-0.5">
+              Proteksi 100% nilai transaksi selama transit dengan armada kurir berspesialisasi instalasi karya seni murni.
+            </p>
+</div>
+</div>
+</div>
+<div class="flex items-center gap-2 px-space-sm py-2 rounded-lg bg-surface-container-low text-on-surface-variant">
+<span class="material-symbols-outlined text-[16px] text-secondary">location_on</span>
+<span class="font-body-sm text-body-sm truncate">
+          Dikirim dari Galeri Hadiprana, Menteng, Jakarta Pusat
+        </span>
+</div>
+</section>
+<!-- 7. Related Works ("Karya Serupa") -->
+<section class="flex flex-col gap-space-sm">
+<div class="flex items-center justify-between">
+<div class="flex flex-col">
+<span class="font-overline text-overline uppercase text-on-surface-variant tracking-wider">Pilihan Kurator</span>
+<h2 class="font-headline-md text-headline-md text-on-surface">Karya Serupa</h2>
+</div>
+<button class="font-label-md text-label-md text-secondary hover:underline" type="button">
+          Lihat Semua
+        </button>
+</div>
+<!-- Horizontal Carousel Stream -->
+<div class="flex overflow-x-auto gap-space-md -mx-gutter-screen px-gutter-screen pb-2 snap-x snap-mandatory">
+<!-- Card 1: Elegia Emas -->
+<div class="snap-start flex-shrink-0 w-64 rounded-xl bg-surface-container-lowest shadow-[0_6px_20px_rgba(0,0,0,0.04)] overflow-hidden flex flex-col">
+<div class="relative w-full h-44 bg-surface-container-highest overflow-hidden">
+<img alt="Elegia Emas - Lukisan Abstrak Ekspresionis" class="w-full h-full object-cover hover:scale-105 transition-transform duration-500" src="https://lh3.googleusercontent.com/aida/AEtjO1W4qUNJseh4ABwj5nw6eflTZ_wWEiXbciQ0w9byQ7alLfFDWoo6zYUVPUpPmR2qlyUp71OIsg2F5ONAPHyvwHXsNGkf_ALRzh-BFfv357A9gBKunOYiRdoQwiX4S7qy9JsH3Ec60RIbAVvosKoFGUuNbY_GDSOizpN8-dtVrta97eixjka5IBLzHIzZuWomMw4WbW4vSix1RW9JubH7qNNYkz4KvSQ3sYQgYfZwrniiTL25XhxqUwr-">
+<span class="absolute top-2.5 left-2.5 px-2 py-0.5 rounded-full bg-surface-container-lowest/90 backdrop-blur-xs font-overline text-overline uppercase text-on-surface">
+              Abstrak
+            </span>
+</div>
+<div class="p-space-sm flex flex-col gap-1">
+<span class="font-overline text-overline uppercase tracking-wider text-on-surface-variant truncate">Bambang S.</span>
+<h3 class="font-headline-sm text-headline-sm text-on-surface truncate">Elegia Emas</h3>
+<div class="flex items-baseline gap-1 mt-1 pt-1 border-t-0 bg-surface-container-low px-2 py-1 rounded">
+<span class="font-body-sm text-body-sm text-secondary font-medium">Rp</span>
+<span class="font-price-card text-price-card text-on-surface font-semibold">68.000.000</span>
+</div>
+</div>
+</div>
+<!-- Card 2: Pagi di Danau Tenang -->
+<div class="snap-start flex-shrink-0 w-64 rounded-xl bg-surface-container-lowest shadow-[0_6px_20px_rgba(0,0,0,0.04)] overflow-hidden flex flex-col">
+<div class="relative w-full h-44 bg-surface-container-highest overflow-hidden">
+<img alt="Pagi di Danau Tenang - Lukisan Impresionis" class="w-full h-full object-cover hover:scale-105 transition-transform duration-500" src="https://lh3.googleusercontent.com/aida/AEtjO1XSDJJ1Re9kkD86SMCneVlom5MiUqbTnpTVTXJ-_zZ_FQliLoWk6KHYrFD4wDfrjb1cva0XoZqaZAOtGt8XdF5p9uFDPPIDlHX14bDnhHaVrlHncrmn96HEygw_HelixNo0PS8BPbSuX5on47kCYVH4SU1Wu-1cLIHNaXsv04dn6bCCHsmD6z6rs_enW84q_IS5A-mlr1id0UMSWZvwJfTyvMvdEFMD6KKIwEuxjtDemOrap7fulMHZy54">
+<span class="absolute top-2.5 left-2.5 px-2 py-0.5 rounded-full bg-surface-container-lowest/90 backdrop-blur-xs font-overline text-overline uppercase text-on-surface">
+              Impresionis
+            </span>
+</div>
+<div class="p-space-sm flex flex-col gap-1">
+<span class="font-overline text-overline uppercase tracking-wider text-on-surface-variant truncate">Hendra K.</span>
+<h3 class="font-headline-sm text-headline-sm text-on-surface truncate">Pagi di Danau Tenang</h3>
+<div class="flex items-baseline gap-1 mt-1 pt-1 border-t-0 bg-surface-container-low px-2 py-1 rounded">
+<span class="font-body-sm text-body-sm text-secondary font-medium">Rp</span>
+<span class="font-price-card text-price-card text-on-surface font-semibold">32.500.000</span>
+</div>
+</div>
+</div>
+<!-- Card 3: Dialog Cahaya Kuno -->
+<div class="snap-start flex-shrink-0 w-64 rounded-xl bg-surface-container-lowest shadow-[0_6px_20px_rgba(0,0,0,0.04)] overflow-hidden flex flex-col">
+<div class="relative w-full h-44 bg-surface-container-highest overflow-hidden">
+<img alt="Dialog Cahaya Kuno - Lukisan Realisme Klasik" class="w-full h-full object-cover opacity-90 hover:scale-105 transition-transform duration-500" src="https://lh3.googleusercontent.com/aida/AEtjO1ULpYHryv8qiDyOB1Df1G4xjzJfRbNYH5-OobHJyU4WaR47UzZfff5uy7aUXpRvGfhzZBGZLTiPHsZOITozwbvCyei3HypP9LcNOxb5CHjzakBWhVcBKeNINRmrHw1YZhmPm1dS9y8y7LOQdL_9lM75Y2Vya6Cds5kryYUROotyuLSsxIZJye_fQpxV1I_Cu-sojZopduPNYZq9zAKhhaBVbZAER_LoHYO6bNqqWE6rPuI_ezMvO3Sr50M">
+<span class="absolute top-2.5 left-2.5 px-2 py-0.5 rounded-full bg-surface-container-lowest/90 backdrop-blur-xs font-overline text-overline uppercase text-on-surface">
+              Realisme
+            </span>
+</div>
+<div class="p-space-sm flex flex-col gap-1">
+<span class="font-overline text-overline uppercase tracking-wider text-on-surface-variant truncate">Dewi Gayatri</span>
+<h3 class="font-headline-sm text-headline-sm text-on-surface truncate">Dialog Cahaya Kuno</h3>
+<div class="flex items-baseline gap-1 mt-1 pt-1 border-t-0 bg-surface-container-low px-2 py-1 rounded">
+<span class="font-body-sm text-body-sm text-secondary font-medium">Rp</span>
+<span class="font-price-card text-price-card text-on-surface font-semibold">95.000.000</span>
+</div>
+</div>
+</div>
+</div>
+</section>
+<!-- Curatorial Guarantee Badge Banner -->
+<div class="p-space-md rounded-xl bg-surface-container-highest/60 flex items-center gap-3">
+<span class="material-symbols-outlined text-[24px] text-on-surface-variant">policy</span>
+<div class="flex flex-col">
+<span class="font-label-md text-label-md text-on-surface">Jaminan Kurasi GALERIA Haute Enchère</span>
+<span class="font-body-sm text-body-sm text-on-surface-variant">Hak pengembalian tanpa syarat 7 hari bila terjadi inkonsistensi data fisik.</span>
+</div>
+</div>
+</div>
+<!-- Sticky Bottom Actions Bar -->
+<div class="sticky bottom-0 inset-x-0 z-40 bg-surface-container-lowest/95 backdrop-blur-xl px-gutter-screen py-3 shadow-[0_-8px_24px_rgba(0,0,0,0.06)]">
+<div class="flex items-center justify-between gap-space-xs max-w-lg mx-auto">
+<!-- Augmented Reality Button -->
+<button class="h-12 px-3.5 rounded-xl bg-surface-container hover:bg-surface-variant text-on-surface flex items-center justify-center gap-1.5 transition-all active:scale-95 flex-shrink-0" id="arViewBtn" title="Coba di Ruangan (AR)" type="button">
+<span class="material-symbols-outlined text-[20px] text-secondary">view_in_ar</span>
+<span class="font-label-md text-label-md font-medium">AR</span>
+</button>
+<!-- Consultation Chat Button -->
+<button class="w-12 h-12 rounded-xl bg-surface-container hover:bg-surface-variant text-on-surface flex items-center justify-center transition-all active:scale-95 flex-shrink-0" id="consultBtn" title="Konsultasi Kurator" type="button">
+<span class="material-symbols-outlined text-[20px]">chat_bubble_outline</span>
+</button>
+<!-- Shopping Bag/Cart Button with Dot -->
+<button class="relative w-12 h-12 rounded-xl bg-surface-container hover:bg-surface-variant text-on-surface flex items-center justify-center transition-all active:scale-95 flex-shrink-0" id="cartBtn" title="Keranjang Koleksi" type="button">
+<span class="material-symbols-outlined text-[20px]">shopping_bag</span>
+<span class="absolute top-2.5 right-2.5 w-2 h-2 rounded-full bg-secondary"></span>
+</button>
+<!-- Primary Dark Commit CTA Button -->
+<button class="flex-1 h-12 px-space-md rounded-xl bg-primary hover:bg-primary-container text-on-primary flex items-center justify-center gap-2 shadow-[0_4px_16px_rgba(1,1,1,0.2)] active:scale-[0.98] transition-all" id="buyNowBtn" type="button">
+<span class="font-label-md text-label-md font-semibold tracking-wide">Beli Sekarang · Rp 145 Jt</span>
+<span class="material-symbols-outlined text-[18px] text-secondary-container">arrow_forward</span>
+</button>
+</div>
+</div>
+</div>
+<script>
+  // Simple Carousel Data & Interactive State
+  const slides = [
+    "https://lh3.googleusercontent.com/aida/AEtjO1ULpYHryv8qiDyOB1Df1G4xjzJfRbNYH5-OobHJyU4WaR47UzZfff5uy7aUXpRvGfhzZBGZLTiPHsZOITozwbvCyei3HypP9LcNOxb5CHjzakBWhVcBKeNINRmrHw1YZhmPm1dS9y8y7LOQdL_9lM75Y2Vya6Cds5kryYUROotyuLSsxIZJye_fQpxV1I_Cu-sojZopduPNYZq9zAKhhaBVbZAER_LoHYO6bNqqWE6rPuI_ezMvO3Sr50M",
+    "https://lh3.googleusercontent.com/aida/AEtjO1UHxP-l8Un081plkDk0BNZ8boC57QV3Gu-ogt_3z7_KXzurjOSNgJSMQ0pd9CogL9ZtboNcuBxbBGD3CyEKUN2Zbztul24G3NVdgpEaAqjHk0_0leU-BoNpFguyQFmM3iubuQ9algPZHtpotzb82Q7sKBmVITvHZIgQfwKMTlMrGWN5KEjocHPmXrpeQr_AW5O_4FmXbcdk9GYFb32IHrIRvAaKQ6rKmmT8hQGDSC_tnJ8TtpMNSH-Pgjg",
+    "https://lh3.googleusercontent.com/aida/AEtjO1XSDJJ1Re9kkD86SMCneVlom5MiUqbTnpTVTXJ-_zZ_FQliLoWk6KHYrFD4wDfrjb1cva0XoZqaZAOtGt8XdF5p9uFDPPIDlHX14bDnhHaVrlHncrmn96HEygw_HelixNo0PS8BPbSuX5on47kCYVH4SU1Wu-1cLIHNaXsv04dn6bCCHsmD6z6rs_enW84q_IS5A-mlr1id0UMSWZvwJfTyvMvdEFMD6KKIwEuxjtDemOrap7fulMHZy54"
+  ];
+  let currentSlide = 0;
+
+  function switchSlide(index) {
+    currentSlide = index;
+    const imgEl = document.getElementById('mainCarouselImg');
+    const dots = document.querySelectorAll('.carousel-dot');
+    
+    if (imgEl) {
+      imgEl.style.opacity = '0.3';
+      setTimeout(() => {
+        imgEl.src = slides[currentSlide];
+        imgEl.style.opacity = '1';
+      }, 150);
+    }
+
+    dots.forEach((dot, idx) => {
+      if (idx === currentSlide) {
+        dot.classList.remove('w-1.5', 'bg-outline-variant');
+        dot.classList.add('w-5', 'bg-secondary');
+      } else {
+        dot.classList.remove('w-5', 'bg-secondary');
+        dot.classList.add('w-1.5', 'bg-outline-variant');
+      }
+    });
+  }
+
+  // Zoom micro-interaction
+  const zoomBtn = document.getElementById('zoomToggleBtn');
+  const mainImg = document.getElementById('mainCarouselImg');
+  let isZoomed = false;
+
+  if (zoomBtn && mainImg) {
+    zoomBtn.addEventListener('click', () => {
+      isZoomed = !isZoomed;
+      mainImg.style.transform = isZoomed ? 'scale(1.35)' : 'scale(1)';
+      zoomBtn.classList.toggle('bg-secondary-container', isZoomed);
+      zoomBtn.classList.toggle('text-on-secondary-container', isZoomed);
+    });
+  }
+
+  // Wishlist toggle interaction
+  const wishlistBtn = document.getElementById('wishlistBtn');
+  const wishlistIcon = document.getElementById('wishlistIcon');
+  let isWishlisted = false;
+
+  if (wishlistBtn && wishlistIcon) {
+    wishlistBtn.addEventListener('click', () => {
+      isWishlisted = !isWishlisted;
+      if (isWishlisted) {
+        wishlistIcon.style.fontVariationSettings = "'FILL' 1";
+        wishlistIcon.classList.add('text-error');
+      } else {
+        wishlistIcon.style.fontVariationSettings = "'FILL' 0";
+        wishlistIcon.classList.remove('text-error');
+      }
+    });
+  }
+
+  // Read more / expand curated story text
+  const toggleStoryBtn = document.getElementById('toggleStoryBtn');
+  const storyContent = document.getElementById('storyContent');
+  const toggleStoryText = document.getElementById('toggleStoryText');
+  const toggleStoryIcon = document.getElementById('toggleStoryIcon');
+  let isStoryExpanded = false;
+
+  if (toggleStoryBtn && storyContent) {
+    toggleStoryBtn.addEventListener('click', () => {
+      isStoryExpanded = !isStoryExpanded;
+      if (isStoryExpanded) {
+        storyContent.classList.remove('line-clamp-4');
+        toggleStoryText.textContent = 'Tutup Detail';
+        toggleStoryIcon.style.transform = 'rotate(180deg)';
+      } else {
+        storyContent.classList.add('line-clamp-4');
+        toggleStoryText.textContent = 'Selengkapnya';
+        toggleStoryIcon.style.transform = 'rotate(0deg)';
+      }
+    });
+  }
+</script></main>
+
+
+
+</body></html>
