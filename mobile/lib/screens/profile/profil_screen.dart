@@ -1,14 +1,22 @@
+import '../../models/dashboard_seniman.dart';
+import '../../models/langganan.dart';
+import '../../models/sentimen_seniman.dart';
 import '../../services/auth_service.dart';
+import '../../services/dashboard_service.dart';
+import '../../services/langganan_service.dart';
+import '../../services/sentimen_service.dart';
 import 'package:flutter/material.dart';
 
 import '../../theme/app_theme.dart';
 import '../../utils/coming_soon.dart';
+import '../../utils/format.dart';
 
 /// Konversi dari
 /// docs/design/role_seniman_1/.../galeria_profil_akun_seniman/code.html
 ///
-/// Data (nama toko, statistik, saldo) masih placeholder -- sama dengan
-/// DashboardScreen, sambungkan ke backend nanti (lihat TODO di sana).
+/// Statistik (karya aktif, terjual, rating), pendapatan, dan badge PRO diambil dari backend
+/// (`/api/dashboard/saya/...`, `/api/langganan/saya`). Bila gagal dimuat, angkanya tampil '-' (bukan angka contoh).
+/// Fitur pengikut belum ada di backend, jadi kartu 'Pengikut' diganti 'Terjual'.
 ///
 /// [onLihatProfilToko]/[onDataDiri] -- dua menu yang SUDAH punya layar
 /// tujuan nyata di app (`/toko`, `/verifikasi-identitas`), jadi di-thread
@@ -16,13 +24,16 @@ import '../../utils/coming_soon.dart';
 /// dgn layar lain). Menu lain yang belum punya layar tujuan ditangani
 /// langsung di file ini via [showComingSoon] -- lihat audit navigasi role
 /// Seniman, 2026-10.
-class ProfilScreen extends StatelessWidget {
+class ProfilScreen extends StatefulWidget {
   const ProfilScreen({
     super.key,
     this.onNavTap,
     this.onLogout,
     this.onLihatProfilToko,
     this.onDataDiri,
+    this.dashboard,
+    this.sentimen,
+    this.langganan,
   });
 
   final ValueChanged<int>? onNavTap;
@@ -30,9 +41,63 @@ class ProfilScreen extends StatelessWidget {
   final VoidCallback? onLihatProfilToko;
   final VoidCallback? onDataDiri;
 
+  /// Bisa diganti di tes; default memakai backend sungguhan.
+  final DashboardService? dashboard;
+  final SentimenService? sentimen;
+  final LanggananService? langganan;
+
+  @override
+  State<ProfilScreen> createState() => _ProfilScreenState();
+}
+
+class _ProfilScreenState extends State<ProfilScreen> {
+  RingkasanSeniman? _ringkasan;
+  SentimenSeniman? _sentimen;
+  LanggananSaya? _langganan;
+
+  ValueChanged<int>? get onNavTap => widget.onNavTap;
+  VoidCallback? get onLogout => widget.onLogout;
+  VoidCallback? get onLihatProfilToko => widget.onLihatProfilToko;
+  VoidCallback? get onDataDiri => widget.onDataDiri;
+
+  @override
+  void initState() {
+    super.initState();
+    _muat();
+  }
+
+  /// Tiga sumber dimuat terpisah: satu gagal tidak menghapus dua lainnya.
+  Future<void> _muat() async {
+    Future<T?> aman<T>(Future<T> Function() f) async {
+      try {
+        return await f();
+      } catch (_) {
+        return null;
+      }
+    }
+
+    final hasil = await Future.wait<Object?>([
+      aman(() => (widget.dashboard ?? DashboardService()).fetchRingkasan(periode: 365)),
+      aman(() => (widget.sentimen ?? SentimenService()).fetchSentimen()),
+      aman(() => (widget.langganan ?? LanggananService()).saya()),
+    ]);
+    if (!mounted) return;
+    setState(() {
+      _ringkasan = hasil[0] as RingkasanSeniman?;
+      _sentimen = hasil[1] as SentimenSeniman?;
+      _langganan = hasil[2] as LanggananSaya?;
+    });
+  }
+
+  String get _ratingTeks {
+    final r = _sentimen?.ratingRata2;
+    return r == null ? '-' : r.toStringAsFixed(1).replaceAll('.', ',');
+  }
+
   @override
   Widget build(BuildContext context) {
     final user = AuthService.instance.user;
+    final pendapatan = _ringkasan?.pendapatanBersihIdr ?? 0;
     return Scaffold(
       backgroundColor: AppColors.surface,
       body: ListView(
@@ -156,11 +221,11 @@ class ProfilScreen extends StatelessWidget {
           _card(
             child: Row(
               children: [
-                Expanded(child: _statBlock('Karya Aktif', '12')),
+                Expanded(child: _statBlock('Karya Aktif', _ringkasan == null ? '-' : '${_ringkasan!.karyaTersedia}')),
                 Container(width: 1, height: 36, color: AppColors.border),
-                Expanded(child: _statBlock('Pengikut', '1.240')),
+                Expanded(child: _statBlock('Terjual', _ringkasan == null ? '-' : '${_ringkasan!.karyaTerjualTotal}')),
                 Container(width: 1, height: 36, color: AppColors.border),
-                Expanded(child: _statBlock('Rating', '4.9', star: true)),
+                Expanded(child: _statBlock('Rating', _ratingTeks, star: _sentimen?.ratingRata2 != null)),
               ],
             ),
           ),
@@ -168,9 +233,10 @@ class ProfilScreen extends StatelessWidget {
           _group(context, 'TOKO', [
             _MenuItemData(Icons.storefront_outlined, 'Kelola Galeri', onTap: () => onNavTap?.call(1)),
             _MenuItemData(Icons.account_balance_wallet_outlined, 'Data Rekening & Dompet',
-                trailingText: 'Rp 184.750.000', trailingColor: AppColors.accent),
+                trailingText: pendapatan > 0 ? formatRupiah(pendapatan) : null, trailingColor: AppColors.accent),
             _MenuItemData(Icons.inventory_2_outlined, 'Pengaturan Pengiriman & Packing'),
-            _MenuItemData(Icons.workspace_premium_outlined, 'Langganan', badge: 'PRO'),
+            _MenuItemData(Icons.workspace_premium_outlined, 'Langganan',
+                badge: (_langganan?.pro ?? false) ? 'PRO' : null),
           ]),
           const SizedBox(height: AppSpacing.sm),
           _group(context, 'AKUN', [
