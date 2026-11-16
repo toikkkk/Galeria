@@ -1,0 +1,10 @@
+node_modules/
+out/
+# video referensi (milik orang lain / terlalu besar) dan hasil render jangan di-commit
+*.mp4
+*.mov
+
+# dihasilkan ulang lewat tools/ (suara) dan dapat diunduh ulang
+public/audio/
+public/audio_edge/
+public/audio_ref/

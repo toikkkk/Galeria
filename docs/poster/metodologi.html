@@ -1,0 +1,103 @@
+<!doctype html>
+<html lang="id">
+<head>
+<meta charset="utf-8">
+<title>Metodologi GALERIA</title>
+<style>
+  /* Kanvas 1800x1200 (3:2), latar transparan supaya menyatu dengan kotak krem di Canva. */
+  :root { --kopi:#3e251e; --emas:#dba12c; --emas-muda:#f7e7c1; --pasir:#dbd4cc; --teks:#3e251e; }
+  * { box-sizing: border-box; margin: 0; }
+  html, body { width: 1800px; height: 1200px; background: transparent; }
+  body { font-family: "Segoe UI", system-ui, sans-serif; color: var(--teks); padding: 36px 44px; position: relative; }
+  .judul { font-family: Georgia, "Times New Roman", serif; font-size: 52px; font-weight: 700; letter-spacing: .02em; text-align: center; }
+  .sub { text-align: center; font-size: 25px; color: #7a5410; margin-top: 4px; font-weight: 600; }
+  .alur { display: grid; grid-template-columns: repeat(3, 1fr); gap: 60px 80px; margin-top: 34px; position: relative; }
+  .langkah { background: #fff; border: 4px solid var(--kopi); border-radius: 30px; padding: 26px 28px 24px; position: relative; min-height: 290px; }
+  .langkah.tebal { background: var(--kopi); color: #fff; }
+  .no { position: absolute; top: -26px; left: 26px; width: 56px; height: 56px; border-radius: 50%; background: var(--emas); color: var(--kopi);
+        font: 800 30px/56px Georgia, serif; text-align: center; border: 4px solid #fff; }
+  .ikon { width: 84px; height: 84px; margin-bottom: 8px; }
+  h3 { font-size: 35px; font-weight: 800; line-height: 1.1; }
+  .langkah p { font-size: 25px; line-height: 1.3; margin-top: 8px; color: #5f4b44; }
+  .langkah.tebal p { color: #eadfd3; }
+  .tag { display: inline-block; background: var(--emas-muda); color: #7a5410; font-weight: 800; font-size: 22px; padding: 2px 12px; border-radius: 999px; margin: 6px 6px 0 0; }
+  .langkah.tebal .tag { background: var(--emas); color: var(--kopi); }
+  .panah { position: absolute; width: 80px; height: 40px; }
+  .fitur { display: grid; grid-template-columns: repeat(4, 1fr); gap: 18px; margin-top: 52px; }
+  .chip { background: var(--emas-muda); border: 3px solid var(--emas); border-radius: 22px; padding: 14px 18px; }
+  .chip b { display: block; font-size: 27px; font-weight: 800; }
+  .chip span { font-size: 22px; color: #5f4b44; line-height: 1.25; display: block; margin-top: 2px; }
+  .cat { position: absolute; left: 44px; right: 44px; bottom: 26px; text-align: center; font-size: 22px; font-style: italic; color: #6f5d54; }
+</style>
+</head>
+<body>
+  <div class="judul">METODOLOGI</div>
+  <div class="sub">Dari data lukisan hingga aplikasi dan dashboard</div>
+
+  <div class="alur">
+    <!-- panah antar langkah -->
+    <svg class="panah" style="left:calc(33.33% - 52px); top:130px" viewBox="0 0 80 40"><path d="M4 20h56M48 6l18 14-18 14" fill="none" stroke="#dba12c" stroke-width="7" stroke-linecap="round" stroke-linejoin="round"/></svg>
+    <svg class="panah" style="left:calc(66.66% - 22px); top:130px" viewBox="0 0 80 40"><path d="M4 20h56M48 6l18 14-18 14" fill="none" stroke="#dba12c" stroke-width="7" stroke-linecap="round" stroke-linejoin="round"/></svg>
+
+    <svg class="panah" style="left:calc(33.33% - 52px); top:484px" viewBox="0 0 80 40"><path d="M4 20h56M48 6l18 14-18 14" fill="none" stroke="#dba12c" stroke-width="7" stroke-linecap="round" stroke-linejoin="round"/></svg>
+    <svg class="panah" style="left:calc(66.66% - 22px); top:484px" viewBox="0 0 80 40"><path d="M4 20h56M48 6l18 14-18 14" fill="none" stroke="#dba12c" stroke-width="7" stroke-linecap="round" stroke-linejoin="round"/></svg>
+
+    <div class="langkah">
+      <div class="no">1</div>
+      <svg class="ikon" viewBox="0 0 84 84" fill="none" stroke="#3e251e" stroke-width="5" stroke-linejoin="round"><ellipse cx="42" cy="18" rx="28" ry="10"/><path d="M14 18v48c0 6 12.5 10 28 10s28-4 28-10V18"/><path d="M14 42c0 6 12.5 10 28 10s28-4 28-10"/></svg>
+      <h3>Data</h3>
+      <p>Lukisan dari dataset WikiArt untuk melatih model visual.</p>
+      <span class="tag">±34 rb gambar</span><span class="tag">22 aliran</span>
+    </div>
+
+    <div class="langkah">
+      <div class="no">2</div>
+      <svg class="ikon" viewBox="0 0 84 84" fill="none" stroke="#3e251e" stroke-width="5" stroke-linecap="round"><circle cx="16" cy="22" r="8"/><circle cx="16" cy="62" r="8"/><circle cx="42" cy="42" r="9"/><circle cx="68" cy="22" r="8"/><circle cx="68" cy="62" r="8"/><path d="M23 25l12 12M23 59l12-12M50 38l11-11M50 46l11 11"/></svg>
+      <h3>Model AI</h3>
+      <p>ConvNeXt dilatih ulang (transfer learning) untuk mengenali aliran dan kemiripan.</p>
+      <span class="tag">ConvNeXt</span><span class="tag">Siamese</span>
+    </div>
+
+    <div class="langkah">
+      <div class="no">3</div>
+      <svg class="ikon" viewBox="0 0 84 84" fill="none" stroke="#3e251e" stroke-width="5" stroke-linejoin="round"><rect x="10" y="10" width="64" height="20" rx="5"/><rect x="10" y="34" width="64" height="20" rx="5"/><rect x="10" y="58" width="64" height="16" rx="5"/><circle cx="24" cy="20" r="2.5" fill="#3e251e"/><circle cx="24" cy="44" r="2.5" fill="#3e251e"/></svg>
+      <h3>Server</h3>
+      <p>FastAPI menjalankan model; vektor lukisan disimpan untuk pencarian cepat.</p>
+      <span class="tag">FastAPI</span><span class="tag">pgvector</span>
+    </div>
+
+    <div class="langkah tebal">
+      <div class="no">4</div>
+      <svg class="ikon" viewBox="0 0 84 84" fill="none" stroke="#dba12c" stroke-width="5.5" stroke-linecap="round" stroke-linejoin="round"><path d="M42 8l30 11v21c0 18-13 30-30 36C25 70 12 58 12 40V19z"/><path d="M28 42l10 10 18-20"/></svg>
+      <h3>Verifikasi</h3>
+      <p>Cek duplikat dan AI-generated, lalu terbit sertifikat digital keaslian bertanda tangan.</p>
+      <span class="tag">Ed25519</span><span class="tag">SHA-256</span>
+    </div>
+
+    <div class="langkah">
+      <div class="no">5</div>
+      <svg class="ikon" viewBox="0 0 84 84" fill="none" stroke="#3e251e" stroke-width="5" stroke-linejoin="round"><rect x="24" y="6" width="36" height="72" rx="8"/><path d="M36 14h12" stroke-linecap="round"/><path d="M32 58l8-10 6 7 6-9 6 12z" fill="#dba12c" stroke="#3e251e" stroke-width="3"/></svg>
+      <h3>Aplikasi</h3>
+      <p>Flutter (Android): pencarian visual, AR, marketplace, lelang, dan event.</p>
+      <span class="tag">Flutter</span><span class="tag">ARCore</span>
+    </div>
+
+    <div class="langkah">
+      <div class="no">6</div>
+      <svg class="ikon" viewBox="0 0 84 84" fill="none" stroke="#3e251e" stroke-width="5" stroke-linecap="round" stroke-linejoin="round"><path d="M10 72V10M10 72h64"/><rect x="20" y="44" width="10" height="22" fill="#dbd4cc"/><rect x="38" y="32" width="10" height="34" fill="#dba12c"/><rect x="56" y="18" width="10" height="48" fill="#3e251e"/></svg>
+      <h3>Dashboard</h3>
+      <p>Analitik pendapatan dengan perkiraan, pengguna Pro, dan segmentasi kolektor.</p>
+      <span class="tag">React</span><span class="tag">Forecast</span>
+    </div>
+  </div>
+
+  <div class="fitur">
+    <div class="chip"><b>Visual Search</b><span>ConvNeXt + kemiripan vektor (cosine)</span></div>
+    <div class="chip"><b>Digital Art Identity</b><span>Siamese ConvNeXt + deteksi AI-generated</span></div>
+    <div class="chip"><b>AR Wall View</b><span>ARCore, ukuran fisik asli karya</span></div>
+    <div class="chip"><b>Chatbot</b><span>GPT melalui n8n (bukan model sendiri)</span></div>
+  </div>
+
+  <div class="cat">Transfer learning dari model pralatih, bukan dibuat dari nol. Dataset berupa subset WikiArt. Data dashboard berupa simulasi.</div>
+</body>
+</html>

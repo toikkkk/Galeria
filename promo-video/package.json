@@ -1,0 +1,26 @@
+{
+  "name": "galeria-promo-video",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Video promo GALERIA (Remotion + three.js)",
+  "scripts": {
+    "dev": "remotion studio src/index.ts",
+    "uji": "remotion still src/index.ts Uji out/uji.png --frame=100",
+    "render": "remotion render src/index.ts Uji out/uji.mp4"
+  },
+  "dependencies": {
+    "@react-three/fiber": "9.8.2",
+    "@remotion/cli": "4.0.543",
+    "@remotion/google-fonts": "4.0.543",
+    "@remotion/three": "4.0.543",
+    "react": "19.3.1",
+    "react-dom": "19.3.1",
+    "remotion": "4.0.543",
+    "three": "0.187.0"
+  },
+  "devDependencies": {
+    "@types/react": "^19.3.0",
+    "@types/three": "^0.187.0",
+    "typescript": "^7.0.2"
+  }
+}
