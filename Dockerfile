@@ -16,9 +16,15 @@ RUN pip install -r requirements.txt
 COPY backend/ /app/
 COPY ml-visual-search/export/v4_11class/model.onnx /app/model/model.onnx
 COPY ml-visual-search/export/v4_11class/label_to_idx__style_name.json /app/model/label_to_idx__style_name.json
+# Digital Art Identity (verifikasi karya): art_to_art + art_to_ai (~228 MB). Tanpa ini POST /api/karya/{id}/verify
+# gagal di server dan karya baru tidak pernah terverifikasi/tampil di katalog.
+COPY ml-digital-art-identity/export/art_to_art.onnx /app/model/art_to_art.onnx
+COPY ml-digital-art-identity/export/art_to_ai.onnx /app/model/art_to_ai.onnx
 
 ENV VS_MODEL_PATH=/app/model/model.onnx \
-    VS_LABEL_MAP_PATH=/app/model/label_to_idx__style_name.json
+    VS_LABEL_MAP_PATH=/app/model/label_to_idx__style_name.json \
+    DAI_ART_TO_ART_MODEL_PATH=/app/model/art_to_art.onnx \
+    DAI_ART_TO_AI_MODEL_PATH=/app/model/art_to_ai.onnx
 
 # Cloud Run/Render/Railway menyuntikkan $PORT
 CMD ["sh", "-c", "uvicorn main:app --host 0.0.0.0 --port ${PORT:-8000}"]

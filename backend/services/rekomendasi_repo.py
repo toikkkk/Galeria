@@ -44,6 +44,9 @@ _URUTAN = {
     "terbaru": "k.created_at DESC, k.id",
     "harga_asc": "k.price_idr ASC, k.id",
     "harga_desc": "k.price_idr DESC, k.id",
+    # acak yang STABIL per ``seed`` (hash id + seed): halaman berikutnya konsisten dalam satu sesi aplikasi,
+    # tetapi seed baru (aplikasi dibuka lagi) menghasilkan susunan berbeda.
+    "acak": "md5(k.id::text || :seed), k.id",
 }
 
 # Kolom karya yang dikirim ke app (bentuk = ``Karya.fromJson`` + field tambahan).
@@ -120,6 +123,7 @@ async def katalog(
     q: str | None,
     urut: str,
     hanya_tersedia: bool,
+    seed: int | None = None,
 ) -> tuple[list[dict], int]:
     S = _schema()
     where = [_FILTER_SENSITIF]
@@ -147,10 +151,11 @@ async def katalog(
         WHERE {kondisi}
     """
     total = (await db.execute(text(f"SELECT count(*) {dasar}"), params)).scalar_one()
+    params_data = {**params, "seed": str(seed or 0)} if urut == "acak" else params
     rows = (
         await db.execute(
             text(f"SELECT {_KOLOM_KARYA} {dasar} ORDER BY {_URUTAN[urut]} LIMIT :limit OFFSET :offset"),
-            params,
+            params_data,
         )
     ).mappings()
     return [_karya_dict(r) for r in rows], total

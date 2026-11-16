@@ -1,8 +1,10 @@
-# Konteks build = root repo; hanya backend + model v4 yang dibutuhkan
+# Konteks build = root repo; hanya backend + model Visual Search v4 + model Digital Art Identity
 *
 !backend
 !ml-visual-search/export/v4_11class/model.onnx
 !ml-visual-search/export/v4_11class/label_to_idx__style_name.json
+!ml-digital-art-identity/export/art_to_art.onnx
+!ml-digital-art-identity/export/art_to_ai.onnx
 
 # rahasia & sampah di dalam backend
 backend/.env

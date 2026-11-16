@@ -86,7 +86,17 @@ KURIR = ["JNE", "J&T Express", "SiCepat", "Tiki"]
 
 
 def _varian(berkas: str, i: int, rnd: random.Random) -> bytes:
-    """Variasi dari 1 gambar dasar (potong, cermin, sedikit warna) supaya 26 karya tidak tampak kembar."""
+    """Gambar untuk karya demo ke-``i``: SATU LUKISAN BERBEDA dari subset WikiArt, dengan aliran yang sama
+    seperti ``berkas`` di ``DASAR``. (Dulu: potongan acak dari 8 gambar dasar -> banyak karya tampak kembar.)
+    Bila dataset WikiArt lokal tidak ada, jatuh ke cara lama (potongan gambar dasar)."""
+    try:
+        from scripts import gambar_wikiart
+
+        return gambar_wikiart.ambil(rnd, dict(DASAR)[berkas])
+    except SystemExit:
+        raise
+    except Exception:  # noqa: BLE001 - cadangan: cara lama
+        pass
     im = Image.open(ASET / berkas).convert("RGB")
     w, h = im.size
     if i >= len(DASAR):  # putaran ke-2+: potong sebagian
@@ -249,11 +259,12 @@ async def hapus() -> None:
         if not ids:
             print("Tidak ada data demo.")
             return
-        sen_id = (await db.execute(select(User.id).where(User.email == SENIMAN_EMAIL))).scalar_one_or_none()
-        keys = []
-        if sen_id:
-            keys = [r[0] for r in (await db.execute(select(Karya.image_key).where(Karya.seniman_id == sen_id))).all() if r[0]]
+        # gambar R2 semua karya milik akun demo (Aria + seniman tambahan dari tambah_koleksi_demo)
+        keys = [r[0] for r in (await db.execute(select(Karya.image_key).where(Karya.seniman_id.in_(ids)))).all() if r[0]]
         p = {"ids": ids}
+        from scripts.tambah_aktivitas_demo import hapus_aktivitas  # event/komunitas/lelang demo (FK RESTRICT ke users/karya)
+
+        await hapus_aktivitas(db, ids, termasuk_transaksi=True)
         for sql in (
             "DELETE FROM ulasan WHERE seniman_id = ANY(:ids) OR pembeli_id = ANY(:ids)",
             "DELETE FROM kepemilikan_karya WHERE pemilik_id = ANY(:ids) OR karya_id IN (SELECT id FROM karya WHERE seniman_id = ANY(:ids))",

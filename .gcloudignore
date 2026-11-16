@@ -1,0 +1,39 @@
+# Berkas yang DIKIRIM ke Cloud Build oleh `gcloud run deploy --source .`.
+# Penting: bila file ini tidak ada, gcloud memakai .gitignore -- dan .gitignore membuang *.onnx serta export/*,
+# sehingga model tidak terkirim dan build gagal saat COPY. Jadi daftar di sini ditulis eksplisit.
+*
+
+!Dockerfile
+!.dockerignore
+
+# backend (kode, artefak sentimen, alembic) -- rahasia & sampah dikeluarkan di bawah
+!backend/
+!backend/**
+
+# model Visual Search v4
+!ml-visual-search/
+ml-visual-search/*
+!ml-visual-search/export/
+ml-visual-search/export/*
+!ml-visual-search/export/v4_11class/
+ml-visual-search/export/v4_11class/*
+!ml-visual-search/export/v4_11class/model.onnx
+!ml-visual-search/export/v4_11class/label_to_idx__style_name.json
+
+# model Digital Art Identity
+!ml-digital-art-identity/
+ml-digital-art-identity/*
+!ml-digital-art-identity/export/
+ml-digital-art-identity/export/*
+!ml-digital-art-identity/export/art_to_art.onnx
+!ml-digital-art-identity/export/art_to_ai.onnx
+
+# JANGAN PERNAH terkirim: rahasia & sampah (harus setelah !backend/** agar menang)
+backend/.env
+backend/.env.*
+!backend/.env.example
+backend/.venv/
+backend/.pytest_cache/
+backend/**/__pycache__/
+backend/uploads/
+backend/scripts/embedding_backup_*.npz

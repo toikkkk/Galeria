@@ -20,8 +20,10 @@ import urllib.error
 import urllib.request
 from pathlib import Path
 
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, Query
 from fastapi.responses import Response
+
+from services import gambar_kecil
 
 router = APIRouter(prefix="/api", tags=["gambar"])
 
@@ -49,20 +51,13 @@ def _folder_lokal() -> Path | None:
     return d if d.is_dir() else None
 
 
-@router.get("/gambar/{key:path}")
-async def gambar(key: str) -> Response:
-    if not _KEY_OK.match(key):
-        raise HTTPException(404, "Gambar tidak ditemukan")
-
+async def _asli(key: str) -> bytes | None:
+    """Bytes gambar asli: dari folder dataset lokal bila ada, kalau tidak dari R2 (dengan cache disk)."""
     lokal_dir = _folder_lokal()
     if lokal_dir is not None:
         lokal = lokal_dir / key.rsplit("/", 1)[-1]   # key tervalidasi _KEY_OK: tanpa "..", hanya nama file
         if lokal.is_file():
-            return Response(
-                lokal.read_bytes(),
-                media_type=_TIPE[key.rsplit(".", 1)[-1].lower()],
-                headers={"Cache-Control": "public, max-age=86400"},
-            )
+            return await asyncio.to_thread(lokal.read_bytes)
 
     base = os.environ.get("R2_PUBLIC_URL_BASE", "").strip().rstrip("/")
     if not base:
@@ -76,10 +71,22 @@ async def gambar(key: str) -> Response:
             raise HTTPException(404 if e.code == 404 else 502, "Gambar tidak bisa diambil dari R2") from e
         except (urllib.error.URLError, TimeoutError, OSError) as e:
             raise HTTPException(502, "R2 tidak terjangkau dari backend") from e
+    return await asyncio.to_thread(file.read_bytes)
 
-    ext = key.rsplit(".", 1)[-1].lower()
-    return Response(
-        file.read_bytes(),
-        media_type=_TIPE[ext],
-        headers={"Cache-Control": "public, max-age=86400"},
-    )
+
+@router.get("/gambar/{key:path}")
+async def gambar(key: str, w: int | None = Query(None, ge=64, le=4000)) -> Response:
+    """Gambar katalog dummy. ``?w=480`` = versi kecil (lebar dibulatkan ke 240/360/480/720/1080) untuk daftar/kartu."""
+    if not _KEY_OK.match(key):
+        raise HTTPException(404, "Gambar tidak ditemukan")
+    lebar = gambar_kecil.lebar_valid(w)
+    if lebar is not None:
+        isi = await gambar_kecil.thumbnail(f"gambar/{key}", lebar, lambda: _asli(key))
+        if isi is None:
+            raise HTTPException(404, "Gambar tidak ditemukan")
+        return Response(isi, media_type="image/jpeg", headers={"Cache-Control": "public, max-age=604800"})
+
+    isi = await _asli(key)
+    if isi is None:
+        raise HTTPException(404, "Gambar tidak ditemukan")
+    return Response(isi, media_type=_TIPE[key.rsplit(".", 1)[-1].lower()], headers={"Cache-Control": "public, max-age=86400"})

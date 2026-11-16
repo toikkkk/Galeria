@@ -46,7 +46,8 @@ async def katalog_dummy(
     harga_min: int | None = None,
     harga_maks: int | None = None,
     q: str | None = None,
-    urut: Literal["terbaru", "harga_asc", "harga_desc"] = "terbaru",
+    urut: Literal["terbaru", "harga_asc", "harga_desc", "acak"] = "terbaru",
+    seed: int | None = None,
     hanya_tersedia: bool = True,
     db: AsyncSession = Depends(get_db),
 ):
@@ -64,6 +65,7 @@ async def katalog_dummy(
         q=q.strip() if q else None,
         urut=urut,
         hanya_tersedia=hanya_tersedia,
+        seed=seed,
     )
     return KatalogDummyPage(items=items, page=page, page_size=page_size, total=total)
 
