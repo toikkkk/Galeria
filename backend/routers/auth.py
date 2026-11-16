@@ -7,15 +7,18 @@ from __future__ import annotations
 
 import uuid
 
-from fastapi import APIRouter, Depends, HTTPException, Request, Response
+from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Request, Response
 from sqlalchemy import select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from database import get_db
 from models.user import User, UserRole
-from schemas.auth import GoogleReq, LoginReq, RefreshReq, RegisterReq, TokenPair, UserOut
+from schemas.auth import (
+    GoogleReq, LoginReq, LupaPasswordReq, RefreshReq, RegisterReq, ResetPasswordReq, TokenPair, UserOut, VerifikasiEmailReq,
+)
 from services import auth_service as svc
+from services import email_service, kode_email_service as kode_svc
 from services.auth_deps import get_current_user
 
 router = APIRouter(prefix="/api/auth", tags=["auth"])
@@ -49,7 +52,7 @@ async def _terbitkan(db: AsyncSession, user: User, request: Request, device: str
 
 
 @router.post("/register", response_model=TokenPair, status_code=201)
-async def register(body: RegisterReq, request: Request, db: AsyncSession = Depends(get_db)):
+async def register(body: RegisterReq, request: Request, tasks: BackgroundTasks, db: AsyncSession = Depends(get_db)):
     _butuh_konfigurasi()
     user = User(
         id=uuid.uuid4(), email=body.email, password_hash=await svc.hash_password(body.password),
@@ -61,6 +64,12 @@ async def register(body: RegisterReq, request: Request, db: AsyncSession = Depen
     except IntegrityError:
         await db.rollback()
         raise HTTPException(409, "Email ini sudah terdaftar. Coba masuk, atau pakai email lain.")
+    # Kode verifikasi email dikirim di latar belakang; gagal kirim TIDAK menggagalkan pendaftaran (bisa diminta ulang di profil).
+    try:
+        kode = await kode_svc.buat_kode(db, user, "verifikasi_email")
+        tasks.add_task(email_service.kirim_kode, user.email, user.display_name, kode, "verifikasi_email")
+    except kode_svc.KodeError:
+        pass
     return await _terbitkan(db, user, request, None)
 
 
@@ -154,3 +163,78 @@ async def masuk_google(body: GoogleReq, request: Request, db: AsyncSession = Dep
     if not user.is_active:
         raise HTTPException(403, "Akun ini dinonaktifkan. Hubungi admin GALERIA.")
     return await _terbitkan(db, user, request, body.device)
+
+
+# ------------------------------------------------------------------ lupa password + verifikasi email (kode lewat email)
+_PESAN_LUPA = "Jika email itu terdaftar, kode reset sudah dikirim. Cek kotak masuk (dan folder spam)."
+
+
+@router.post("/lupa-password")
+async def lupa_password(body: LupaPasswordReq, request: Request, tasks: BackgroundTasks, db: AsyncSession = Depends(get_db)):
+    """Minta kode reset password. Jawabannya SELALU sama (terdaftar atau tidak) supaya endpoint ini tidak bisa dipakai
+    menebak email mana yang punya akun; pengiriman email berjalan di latar belakang sehingga waktu respons juga seragam."""
+    _butuh_konfigurasi()
+    sisa = kode_svc.batasi(f"lupa|{_ip(request)}|{body.email}", maks=3, jendela_detik=600)
+    if sisa:
+        raise HTTPException(429, f"Terlalu banyak permintaan. Coba lagi dalam {sisa} detik.", headers={"Retry-After": str(sisa)})
+    user = (await db.execute(select(User).where(User.email == body.email))).scalar_one_or_none()
+    if user is not None and user.is_active:
+        try:
+            kode = await kode_svc.buat_kode(db, user, "reset_password")
+            await db.commit()
+            tasks.add_task(email_service.kirim_kode, user.email, user.display_name, kode, "reset_password")
+        except kode_svc.KodeError:
+            await db.rollback()  # terlalu sering: diam saja (jawaban tetap sama)
+    return {"pesan": _PESAN_LUPA}
+
+
+@router.post("/reset-password")
+async def reset_password(body: ResetPasswordReq, request: Request, db: AsyncSession = Depends(get_db)):
+    """Ganti password dengan kode dari email. Berhasil -> semua sesi login lama dicabut dan email ditandai terverifikasi
+    (kode itu membuktikan pemilik email)."""
+    _butuh_konfigurasi()
+    ip, kunci = _ip(request), f"reset:{body.email}"
+    sisa = svc.sisa_kunci(kunci, ip)
+    if sisa:
+        raise HTTPException(429, f"Terlalu banyak percobaan. Coba lagi dalam {sisa} detik.", headers={"Retry-After": str(sisa)})
+    user = (await db.execute(select(User).where(User.email == body.email))).scalar_one_or_none()
+    ok = bool(user is not None and user.is_active and await kode_svc.periksa_kode(db, user, "reset_password", body.kode))
+    if not ok:
+        svc.catat_gagal(kunci, ip)
+        await db.commit()  # simpan jumlah tebakan walau gagal
+        raise HTTPException(400, "Kode salah atau sudah kedaluwarsa.")
+    user.password_hash = await svc.hash_password(body.password_baru)
+    user.email_verified = True
+    svc.reset_gagal(kunci, ip)
+    await svc.cabut_semua_sesi(db, user.id)  # commit: password baru + sesi lama dicabut tersimpan bersama
+    return {"pesan": "Password berhasil diubah. Silakan masuk dengan password baru."}
+
+
+@router.post("/kirim-verifikasi")
+async def kirim_verifikasi(tasks: BackgroundTasks, user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
+    """Kirim (ulang) kode verifikasi ke email akun yang sedang login."""
+    if user.email_verified:
+        return {"sudah_terverifikasi": True, "pesan": "Email kamu sudah terverifikasi."}
+    try:
+        kode = await kode_svc.buat_kode(db, user, "verifikasi_email")
+    except kode_svc.KodeError as e:
+        raise HTTPException(e.status, e.pesan)
+    await db.commit()
+    tasks.add_task(email_service.kirim_kode, user.email, user.display_name, kode, "verifikasi_email")
+    return {"sudah_terverifikasi": False, "pesan": f"Kode dikirim ke {user.email}. Berlaku {kode_svc.TTL_MENIT} menit."}
+
+
+@router.post("/verifikasi-email", response_model=UserOut)
+async def verifikasi_email(body: VerifikasiEmailReq, user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
+    """Verifikasi email dengan kode 6 digit dari email."""
+    if user.email_verified:
+        return _user_out(user)
+    sisa = kode_svc.batasi(f"verif|{user.id}", maks=10, jendela_detik=600)
+    if sisa:
+        raise HTTPException(429, f"Terlalu banyak percobaan. Coba lagi dalam {sisa} detik.", headers={"Retry-After": str(sisa)})
+    if not await kode_svc.periksa_kode(db, user, "verifikasi_email", body.kode):
+        await db.commit()
+        raise HTTPException(400, "Kode salah atau sudah kedaluwarsa.")
+    user.email_verified = True
+    await db.commit()
+    return _user_out(user)

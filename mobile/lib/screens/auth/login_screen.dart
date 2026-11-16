@@ -14,18 +14,22 @@ import '../../utils/coming_soon.dart';
 ///
 /// "Masuk dengan Google": backend sudah siap (`POST /api/auth/google`), tapi sisi aplikasi butuh `google_sign_in` +
 /// Client ID + SHA-1 (lihat root CLAUDE.md), jadi tombolnya sementara "segera hadir" -- BUKAN lagi melewati login.
-/// "Lupa password?" juga belum ada alurnya (belum ada pengiriman email).
+/// "Lupa password?" membuka [LupaPasswordScreen] (kode 6 digit lewat email) bila [onLupaPasswordTap] diisi.
 class LoginScreen extends StatefulWidget {
   const LoginScreen({
     super.key,
     required this.onBack,
     required this.onLoginSuccess,
     required this.onRegisterTap,
+    this.onLupaPasswordTap,
   });
 
   final VoidCallback onBack;
   final ValueChanged<UserRole> onLoginSuccess;
   final VoidCallback onRegisterTap;
+
+  /// Membuka alur lupa password (kode lewat email). Tanpa ini tombolnya menampilkan "belum tersedia".
+  final VoidCallback? onLupaPasswordTap;
 
   @override
   State<LoginScreen> createState() => _LoginScreenState();
@@ -189,7 +193,7 @@ class _LoginScreenState extends State<LoginScreen> {
                     Align(
                       alignment: Alignment.centerRight,
                       child: TextButton(
-                        onPressed: () => showComingSoon(context, 'Lupa password?'),
+                        onPressed: widget.onLupaPasswordTap ?? () => showComingSoon(context, 'Lupa password?'),
                         style: TextButton.styleFrom(
                           padding: EdgeInsets.zero,
                           minimumSize: const Size(0, 32),

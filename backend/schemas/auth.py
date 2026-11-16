@@ -67,6 +67,63 @@ class RegisterReq(BaseModel):
         return v
 
 
+def cek_password_kuat(v: str) -> str:
+    """Aturan password yang sama dengan pendaftaran (dipakai juga saat reset password)."""
+    if len(v) < PASSWORD_MIN:
+        raise ValueError(f"password minimal {PASSWORD_MIN} karakter")
+    if len(v.encode()) > PASSWORD_MAKS_BYTE:
+        raise ValueError(f"password terlalu panjang (maks {PASSWORD_MAKS_BYTE} byte)")
+    if not (re.search(r"[A-Za-z]", v) and re.search(r"\d", v)):
+        raise ValueError("password harus mengandung huruf dan angka")
+    return v
+
+
+def _kode6(v: str) -> str:
+    v = v.strip()
+    if not re.fullmatch(r"\d{6}", v):
+        raise ValueError("kode harus 6 digit angka")
+    return v
+
+
+class LupaPasswordReq(BaseModel):
+    email: str
+
+    @field_validator("email")
+    @classmethod
+    def _v_email(cls, v: str) -> str:
+        return _email(v)
+
+
+class ResetPasswordReq(BaseModel):
+    email: str
+    kode: str
+    password_baru: str
+
+    @field_validator("email")
+    @classmethod
+    def _v_email(cls, v: str) -> str:
+        return v.strip().lower()
+
+    @field_validator("kode")
+    @classmethod
+    def _v_kode(cls, v: str) -> str:
+        return _kode6(v)
+
+    @field_validator("password_baru")
+    @classmethod
+    def _v_pw(cls, v: str) -> str:
+        return cek_password_kuat(v)
+
+
+class VerifikasiEmailReq(BaseModel):
+    kode: str
+
+    @field_validator("kode")
+    @classmethod
+    def _v_kode(cls, v: str) -> str:
+        return _kode6(v)
+
+
 class LoginReq(BaseModel):
     email: str
     password: str = Field(max_length=200)
