@@ -1,0 +1,25 @@
+{
+  "name": "galeria-tebak-lukisan",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Game pameran GALERIA: tebak pelukis dan aliran dari sebuah lukisan (Next.js + GSAP)",
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
+    "cek": "node scripts/cek-data.mjs"
+  },
+  "dependencies": {
+    "@gsap/react": "2.1.2",
+    "gsap": "3.15.1",
+    "next": "16.4.6",
+    "react": "19.3.1",
+    "react-dom": "19.3.1"
+  },
+  "devDependencies": {
+    "@types/node": "26.6.6",
+    "@types/react": "19.3.0",
+    "@types/react-dom": "19.3.0",
+    "typescript": "7.0.2"
+  }
+}
