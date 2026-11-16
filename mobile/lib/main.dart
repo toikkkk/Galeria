@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'models/picked_image.dart';
 
+import 'package:flutter/cupertino.dart' show CupertinoPageTransitionsBuilder;
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
@@ -1005,7 +1006,7 @@ class _GaleriaAppState extends State<GaleriaApp> with WidgetsBindingObserver {
       scaffoldMessengerKey: _messengerKey,
       // Animasi perpindahan halaman yang halus (fade + geser) di semua layar, termasuk pindah tab.
       theme: AppTheme.light.copyWith(
-        pageTransitionsTheme: const PageTransitionsTheme(
+        pageTransitionsTheme: PageTransitionsTheme(
           builders: {
             TargetPlatform.android: FadeForwardsPageTransitionsBuilder(),
             TargetPlatform.iOS: CupertinoPageTransitionsBuilder(),
