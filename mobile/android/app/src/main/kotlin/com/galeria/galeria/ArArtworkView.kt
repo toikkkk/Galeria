@@ -470,7 +470,13 @@ class ArArtworkView(
         }
 
         val hw = artW / 2; val hh = artH / 2
-        val mat = 0.015f; val trim = 0.006f; val wood = 0.035f
+        // Bingkai, bayangan, garis ukuran & label dibuat PROPORSIONAL terhadap ukuran lukisan. Dulu konstan
+        // (bingkai 5,6 cm per sisi, label 4-8 cm): pada lukisan kecil (mis. 40 cm) bingkai saja menambah ~28% lebar
+        // dan anotasinya tampak jauh lebih besar daripada lukisannya. Sisi terkecil dipakai sebagai acuan.
+        val minDim = min(artW, artH)
+        val mat = (minDim * 0.022f).coerceIn(0.006f, 0.014f)
+        val trim = (minDim * 0.008f).coerceIn(0.003f, 0.006f)
+        val wood = (minDim * 0.045f).coerceIn(0.012f, 0.030f)
         val extra = mat + trim + wood
 
         GLES20.glDisable(GLES20.GL_DEPTH_TEST)
@@ -479,8 +485,9 @@ class ArArtworkView(
 
         // bayangan lembut di dinding (bergeser sedikit ke bawah-kanan) supaya bingkai terasa menempel & bervolume
         run {
-            val sx = hw + extra + 0.085f; val sy = hh + extra + 0.085f
-            val ox = 0.010f; val oy = -0.016f
+            val sh = (minDim * 0.1f).coerceIn(0.03f, 0.07f) // sebaran bayangan
+            val sx = hw + extra + sh; val sy = hh + extra + sh
+            val ox = sh * 0.12f; val oy = -sh * 0.19f
             val e = 0.0004f
             val v = pt(ox, oy, e) + pt(-sx + ox, sy + oy, e) + pt(sx + ox, sy + oy, e) +
                 pt(sx + ox, -sy + oy, e) + pt(-sx + ox, -sy + oy, e) + pt(-sx + ox, sy + oy, e)
@@ -503,20 +510,21 @@ class ArArtworkView(
         if (showDims) {
             val gold = floatArrayOf(0.99f, 0.78f, 0.25f, 1f)
             val fy = hh + extra; val fx = hw + extra
-            val gap = 0.075f
-            val th = 0.0035f
+            val gap = (minDim * 0.06f).coerceIn(0.03f, 0.05f)
+            val th = (minDim * 0.006f).coerceIn(0.002f, 0.003f)
             val o = 0.0030f
+            val ext = gap * 0.3f // garis bantu melewati garis ukuran sedikit
             val yL = -(fy + gap); val xL = fx + gap
             // garis ukuran lebar (di bawah) + garis bantu dari tepi lukisan
             drawSolid(seg(-hw, yL, hw, yL, th, o), GLES20.GL_TRIANGLE_STRIP, gold)
-            drawSolid(seg(-hw, -fy, -hw, yL - 0.02f, th * 0.7f, o), GLES20.GL_TRIANGLE_STRIP, gold)
-            drawSolid(seg(hw, -fy, hw, yL - 0.02f, th * 0.7f, o), GLES20.GL_TRIANGLE_STRIP, gold)
+            drawSolid(seg(-hw, -fy, -hw, yL - ext, th * 0.7f, o), GLES20.GL_TRIANGLE_STRIP, gold)
+            drawSolid(seg(hw, -fy, hw, yL - ext, th * 0.7f, o), GLES20.GL_TRIANGLE_STRIP, gold)
             // garis ukuran tinggi (di kanan)
             drawSolid(seg(xL, -hh, xL, hh, th, o), GLES20.GL_TRIANGLE_STRIP, gold)
-            drawSolid(seg(fx, -hh, xL + 0.02f, -hh, th * 0.7f, o), GLES20.GL_TRIANGLE_STRIP, gold)
-            drawSolid(seg(fx, hh, xL + 0.02f, hh, th * 0.7f, o), GLES20.GL_TRIANGLE_STRIP, gold)
-            // label angka (sejajar dinding, menghadap depan)
-            val lh = (min(artW, artH) * 0.14f).coerceIn(0.04f, 0.08f)
+            drawSolid(seg(fx, -hh, xL + ext, -hh, th * 0.7f, o), GLES20.GL_TRIANGLE_STRIP, gold)
+            drawSolid(seg(fx, hh, xL + ext, hh, th * 0.7f, o), GLES20.GL_TRIANGLE_STRIP, gold)
+            // label angka (sejajar dinding, menghadap depan); tingginya ikut ukuran lukisan
+            val lh = (minDim * 0.1f).coerceIn(0.03f, 0.055f)
             drawTextured(rectAt(0f, yL, lh / 2 * labelWAspect, lh / 2, 0.0036f), labelWTex)
             drawTextured(rectAt(xL, 0f, lh / 2 * labelHAspect, lh / 2, 0.0036f), labelHTex)
         }
