@@ -1,6 +1,6 @@
-import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from "react";
+import { createContext, useCallback, useContext, useEffect, useId, useMemo, useRef, useState } from "react";
 import {
-  Area, Bar, BarChart, Brush, CartesianGrid, Cell, ComposedChart, Line, LabelList,
+  Area, AreaChart, Bar, BarChart, Brush, CartesianGrid, Cell, ComposedChart, Line, LabelList,
   Pie, PieChart, ReferenceLine, ResponsiveContainer, Tooltip, XAxis, YAxis,
 } from "recharts";
 import { ambilToken, hapusToken, onSesiHabis, tokenExp } from "./api.js";
@@ -75,15 +75,36 @@ function Ikon({ nama, ukuran = 22 }) {
   );
 }
 
-function Kpi({ warna, ikon, label, value, sub }) {
+/** Grafik mini tanpa sumbu: memperlihatkan arah tren di dalam kartu angka. */
+function Spark({ data, k, warna = "var(--series-1)" }) {
+  const gid = useId().replace(/:/g, "");
   return (
-    <div className={`kpi-c ${warna}`}>
-      <span className="kpi-ikon"><Ikon nama={ikon} /></span>
-      <div className="kpi-isi">
-        <div className="label">{label}</div>
-        <div className="value">{value}</div>
-        <div className="sub">{sub}</div>
+    <div className="spark" aria-hidden="true">
+      <ResponsiveContainer width="100%" height="100%">
+        <AreaChart data={data} margin={{ top: 3, right: 0, bottom: 0, left: 0 }}>
+          <defs>
+            <linearGradient id={gid} x1="0" y1="0" x2="0" y2="1">
+              <stop offset="0%" stopColor={warna} stopOpacity={0.35} />
+              <stop offset="100%" stopColor={warna} stopOpacity={0} />
+            </linearGradient>
+          </defs>
+          <Area type="monotone" dataKey={k} stroke={warna} strokeWidth={1.8} fill={`url(#${gid})`} animationDuration={900} dot={false} />
+        </AreaChart>
+      </ResponsiveContainer>
+    </div>
+  );
+}
+
+function Kpi({ hero, tone, ikon, label, value, sub, seri, kunci }) {
+  return (
+    <div className={`kpi${hero ? " kpi-hero" : ""}${tone ? ` t-${tone}` : ""}`}>
+      <div className="kpi-atas">
+        <span className="kpi-ikon"><Ikon nama={ikon} ukuran={18} /></span>
+        <span className="label">{label}</span>
       </div>
+      <div className="value">{value}</div>
+      <div className="sub">{sub}</div>
+      {seri && <Spark data={seri} k={kunci} warna={hero ? "#f0c86a" : "var(--tone)"} />}
     </div>
   );
 }
@@ -124,7 +145,7 @@ function Angka({ n, fmt = (v) => String(Math.round(v)) }) {
 }
 
 /** Satu cincin persentase: bagian berwarna = yang sudah Pro. */
-function Cincin({ nama, pro }) {
+function Cincin({ nama, pro, warna = "var(--series-1)" }) {
   const data = [{ v: pro.pro_share_pct }, { v: Math.max(0, 100 - pro.pro_share_pct) }];
   return (
     <div className="cincin">
@@ -133,7 +154,7 @@ function Cincin({ nama, pro }) {
           <PieChart width={88} height={88}>
             <Pie data={data} dataKey="v" innerRadius={30} outerRadius={40} startAngle={90} endAngle={-270}
               stroke="none" cornerRadius={6} animationDuration={900} animationEasing="ease-out">
-              <Cell fill="var(--series-1)" />
+              <Cell fill={warna} />
               <Cell fill="var(--track)" />
             </Pie>
           </PieChart>
@@ -151,8 +172,8 @@ function PanelPro({ d }) {
     <section className="card pro-card" aria-labelledby="h-pro-ring">
       <h2 id="h-pro-ring">Pengguna Pro</h2>
       <div className="cincin-baris">
-        <Cincin nama="Kolektor" pro={d.pro.kolektor} />
-        <Cincin nama="Seniman" pro={d.pro.seniman} />
+        <Cincin nama="Kolektor" pro={d.pro.kolektor} warna="var(--series-1)" />
+        <Cincin nama="Seniman" pro={d.pro.seniman} warna="var(--series-2)" />
       </div>
       <ul className="pro-daftar">
         {Object.values(ROLE).map((r) => (
@@ -163,31 +184,39 @@ function PanelPro({ d }) {
   );
 }
 
-/** Dari mana pendapatan periode ini berasal: satu bar bertumpuk + rincian. */
+/** Dari mana pendapatan periode ini berasal: donat + rincian. */
 function Komposisi({ d }) {
   const bagian = [
-    { nama: "Komisi karya terjual", v: d.komisi_idr, warna: "var(--series-1)" },
-    { nama: "Langganan kolektor", v: d.langganan_kolektor_idr, warna: "var(--series-2)" },
-    { nama: "Langganan seniman", v: d.langganan_seniman_idr, warna: "var(--steel)" },
+    { nama: "Komisi karya", v: d.komisi_idr, warna: "var(--series-1)" },
+    { nama: "Kolektor Pro", v: d.langganan_kolektor_idr, warna: "var(--series-2)" },
+    { nama: "Seniman Pro", v: d.langganan_seniman_idr, warna: "var(--series-3)" },
   ];
   const total = bagian.reduce((a, b) => a + b.v, 0) || 1;
   return (
     <section className="card komposisi" aria-labelledby="h-komp">
-      <h2 id="h-komp">Asal pendapatan</h2>
-      <p className="desc">{d.periode_hari} hari terakhir</p>
-      <div className="komp-bar" role="img" aria-label="Porsi tiap sumber pendapatan">
-        {bagian.map((b) => <i key={b.nama} style={{ width: `${(b.v / total) * 100}%`, background: b.warna }} title={b.nama} />)}
+      <div className="card-judul"><h2 id="h-komp">Asal pendapatan</h2><span className="meta">{d.periode_hari} hari</span></div>
+      <div className="donat-baris">
+        <div className="donat" role="img" aria-label="Porsi tiap sumber pendapatan">
+          <Replay>
+            <PieChart width={116} height={116}>
+              <Pie data={bagian} dataKey="v" innerRadius={37} outerRadius={55} paddingAngle={2} startAngle={90} endAngle={-270} stroke="none" animationDuration={900}>
+                {bagian.map((b) => <Cell key={b.nama} fill={b.warna} />)}
+              </Pie>
+            </PieChart>
+          </Replay>
+          <span className="donat-isi"><small>Total</small><b>{rupiahRingkas(total)}</b></span>
+        </div>
+        <ul className="komp-daftar">
+          {bagian.map((b) => (
+            <li key={b.nama}>
+              <i style={{ background: b.warna }} />
+              <span>{b.nama}</span>
+              <b>{rupiahRingkas(b.v)}</b>
+              <small>{persen((b.v / total) * 100, 0)}</small>
+            </li>
+          ))}
+        </ul>
       </div>
-      <ul className="komp-daftar">
-        {bagian.map((b) => (
-          <li key={b.nama}>
-            <i style={{ background: b.warna }} />
-            <span>{b.nama}</span>
-            <b>{rupiahRingkas(b.v)}</b>
-            <small>{persen((b.v / total) * 100, 0)}</small>
-          </li>
-        ))}
-      </ul>
     </section>
   );
 }
@@ -206,15 +235,16 @@ function TipBulan({ active, payload }) {
 }
 
 /** Pendapatan 12 bulan terakhir, ditumpuk per sumber. */
-function TrenPendapatan() {
-  const api = useApi("/pendapatan-bulanan?bulan=12");
+function TrenPendapatan({ api }) {
   return (
     <section className="card grafik tren" aria-labelledby="h-tren">
-      <h2 id="h-tren">Pendapatan 12 bulan terakhir</h2>
-      <div className="legend">
-        <span><i style={{ background: "var(--series-1)" }} />Komisi karya terjual</span>
-        <span><i style={{ background: "var(--series-2)" }} />Langganan kolektor</span>
-        <span><i style={{ background: "var(--steel)" }} />Langganan seniman</span>
+      <div className="card-judul">
+        <h2 id="h-tren">Pendapatan 12 bulan terakhir</h2>
+        <div className="legend">
+          <span><i style={{ background: "var(--series-1)" }} />Komisi</span>
+          <span><i style={{ background: "var(--series-2)" }} />Kolektor</span>
+          <span><i style={{ background: "var(--series-3)" }} />Seniman</span>
+        </div>
       </div>
       <Muat api={api}>
         {(rows) => (
@@ -228,7 +258,7 @@ function TrenPendapatan() {
                   <Tooltip content={<TipBulan />} cursor={{ fill: "var(--grid)", opacity: 0.6 }} />
                   <Bar dataKey="komisi_idr" stackId="p" fill="var(--series-1)" maxBarSize={34} animationDuration={800} />
                   <Bar dataKey="langganan_kolektor_idr" stackId="p" fill="var(--series-2)" maxBarSize={34} animationDuration={800} />
-                  <Bar dataKey="langganan_seniman_idr" stackId="p" fill="var(--steel)" radius={[4, 4, 0, 0]} maxBarSize={34} animationDuration={800} />
+                  <Bar dataKey="langganan_seniman_idr" stackId="p" fill="var(--series-3)" radius={[4, 4, 0, 0]} maxBarSize={34} animationDuration={800} />
                 </BarChart>
               </ResponsiveContainer>
             </Replay>
@@ -240,46 +270,80 @@ function TrenPendapatan() {
 }
 
 /* ------------------------------------------------------------ ringkasan */
-function Headline({ d }) {
-  const p = d.perubahan_pct.total_idr;
-  return (
-    <div className="headline">
-      <p>
-        {d.periode_hari} hari terakhir, GALERIA memperoleh <b>{rupiahRingkas(d.pendapatan_total_idr)}</b>
-        {p != null && <>, <b className={p >= 0 ? "delta-up" : "delta-down"}>{arah(p)} {persen(Math.abs(p))}</b> dibanding {d.periode_hari} hari sebelumnya</>}.
-      </p>
-    </div>
-  );
+/** Gabungkan dua deret per-peran (kolektor, seniman) menjadi satu deret per bulan. */
+function gabungPro(proK, proS) {
+  if (proK.status !== "ok" || proS.status !== "ok") return null;
+  const peta = new Map(proS.data.map((r) => [r.bulan, r.n_pro]));
+  return proK.data.map((r) => ({ bulan: r.bulan, label: bulanPendek(r.bulan), kolektor: r.n_pro, seniman: peta.get(r.bulan) ?? 0, total: r.n_pro + (peta.get(r.bulan) ?? 0) }));
 }
 
-function Kpis({ d }) {
+function Kpis({ d, pend, pro }) {
   const langganan = d.langganan_kolektor_idr + d.langganan_seniman_idr;
+  const seri = pend.status === "ok" ? pend.data.map((r) => ({ ...r, langganan: r.langganan_kolektor_idr + r.langganan_seniman_idr })) : null;
   return (
     <div className="kpis">
-      <Kpi warna="k-gelap" ikon="dompet" label="Total pendapatan" value={rupiahRingkas(d.pendapatan_total_idr)} sub={<Delta v={d.perubahan_pct.total_idr} ket="" />} />
-      <Kpi warna="k-emas" ikon="label" label="Komisi karya terjual" value={rupiahRingkas(d.komisi_idr)}
-        sub={<>{angka(d.n_transaksi)} karya terjual</>} />
-      <Kpi warna="k-steel" ikon="bintang" label="Langganan Pro" value={rupiahRingkas(langganan)}
-        sub={<>Kolektor {rupiahRingkas(d.langganan_kolektor_idr)} · Seniman {rupiahRingkas(d.langganan_seniman_idr)}</>} />
-      <Kpi warna="k-kopi" ikon="pengguna" label="Pengguna Pro" value={<Angka n={d.pro.kolektor.n_pro + d.pro.seniman.n_pro} fmt={(v) => angka(Math.round(v))} />}
-        sub={<>{angka(d.pro.kolektor.n_pro)} kolektor · {angka(d.pro.seniman.n_pro)} seniman</>} />
+      <Kpi hero ikon="dompet" label="Total pendapatan" value={rupiahRingkas(d.pendapatan_total_idr)} sub={<Delta v={d.perubahan_pct.total_idr} ket="" />} seri={seri} kunci="total_idr" />
+      <Kpi tone="biru" ikon="label" label="Komisi karya terjual" value={rupiahRingkas(d.komisi_idr)} sub={<>{angka(d.n_transaksi)} karya terjual</>} seri={seri} kunci="komisi_idr" />
+      <Kpi tone="teal" ikon="bintang" label="Langganan Pro" value={rupiahRingkas(langganan)}
+        sub={<>Kolektor {rupiahRingkas(d.langganan_kolektor_idr)} · Seniman {rupiahRingkas(d.langganan_seniman_idr)}</>} seri={seri} kunci="langganan" />
+      <Kpi tone="amber" ikon="pengguna" label="Pengguna Pro" value={<Angka n={d.pro.kolektor.n_pro + d.pro.seniman.n_pro} fmt={(v) => angka(Math.round(v))} />}
+        sub={<>{angka(d.pro.kolektor.n_pro)} kolektor · {angka(d.pro.seniman.n_pro)} seniman</>} seri={pro} kunci="total" />
     </div>
   );
 }
 
-function Ringkasan({ api }) {
+function TipPertumbuhan({ active, payload }) {
+  if (!active || !payload?.length) return null;
+  const r = payload[0].payload;
+  return <Tip judul={bulanPanjang(r.bulan)} baris={[["Kolektor Pro", angka(r.kolektor)], ["Seniman Pro", angka(r.seniman)], ["Total Pro", angka(r.total)]]} />;
+}
+
+/** Jumlah pengguna Pro per bulan, kolektor + seniman ditumpuk. */
+function PertumbuhanPro({ data }) {
+  const awal = data?.[0]?.total, akhir = data?.[data.length - 1]?.total;
+  return (
+    <section className="card grafik" aria-labelledby="h-tumbuh">
+      <div className="card-judul">
+        <h2 id="h-tumbuh">Pertumbuhan pengguna Pro</h2>
+        <div className="legend">
+          <span><i style={{ background: "var(--series-1)" }} />Kolektor</span>
+          <span><i style={{ background: "var(--series-2)" }} />Seniman</span>
+          {data && <span className="meta">+{angka(akhir - awal)} dalam {data.length - 1} bulan</span>}
+        </div>
+      </div>
+      {!data ? <div className="skeleton" aria-busy="true" /> : (
+        <div className="chart" role="img" aria-label="Diagram area jumlah pengguna Pro per bulan">
+          <Replay>
+            <ResponsiveContainer>
+              <AreaChart data={data} margin={{ top: 6, right: 8, bottom: 0, left: 0 }}>
+                <CartesianGrid stroke="var(--grid)" vertical={false} />
+                <XAxis dataKey="label" tick={AXIS} tickLine={false} axisLine={{ stroke: "var(--grid)" }} interval="preserveStartEnd" minTickGap={18} />
+                <YAxis tick={AXIS} tickLine={false} axisLine={false} width={44} tickFormatter={angka} />
+                <Tooltip content={<TipPertumbuhan />} cursor={{ stroke: "var(--text-muted)", strokeDasharray: "3 3" }} />
+                <Area type="monotone" dataKey="kolektor" stackId="p" stroke="var(--series-1)" strokeWidth={2} fill="var(--series-1)" fillOpacity={0.9} animationDuration={900} />
+                <Area type="monotone" dataKey="seniman" stackId="p" stroke="var(--series-2)" strokeWidth={2} fill="var(--series-2)" fillOpacity={0.85} animationDuration={900} />
+              </AreaChart>
+            </ResponsiveContainer>
+          </Replay>
+        </div>
+      )}
+    </section>
+  );
+}
+
+function Ringkasan({ api, pend, pro }) {
   return (
     <Muat api={api}>
       {(d) => (
         <>
-          <Kpis d={d} />
-          <Headline d={d} />
-          <div className="dua-kolom">
-            <TrenPendapatan />
-            <div className="kolom-kanan">
-              <PanelPro d={d} />
-              <Komposisi d={d} />
-            </div>
+          <Kpis d={d} pend={pend} pro={pro} />
+          <div className="baris baris-1">
+            <TrenPendapatan api={pend} />
+            <Komposisi d={d} />
+          </div>
+          <div className="baris baris-2">
+            <PertumbuhanPro data={pro} />
+            <PanelPro d={d} />
           </div>
         </>
       )}
@@ -461,7 +525,7 @@ function GrafikForecast({ fc, seri, batas, info }) {
                 <Area type="monotone" dataKey="band" stackId="band" stroke="none" fill="var(--band)" isAnimationActive={false} legendType="none" />
                 <Line type="monotone" dataKey="aktual" stroke="var(--series-1)" strokeWidth={3} dot={z.terlihat <= 14}
                   activeDot={{ r: 6, stroke: "var(--surface-1)", strokeWidth: 2 }} animationDuration={1000} />
-                <Line type="monotone" dataKey="forecast" stroke="var(--series-1)" strokeWidth={3} strokeDasharray="6 4" dot={false}
+                <Line type="monotone" dataKey="forecast" stroke="var(--series-2)" strokeWidth={3} strokeDasharray="6 4" dot={false}
                   activeDot={{ r: 6, stroke: "var(--surface-1)", strokeWidth: 2 }} animationDuration={1000} />
                 <Brush dataKey="label" {...BRUSH} startIndex={z.a} endIndex={z.b} onChange={(r) => z.atur(r.startIndex, r.endIndex)} />
               </ComposedChart>
@@ -483,7 +547,7 @@ function GrafikForecast({ fc, seri, batas, info }) {
                 <YAxis tick={AXIS} tickLine={false} axisLine={false} width={74} tickFormatter={rupiahSumbu} />
                 <Tooltip content={<TipTahun />} cursor={{ fill: "var(--grid)", opacity: 0.6 }} />
                 <Bar dataKey="aktual" stackId="t" fill="var(--series-1)" maxBarSize={90} animationDuration={800} />
-                <Bar dataKey="forecast" stackId="t" fill="var(--gold-soft)" stroke="var(--series-1)" strokeDasharray="4 3" radius={[6, 6, 0, 0]} maxBarSize={90} animationDuration={800} />
+                <Bar dataKey="forecast" stackId="t" fill="var(--gold-soft)" stroke="var(--series-2)" strokeDasharray="4 3" radius={[6, 6, 0, 0]} maxBarSize={90} animationDuration={800} />
               </BarChart>
             </ResponsiveContainer></Replay>
           </div>
@@ -657,7 +721,7 @@ function BatangGabungan({ data, info, skala, z, roda }) {
     <>
       <div className="legend">
         <span><i style={{ background: "var(--series-1)" }} />Sudah Pro</span>
-        <span><i style={{ background: "var(--series-2)" }} />Belum upgrade</span>
+        <span><i style={{ background: "var(--netral)" }} />Belum upgrade</span>
         <span className="petunjuk">{bulanan ? "Gulirkan roda mouse atau geser slider di bawah untuk memperbesar" : "Angka = posisi akhir tahun; * = tahun belum penuh 12 bulan"}</span>
       </div>
       <div className="chart" ref={bulanan ? roda : undefined} role="img"
@@ -671,7 +735,7 @@ function BatangGabungan({ data, info, skala, z, roda }) {
             <Bar dataKey="n_pro" fill="var(--series-1)" radius={[4, 4, 0, 0]} maxBarSize={bulanan ? 30 : 70} animationDuration={800}>
               <LabelList dataKey="n_pro" content={labelAngka(langkah)} />
             </Bar>
-            <Bar dataKey="n_non_pro" fill="var(--series-2)" radius={[4, 4, 0, 0]} maxBarSize={bulanan ? 30 : 70} animationDuration={800}>
+            <Bar dataKey="n_non_pro" fill="var(--netral)" radius={[4, 4, 0, 0]} maxBarSize={bulanan ? 30 : 70} animationDuration={800}>
               <LabelList dataKey="n_non_pro" content={labelAngka(langkah)} />
             </Bar>
             {bulanan && <Brush dataKey="label" {...BRUSH} startIndex={z.a} endIndex={z.b} onChange={(r) => z.atur(r.startIndex, r.endIndex)} />}
@@ -773,7 +837,7 @@ function NaikKelas() {
       <div className="bar-atas">
         <Segmented label="Jenis pengguna" value={role} onChange={setRole}
           options={Object.entries(ROLE).map(([value, r]) => ({ value, label: r.label }))} />
-        <span className="bar-ket">Emas = sudah Pro, biru tua = belum upgrade. Dicatat tiap akhir bulan.</span>
+        <span className="bar-ket">Cokelat tua = sudah Pro, abu = belum upgrade. Dicatat tiap akhir bulan.</span>
       </div>
       <PanelRole key={role} role={role} />
     </>
@@ -805,8 +869,34 @@ const MENU = [
   { id: "pro", label: "Pengguna Pro", judul: "Siapa yang sudah naik kelas ke Pro?", ikon: "pengguna" },
 ];
 
+/** Isi sidebar: angka kunci + grafik mini, supaya menu tidak terasa kosong. */
+function SideSekilas({ api, pend }) {
+  const d = api.status === "ok" ? api.data : null;
+  if (!d) return <div className="side-sekilas" aria-busy="true" />;
+  const seri = pend.status === "ok" ? pend.data : null;
+  const p = d.perubahan_pct.total_idr;
+  return (
+    <div className="side-sekilas" aria-label={`Sekilas ${d.periode_hari} hari terakhir`}>
+      <div className="ss-label">SEKILAS · {d.periode_hari} HARI</div>
+      <div className="ss-besar">{rupiahRingkas(d.pendapatan_total_idr)}</div>
+      {p != null && <div className={`ss-delta ${p >= 0 ? "naik" : "turun"}`}>{p >= 0 ? "▲" : "▼"} {persen(Math.abs(p))}</div>}
+      {seri && <Spark data={seri} k="total_idr" warna="#f0c86a" />}
+      <dl className="ss-daftar">
+        <div><dt>Karya terjual</dt><dd>{angka(d.n_transaksi)}</dd></div>
+        <div><dt>Pengguna Pro</dt><dd>{angka(d.pro.kolektor.n_pro + d.pro.seniman.n_pro)}</dd></div>
+        <div><dt>Pro kolektor</dt><dd>{persen(d.pro.kolektor.pro_share_pct)}</dd></div>
+        <div><dt>Pro seniman</dt><dd>{persen(d.pro.seniman.pro_share_pct)}</dd></div>
+      </dl>
+    </div>
+  );
+}
+
 function Dashboard({ keluar }) {
   const ringkasan = useApi(`/ringkasan?periode=${PERIODE_HARI}`);
+  const pend = useApi("/pendapatan-bulanan?bulan=12");
+  const proK = useApi("/pro-vs-nonpro?role=kolektor&bulan=12");
+  const proS = useApi("/pro-vs-nonpro?role=seniman&bulan=12");
+  const pro = useMemo(() => gabungPro(proK, proS), [proK, proS]);
   const [aktif, setAktif] = useState(0);
   const [tanyaKeluar, setTanyaKeluar] = useState(false);
   const [kecil, setKecil] = useState(() => { try { return localStorage.getItem("galeria_side_kecil") === "1"; } catch { return false; } });
@@ -828,6 +918,7 @@ function Dashboard({ keluar }) {
             <Ikon nama="panel" ukuran={18} />
           </button>
         </div>
+        <div className="side-label">MENU</div>
         <nav className="side-nav" aria-label="Menu utama">
           {MENU.map((m, i) => (
             <button key={m.id} className={aktif === i ? "aktif" : ""} title={m.label} aria-label={m.label}
@@ -836,7 +927,9 @@ function Dashboard({ keluar }) {
             </button>
           ))}
         </nav>
+        <SideSekilas api={ringkasan} pend={pend} />
         <div className="side-kaki">
+          <p className="side-catatan">Data contoh untuk demo. Bukan angka transaksi sungguhan.</p>
           <button className="side-keluar" title="Keluar" aria-label="Keluar" onClick={() => setTanyaKeluar(true)}>
             <Ikon nama="keluar" ukuran={18} /><span className="teks">Keluar</span>
           </button>
@@ -846,6 +939,7 @@ function Dashboard({ keluar }) {
       <div className="utama">
         <header className="topbar">
           <h2 className="topbar-judul">{MENU[aktif].judul}</h2>
+          <span className="chip-periode">{PERIODE_HARI} hari terakhir</span>
           <div className="akun">
             <span className="avatar" aria-hidden="true">A</span>
             <div><b>Admin</b><small>Pengelola platform</small></div>
@@ -854,7 +948,7 @@ function Dashboard({ keluar }) {
         <PeringatanSesi keluar={keluar} />
 
         <main className="stage">
-          <section className={kelas(0)} aria-hidden={aktif !== 0}><AktifCtx.Provider value={aktif === 0}><Ringkasan api={ringkasan} /></AktifCtx.Provider></section>
+          <section className={kelas(0)} aria-hidden={aktif !== 0}><AktifCtx.Provider value={aktif === 0}><Ringkasan api={ringkasan} pend={pend} pro={pro} /></AktifCtx.Provider></section>
           <section className={kelas(1)} aria-hidden={aktif !== 1}><AktifCtx.Provider value={aktif === 1}><Forecast /></AktifCtx.Provider></section>
           <section className={kelas(2)} aria-hidden={aktif !== 2}><AktifCtx.Provider value={aktif === 2}><NaikKelas /></AktifCtx.Provider></section>
         </main>

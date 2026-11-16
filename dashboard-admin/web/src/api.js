@@ -1,4 +1,7 @@
 const BASE = import.meta.env.VITE_API_BASE || "http://localhost:8000";
+// Alamat ngrok (paket gratis) menyisipkan halaman peringatan untuk lalu lintas "browser"; header ini melewatinya.
+// Hanya dikirim bila alamat backend memang ngrok.
+const HEADER_TUNNEL = BASE.includes("ngrok") ? { "ngrok-skip-browser-warning": "1" } : {};
 const KUNCI_TOKEN = "galeria_admin_token";
 
 /* Tanpa "Ingat saya": sessionStorage (hilang saat tab ditutup). Dengan: localStorage.
@@ -32,7 +35,7 @@ export async function login(email, password, ingat = false) {
   try {
     res = await fetch(`${BASE}/api/admin/login`, {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: { "Content-Type": "application/json", ...HEADER_TUNNEL },
       body: JSON.stringify({ email, password, ingat }),
     });
   } catch {
@@ -48,7 +51,7 @@ export async function login(email, password, ingat = false) {
 export async function getJson(path) {
   const token = ambilToken();
   const res = await fetch(`${BASE}/api/admin${path}`, {
-    headers: token ? { Authorization: `Bearer ${token}` } : {},
+    headers: { ...HEADER_TUNNEL, ...(token ? { Authorization: `Bearer ${token}` } : {}) },
   });
   if (res.status === 401) {
     hapusToken();
