@@ -431,3 +431,57 @@
 /* kartu putih bersih seperti referensi */
 .kpi:not(.kpi-hero), .shell .topbar, .shell .card { background: #fff; }
 .rentang-nilai b { font-size: 17px; white-space: nowrap; }
+
+
+/* ===================== Perapian tampilan (2026-11) ===================== */
+/* Kartu "Sekilas": tinggi mengikuti isi. Dulu kartu & grafik mininya ikut melar di layar tinggi sehingga ada ruang
+   cokelat kosong besar dan grafiknya memanjang tak wajar. Sisa tinggi sekarang jadi ruang putih di sidebar. */
+.side-sekilas { flex: none; margin-bottom: 0; }
+.side-sekilas .spark { flex: none; height: 64px; min-height: 0; margin: 8px -14px 8px; }
+.side-kaki { padding-top: 14px; }
+
+/* Donat & cincin: isi dipusatkan dan diberi jarak tetap, tidak terseret ke tepi kartu saat layar lebar */
+.donat-baris { justify-content: center; gap: clamp(14px, 1.6vw, 36px); }
+.komp-daftar { flex: 1 1 0; min-width: 0; max-width: 380px; }
+.cincin-baris { justify-content: space-evenly; }
+.pro-card .cincin-baris { padding: 6px 0; }
+
+/* Daftar perkiraan per bulan: pinggir bawah yang terpotong diberi pudar supaya jelas "masih bisa digulir" */
+.fc-bulan { position: relative; mask-image: linear-gradient(to bottom, #000 calc(100% - 18px), transparent); -webkit-mask-image: linear-gradient(to bottom, #000 calc(100% - 18px), transparent); }
+
+/* Layar sangat sempit (HP): satu kolom, teks tidak dipotong "..." */
+@media (max-width: 520px) {
+  .shell .kpis { grid-template-columns: minmax(0, 1fr); }
+  .kpi .sub { white-space: normal; overflow: visible; text-overflow: clip; }
+  .shell .topbar { flex-wrap: wrap; row-gap: 8px; }
+  .shell .topbar-judul { flex: 1 1 100%; margin-right: 0; font-size: 22px; }
+  .chip-periode { margin-right: auto; }
+  .shell .chart { height: 260px; }
+}
+
+/* Donat & cincin ikut lebar layar (grafik kini ResponsiveContainer): tidak mungil di monitor besar */
+.donat { width: clamp(116px, 8.8vw, 190px); height: clamp(116px, 8.8vw, 190px); }
+.donat-isi small { font-size: clamp(10.5px, 0.75vw, 13px); }
+.donat-isi b { font-size: clamp(11px, 0.85vw, 15px); }
+.cincin-g { width: clamp(88px, 6.2vw, 130px); height: clamp(88px, 6.2vw, 130px); }
+.cincin-p { font-size: clamp(16px, 1.15vw, 22px); }
+.cincin b { font-size: clamp(13.5px, 0.95vw, 17px); }
+.cincin small { font-size: clamp(11.5px, 0.8vw, 14px); }
+
+/* Layar menengah (sidebar + 3 kolom sempit): donat di atas rincian, cincin Pro bertumpuk -- tidak ada teks terpotong */
+@media (max-width: 1100px) and (min-width: 901px) {
+  .donat-baris { flex-direction: column; align-items: center; justify-content: center; gap: 12px; }
+  .komp-daftar { flex: none; width: 100%; max-width: none; }
+  .cincin-baris { gap: 8px; }
+  .cincin { grid-template-columns: 1fr; grid-template-rows: auto; justify-items: center; text-align: center; row-gap: 2px; }
+  .cincin-g { grid-row: auto; }
+  .cincin b, .cincin small { align-self: auto; }
+}
+
+/* Satu kolom (<=1100px): kolom samping tidak boleh jadi wadah gulir, kalau tidak barisnya "menyusut" ke 0 dan kartu statistik terpotong */
+@media (max-width: 1100px) and (min-width: 901px) {
+  .pro-samping, .fc-samping { overflow: visible; flex: none; }
+  .pro-grid, .fc-grid { align-content: start; }
+  .shell .pro-samping .stats { flex: none; }
+}
+.fc-utama .besar { font-size: clamp(30px, 3.1vw, 40px); white-space: nowrap; }

@@ -151,13 +151,15 @@ function Cincin({ nama, pro, warna = "var(--series-1)" }) {
     <div className="cincin">
       <div className="cincin-g" role="img" aria-label={`${persen(pro.pro_share_pct)} ${nama} sudah Pro`}>
         <Replay>
-          <PieChart width={88} height={88}>
-            <Pie data={data} dataKey="v" innerRadius={30} outerRadius={40} startAngle={90} endAngle={-270}
-              stroke="none" cornerRadius={6} animationDuration={900} animationEasing="ease-out">
-              <Cell fill={warna} />
-              <Cell fill="var(--track)" />
-            </Pie>
-          </PieChart>
+          <ResponsiveContainer width="100%" height="100%">
+            <PieChart>
+              <Pie data={data} dataKey="v" innerRadius="68%" outerRadius="91%" startAngle={90} endAngle={-270}
+                stroke="none" cornerRadius={6} animationDuration={900} animationEasing="ease-out">
+                <Cell fill={warna} />
+                <Cell fill="var(--track)" />
+              </Pie>
+            </PieChart>
+          </ResponsiveContainer>
         </Replay>
         <span className="cincin-p"><Angka n={pro.pro_share_pct} />%</span>
       </div>
@@ -198,11 +200,13 @@ function Komposisi({ d }) {
       <div className="donat-baris">
         <div className="donat" role="img" aria-label="Porsi tiap sumber pendapatan">
           <Replay>
-            <PieChart width={116} height={116}>
-              <Pie data={bagian} dataKey="v" innerRadius={37} outerRadius={55} paddingAngle={2} startAngle={90} endAngle={-270} stroke="none" animationDuration={900}>
-                {bagian.map((b) => <Cell key={b.nama} fill={b.warna} />)}
-              </Pie>
-            </PieChart>
+            <ResponsiveContainer width="100%" height="100%">
+              <PieChart>
+                <Pie data={bagian} dataKey="v" innerRadius="66%" outerRadius="97%" paddingAngle={2} startAngle={90} endAngle={-270} stroke="none" animationDuration={900}>
+                  {bagian.map((b) => <Cell key={b.nama} fill={b.warna} />)}
+                </Pie>
+              </PieChart>
+            </ResponsiveContainer>
           </Replay>
           <span className="donat-isi"><small>Total</small><b>{rupiahRingkas(total)}</b></span>
         </div>
