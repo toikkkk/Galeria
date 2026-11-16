@@ -83,3 +83,9 @@ ml-visual-search/notebooks/**/export/*
 # --- ml-sentiment/ -- bobot IndoBERT (~440MB, jangan di-commit) -------------
 ml-sentiment/models/indobert_sentimen/
 ml-sentiment/.venv/
+
+# --- video_animation/ -- folder kerja video promosi, LOKAL SAJA -------------
+# Berisi footage/klip besar & eksperimen Remotion yang belum final. Jangan
+# pernah masuk repo (permintaan eksplisit user) -- kalau nanti video final
+# mau dibagikan, upload file .mp4-nya terpisah (Drive/dll), bukan lewat git.
+video_animation/
