@@ -129,6 +129,20 @@ class DigitalArtIdentityService {
     return VerificationResult.fromJson(data as Map<String, dynamic>);
   }
 
+  /// Pratinjau dari BYTES foto yang baru dipilih di galeri (`POST /api/verification/check`, WAJIB login
+  /// seniman). Dipakai LANGKAH 1 layar unggah: foto diperiksa duplikat + perkiraan buatan AI SEBELUM
+  /// form judul/harga dibuka. Tidak menyimpan apa pun; pemeriksaan resmi tetap lewat [verifyKarya].
+  Future<VerificationResult> checkImageBytes(PickedImage image) async {
+    final data = await _client.postMultipart(
+      '/api/verification/check',
+      bytes: image.bytes,
+      filename: image.name,
+      contentType: MediaType('image', 'jpeg'),
+      auth: true,
+    );
+    return VerificationResult.fromJson(data as Map<String, dynamic>);
+  }
+
   /// Verifikasi RESMI (`POST /api/karya/{id}/verify`) -- BEDA dari
   /// [checkImage]: hasilnya DISIMPAN (`persisted: true`) dan
   /// `karya.status_verifikasi` diperbarui (lihat routers/verification.py).

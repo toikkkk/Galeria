@@ -8,6 +8,11 @@ import '../../theme/app_theme.dart';
 /// Konversi dari
 /// docs/design/role_seniman_2/.../galeria_memverifikasi_keaslian_karya/code.html
 ///
+/// URUTAN BARU: foto SUDAH lolos pemeriksaan pratinjau di layar unggah (duplikat + perkiraan buatan AI)
+/// sebelum karya dibuat. Layar ini kini tahap PENDAFTARAN RESMI: hasil pemeriksaan disimpan dan sertifikat
+/// digital diterbitkan. Pemeriksaan diulang server (hasil resmi tidak boleh bergantung pada klien), jadi
+/// hasil akhirnya tetap bisa berbeda dari pratinjau (mis. ada karya mirip yang baru terdaftar).
+///
 /// Panggil `POST /api/karya/{karyaId}/verify` SUNGGUHAN (lewat
 /// [DigitalArtIdentityService.verifyKarya]) -- verifikasi RESMI, hasilnya
 /// DISIMPAN dan `karya.status_verifikasi` diperbarui (beda dari mode
@@ -89,11 +94,11 @@ class _MemverifikasiKeaslianScreenState extends State<MemverifikasiKeaslianScree
                 ),
               ),
               const SizedBox(height: AppSpacing.sm),
-              Text('Memverifikasi Keaslian Karya',
+              Text('Mendaftarkan Karya',
                   textAlign: TextAlign.center, style: AppTextStyles.displayMd.copyWith(fontSize: 26)),
               const SizedBox(height: 6),
               Text(
-                'Sistem kecerdasan kuratorial GALERIA sedang menganalisis keaslian fisik dan digital mahakarya Anda.',
+                'Foto sudah lolos pemeriksaan awal. GALERIA sedang mengonfirmasi hasilnya dan menerbitkan sertifikat digital keaslian karyamu.',
                 textAlign: TextAlign.center,
                 style: AppTextStyles.bodySm.copyWith(color: AppColors.muted),
               ),
@@ -168,8 +173,8 @@ class _MemverifikasiKeaslianScreenState extends State<MemverifikasiKeaslianScree
                         icon: _error != null ? Icons.error_outline : null,
                         iconBg: _error != null ? AppColors.errorContainer : AppColors.accentSoft,
                         iconColor: AppColors.error,
-                        title: 'Menganalisis kemiripan dengan karya lainnya (Art-to-Art)',
-                        subtitle: 'Mendeteksi kemiripan visual, komposisi, & palet karya lain',
+                        title: 'Konfirmasi duplikat (Art-to-Art)',
+                        subtitle: 'Memastikan ulang tidak ada karya yang terlalu mirip',
                         status: _error != null ? 'Gagal' : 'Memindai...',
                         statusColor: _error != null ? AppColors.error : AppColors.accent,
                         active: _error == null),
@@ -179,8 +184,8 @@ class _MemverifikasiKeaslianScreenState extends State<MemverifikasiKeaslianScree
                         icon: _error != null ? Icons.error_outline : null,
                         iconBg: _error != null ? AppColors.errorContainer : AppColors.accentSoft,
                         iconColor: AppColors.error,
-                        title: 'Menganalisis kemungkinan dibuat oleh AI (Art-to-AI)',
-                        subtitle: 'Mendeteksi artefak sintetis dan pola piksel generatif AI',
+                        title: 'Konfirmasi perkiraan buatan AI (Art-to-AI)',
+                        subtitle: 'Perkiraan model, bukan kepastian',
                         status: _error != null ? 'Gagal' : 'Memindai...',
                         statusColor: _error != null ? AppColors.error : AppColors.accent,
                         active: _error == null),
@@ -189,8 +194,8 @@ class _MemverifikasiKeaslianScreenState extends State<MemverifikasiKeaslianScree
                         icon: Icons.hourglass_empty,
                         iconBg: AppColors.surfaceContainerHigh,
                         iconColor: AppColors.muted,
-                        title: 'Menyusun hasil verifikasi',
-                        subtitle: 'Mengagregasi laporan kurasi dan kesimpulan orisinalitas',
+                        title: 'Menerbitkan sertifikat digital',
+                        subtitle: 'Menyimpan hasil dan menandatangani sertifikat',
                         status: 'Menunggu',
                         statusColor: AppColors.muted,
                         dim: true),

@@ -57,9 +57,16 @@ async def _read_image(file: UploadFile) -> Image.Image:
 async def check_verification(
     request: Request,
     file: UploadFile = File(...),
+    user: User = Depends(butuh_role("seniman")),
     db: AsyncSession = Depends(get_db),
 ):
-    """Pratinjau Art-to-Art + Art-to-AI, TANPA menyimpan apa pun ke database."""
+    """Pratinjau Art-to-Art + Art-to-AI, TANPA menyimpan apa pun ke database.
+
+    Dipakai LANGKAH 1 layar unggah karya (foto diperiksa SEBELUM seniman mengisi judul/harga).
+    Wajib login ``seniman`` karena tiap panggilan menjalankan dua model di server (mahal) dan hasilnya
+    bisa dipakai menebak isi katalog; pemeriksaan resmi yang menyimpan hasil + menerbitkan sertifikat
+    tetap ``POST /api/karya/{id}/verify``.
+    """
     image = await _read_image(file)
     service = request.app.state.digital_art_identity_service
     result = await service.verify(image, db=db, karya_id=None, persist=False)
