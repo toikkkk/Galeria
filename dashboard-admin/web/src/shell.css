@@ -493,3 +493,8 @@
 .side-tombol { margin-top: -5px; }
 .side-kecil .side-atas { gap: 0; }
 .side-kecil .side-tombol { margin-top: -5px; }
+
+/* Sudut kanan-atas sidebar dibuat lurus: lengkungnya melintas tepat di atas tombol lipat sehingga tombol terlihat
+   terjepit di sudut. Lengkung bawah tetap (di sana latar halaman terlihat, tidak ada bilah atas yang bersebelahan). */
+.side { border-radius: 0 0 28px 0; }
+@media (max-width: 900px), (max-height: 600px) { .side { border-radius: 0; } }
