@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../../state/studio_store.dart';
 import '../../theme/app_theme.dart';
+import '../../widgets/commerce_widgets.dart';
 import '../../utils/format_waktu.dart';
 import '../../widgets/event_stepper.dart';
 import 'event_form_widgets.dart';
@@ -102,8 +103,9 @@ class _BuatEventStep2ScreenState extends State<BuatEventStep2Screen> {
   Widget build(BuildContext context) {
     final offline = _draft.format == 'offline';
     return Scaffold(
-      backgroundColor: AppColors.surface,
+      backgroundColor: kLatarMarketplace,
       appBar: AppBar(
+        backgroundColor: Colors.white,
         leading: IconButton(onPressed: widget.onKembali, icon: const Icon(Icons.arrow_back)),
         title: Text('Jadwal & Lokasi Pameran', style: AppTextStyles.headlineSm),
       ),

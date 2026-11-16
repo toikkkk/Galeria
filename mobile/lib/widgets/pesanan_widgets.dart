@@ -6,6 +6,7 @@ import '../services/auth_service.dart';
 import '../services/pesanan_service.dart';
 import '../theme/app_theme.dart';
 import '../utils/format.dart';
+import 'commerce_widgets.dart';
 import 'karya_image.dart';
 
 /// Gambar karya sebuah pesanan (dari R2 bila ada, selain itu asset lokal).
@@ -69,7 +70,17 @@ class StatusPesananChip extends StatelessWidget {
   }
 }
 
-/// Kartu ringkas satu pesanan. [tombol] = aksi cepat di bawah (opsional).
+/// Warna & ikon tahap pesanan (dipakai kartu, spanduk detail, dan lencana).
+(Color, IconData) tampilanStatusPesanan(Pesanan p) => switch (p.status) {
+      'menunggu_pembayaran' => (const Color(0xFFB26A00), Icons.schedule),
+      'dibayar' => (AppColors.primary, Icons.payments_outlined),
+      'dikonfirmasi' => (const Color(0xFF8A6A00), p.sudahDikirim ? Icons.local_shipping_outlined : Icons.inventory_2_outlined),
+      'selesai' => (AppColors.success, Icons.check_circle_outline),
+      _ => (AppColors.error, Icons.cancel_outlined),
+    };
+
+/// Kartu satu pesanan ala daftar pesanan Shopee: kepala (toko + status), isi (gambar + judul),
+/// kaki (total + tombol aksi). [tombol] = aksi cepat di kaki (opsional).
 class PesananKartu extends StatelessWidget {
   const PesananKartu({super.key, required this.pesanan, required this.onTap, this.sebagaiPenjual = false, this.tombol});
 
@@ -80,55 +91,94 @@ class PesananKartu extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final (warna, _) = tampilanStatusPesanan(pesanan);
     return GestureDetector(
       onTap: onTap,
+      behavior: HitTestBehavior.opaque,
       child: Container(
-        margin: const EdgeInsets.only(bottom: AppSpacing.sm),
-        padding: const EdgeInsets.all(AppSpacing.sm),
+        margin: const EdgeInsets.only(bottom: AppSpacing.xs),
         decoration: BoxDecoration(
           color: Colors.white,
-          borderRadius: BorderRadius.circular(AppRadius.md),
-          boxShadow: const [BoxShadow(color: Colors.black12, blurRadius: 6)],
+          borderRadius: BorderRadius.circular(AppRadius.lg),
+          border: Border.all(color: AppColors.border),
         ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                PesananGambar(pesanan: pesanan),
-                const SizedBox(width: AppSpacing.sm),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
+            Padding(
+              padding: const EdgeInsets.fromLTRB(AppSpacing.sm, AppSpacing.sm, AppSpacing.sm, AppSpacing.xs),
+              child: Row(
+                children: [
+                  Icon(sebagaiPenjual ? Icons.person_outline : Icons.storefront_outlined, size: 17, color: AppColors.primary),
+                  const SizedBox(width: 6),
+                  Expanded(
+                    child: Text(
+                      sebagaiPenjual ? pesanan.pembeliNama : pesanan.penjualNama,
+                      style: AppTextStyles.labelMd.copyWith(fontSize: 13),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ),
+                  Text(pesanan.statusLabel, style: AppTextStyles.labelSm.copyWith(fontSize: 11, color: warna)),
+                ],
+              ),
+            ),
+            const Divider(height: 1),
+            Padding(
+              padding: const EdgeInsets.all(AppSpacing.sm),
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  PesananGambar(pesanan: pesanan, ukuran: 72),
+                  const SizedBox(width: AppSpacing.sm),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(pesanan.judul, style: AppTextStyles.labelMd, maxLines: 2, overflow: TextOverflow.ellipsis),
+                        const SizedBox(height: 2),
+                        Text(
+                          '${pesanan.artistName} · ${pesanan.styleName}',
+                          style: AppTextStyles.bodySm.copyWith(color: AppColors.muted, fontSize: 11),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                        const SizedBox(height: 6),
+                        Wrap(
+                          spacing: 6,
+                          runSpacing: 4,
+                          crossAxisAlignment: WrapCrossAlignment.center,
+                          children: [
+                            Text(pesanan.kode, style: AppTextStyles.overline.copyWith(fontSize: 9, color: AppColors.outline)),
+                            if (pesanan.dariLelang) const LencanaKecil('Lelang', ikon: Icons.gavel),
+                          ],
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const Divider(height: 1),
+            Padding(
+              padding: const EdgeInsets.fromLTRB(AppSpacing.sm, AppSpacing.xs, AppSpacing.sm, AppSpacing.sm),
+              child: Column(
+                children: [
+                  Row(
                     children: [
-                      Text(pesanan.kode, style: AppTextStyles.overline.copyWith(fontSize: 9, color: AppColors.outline)),
-                      Text(pesanan.judul, style: AppTextStyles.labelMd, maxLines: 1, overflow: TextOverflow.ellipsis),
+                      Text('1 karya', style: AppTextStyles.bodySm.copyWith(fontSize: 11.5, color: AppColors.muted)),
+                      const Spacer(),
+                      Text(sebagaiPenjual ? 'Pendapatan setelah komisi  ' : 'Total pesanan  ', style: AppTextStyles.bodySm.copyWith(fontSize: 11.5)),
                       Text(
-                        sebagaiPenjual ? 'Pembeli: ${pesanan.pembeliNama}' : pesanan.artistName,
-                        style: AppTextStyles.bodySm.copyWith(color: AppColors.muted, fontSize: 11),
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
+                        formatRupiah(sebagaiPenjual ? pesanan.pendapatanSenimanIdr : pesanan.hargaIdr),
+                        style: AppTextStyles.labelMd.copyWith(fontSize: 14, color: AppColors.onSurface),
                       ),
-                      const SizedBox(height: 4),
-                      StatusPesananChip(pesanan: pesanan),
                     ],
                   ),
-                ),
-                Column(
-                  crossAxisAlignment: CrossAxisAlignment.end,
-                  children: [
-                    Text(
-                      formatRupiah(sebagaiPenjual ? pesanan.pendapatanSenimanIdr : pesanan.hargaIdr),
-                      style: AppTextStyles.labelMd.copyWith(fontSize: 13),
-                    ),
-                    if (sebagaiPenjual)
-                      Text('setelah komisi', style: AppTextStyles.bodySm.copyWith(fontSize: 9.5, color: AppColors.muted)),
-                  ],
-                ),
-              ],
+                  if (tombol != null) ...[const SizedBox(height: AppSpacing.xs), Align(alignment: Alignment.centerRight, child: tombol!)],
+                ],
+              ),
             ),
-            if (tombol != null) ...[const SizedBox(height: AppSpacing.xs), tombol!],
           ],
         ),
       ),

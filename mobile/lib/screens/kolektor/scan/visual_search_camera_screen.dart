@@ -7,6 +7,7 @@ import 'package:image_picker/image_picker.dart';
 import '../../../models/karya.dart';
 import '../../../services/visual_search_service.dart';
 import '../../../theme/app_theme.dart';
+import '../../../widgets/karya_image.dart';
 import '../../../widgets/kolektor/camera_preview_layer.dart';
 
 /// Konversi dari
@@ -193,12 +194,20 @@ class _VisualSearchCameraScreenState extends State<VisualSearchCameraScreen> {
                             color: Colors.black.withValues(alpha: 0.5),
                             borderRadius: BorderRadius.circular(AppRadius.full),
                           ),
-                          child: Text(
-                            'PENCARIAN VISUAL',
-                            style: AppTextStyles.overline.copyWith(
-                              color: Colors.white,
-                              fontSize: 10,
-                            ),
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Container(width: 7, height: 7, decoration: const BoxDecoration(color: AppColors.accent, shape: BoxShape.circle)),
+                              const SizedBox(width: 6),
+                              Text(
+                                'PENCARIAN VISUAL',
+                                style: AppTextStyles.overline.copyWith(
+                                  color: Colors.white,
+                                  fontSize: 10,
+                                  fontWeight: FontWeight.w800,
+                                ),
+                              ),
+                            ],
                           ),
                         ),
                         _roundIcon(
@@ -209,7 +218,17 @@ class _VisualSearchCameraScreenState extends State<VisualSearchCameraScreen> {
                     ),
                   ),
                   Expanded(
-                    child: Center(
+                    child: Stack(children: [
+                    // area di luar bingkai digelapkan: jelas bahwa HANYA isi bingkai yang dipindai
+                    Positioned.fill(
+                      child: LayoutBuilder(
+                        builder: (context, c) {
+                          final w = (c.maxWidth * 0.84).clamp(0, 280).toDouble();
+                          return IgnorePointer(child: CustomPaint(painter: _FrameMaskPainter(Size(w, w * 5 / 4))));
+                        },
+                      ),
+                    ),
+                    Center(
                       // Bingkai kurasi: 4 bracket sudut (BUKAN border penuh),
                       // lebar 84% area kamera (maks 280) & aspect ratio 4:5
                       // -- persis desain asli (lihat docs/design/.../
@@ -249,12 +268,20 @@ class _VisualSearchCameraScreenState extends State<VisualSearchCameraScreen> {
                                           AppRadius.full,
                                         ),
                                       ),
-                                      child: Text(
-                                        'Sejajarkan kanvas di dalam bingkai',
-                                        style: AppTextStyles.bodySm.copyWith(
-                                          color: Colors.white70,
-                                          fontSize: 11,
-                                        ),
+                                      child: Row(
+                                        mainAxisSize: MainAxisSize.min,
+                                        children: [
+                                          const Icon(Icons.crop_free, size: 13, color: AppColors.accent),
+                                          const SizedBox(width: 5),
+                                          Text(
+                                            'Sejajarkan lukisan di dalam bingkai',
+                                            style: AppTextStyles.bodySm.copyWith(
+                                              color: Colors.white,
+                                              fontSize: 11,
+                                              fontWeight: FontWeight.w600,
+                                            ),
+                                          ),
+                                        ],
                                       ),
                                     ),
                                   ),
@@ -265,11 +292,13 @@ class _VisualSearchCameraScreenState extends State<VisualSearchCameraScreen> {
                         },
                       ),
                     ),
+                    ]),
                   ),
                   _zoomBar(),
                   Padding(
-                    padding: const EdgeInsets.symmetric(
-                      vertical: AppSpacing.lg,
+                    padding: const EdgeInsets.only(
+                      top: AppSpacing.sm,
+                      bottom: AppSpacing.lg,
                     ),
                     child: Row(
                       mainAxisAlignment: MainAxisAlignment.spaceEvenly,
@@ -313,6 +342,13 @@ class _VisualSearchCameraScreenState extends State<VisualSearchCameraScreen> {
                           onTap: widget.onArTap ?? () {},
                         ),
                       ],
+                    ),
+                  ),
+                  Padding(
+                    padding: const EdgeInsets.only(bottom: AppSpacing.md),
+                    child: Text(
+                      _scanning ? 'Memindai lukisan…' : 'Ketuk tombol untuk memindai',
+                      style: AppTextStyles.labelSm.copyWith(color: Colors.white70, fontSize: 11),
                     ),
                   ),
                 ],
@@ -515,6 +551,33 @@ class _VisualSearchCameraScreenState extends State<VisualSearchCameraScreen> {
 /// -- supaya tidak overclaim data yang tidak benar-benar kita punya. Baris
 /// trust ("Provenansi Sah" dkk) tetap dipakai apa adanya karena itu copy
 /// pemasaran generik (sama utk semua karya), bukan klaim data spesifik.
+/// Menggelapkan seluruh area kecuali bingkai pindai di tengah (lubang berujung membulat).
+class _FrameMaskPainter extends CustomPainter {
+  const _FrameMaskPainter(this.hole);
+
+  final Size hole;
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final rect = Rect.fromCenter(center: size.center(Offset.zero), width: hole.width, height: hole.height);
+    final path = Path()
+      ..fillType = PathFillType.evenOdd
+      ..addRect(Offset.zero & size)
+      ..addRRect(RRect.fromRectAndRadius(rect, const Radius.circular(10)));
+    canvas.drawPath(path, Paint()..color = Colors.black.withValues(alpha: 0.42));
+    canvas.drawRRect(
+      RRect.fromRectAndRadius(rect, const Radius.circular(10)),
+      Paint()
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = 1
+        ..color = Colors.white.withValues(alpha: 0.18),
+    );
+  }
+
+  @override
+  bool shouldRepaint(covariant _FrameMaskPainter old) => old.hole != hole;
+}
+
 class _ResultCard extends StatelessWidget {
   const _ResultCard({
     required this.result,
@@ -557,15 +620,22 @@ class _ResultCard extends StatelessWidget {
         borderRadius: BorderRadius.circular(24),
         boxShadow: const [BoxShadow(color: Colors.black45, blurRadius: 28)],
       ),
-      child: result.isConfirmed && primary != null
-          ? _buildFound(context, primary)
-          : _buildNotFound(context, detectedStyle, styleMatches),
+      child: ConstrainedBox(
+        constraints: BoxConstraints(maxHeight: MediaQuery.sizeOf(context).height * 0.8),
+        child: SingleChildScrollView(
+          child: result.isConfirmed && primary != null
+              ? _buildFound(context, primary)
+              : _buildNotFound(context, detectedStyle, styleMatches),
+        ),
+      ),
     );
   }
 
   // ---------------------------------------------------------------------
   // Karya Ditemukan (confirmed)
   // ---------------------------------------------------------------------
+
+  static String _cm(double v) => v == v.roundToDouble() ? v.toInt().toString() : v.toStringAsFixed(1);
 
   Widget _buildFound(BuildContext context, Karya karya) {
     return Column(
@@ -606,12 +676,7 @@ class _ResultCard extends StatelessWidget {
           children: [
             ClipRRect(
               borderRadius: BorderRadius.circular(AppRadius.md),
-              child: Image.asset(
-                karya.assetPath,
-                width: 80,
-                height: 96,
-                fit: BoxFit.cover,
-              ),
+              child: SizedBox(width: 92, height: 116, child: KaryaImage(karya: karya)),
             ),
             const SizedBox(width: AppSpacing.sm),
             Expanded(
@@ -639,7 +704,7 @@ class _ResultCard extends StatelessWidget {
                   ),
                   const SizedBox(height: 6),
                   Text(
-                    'ESTIMASI NILAI',
+                    'HARGA',
                     style: AppTextStyles.overline.copyWith(
                       fontSize: 8.5,
                       color: AppColors.outline,
@@ -647,8 +712,27 @@ class _ResultCard extends StatelessWidget {
                   ),
                   Text(
                     karya.priceFormatted,
-                    style: AppTextStyles.headlineMd.copyWith(fontSize: 17),
+                    style: AppTextStyles.headlineMd.copyWith(fontSize: 19, fontWeight: FontWeight.w800, color: const Color(0xFF3E251E)),
                   ),
+                  const SizedBox(height: 6),
+                  Wrap(spacing: 6, runSpacing: 4, children: [
+                    if (karya.lebarCm != null && karya.tinggiCm != null)
+                      _pillBadge(
+                        icon: Icons.straighten,
+                        label: '${_cm(karya.lebarCm!)} × ${_cm(karya.tinggiCm!)} cm',
+                        bg: AppColors.surfaceContainerHigh,
+                        fg: AppColors.onSurface,
+                        small: true,
+                      ),
+                    if (result.matches.isNotEmpty)
+                      _pillBadge(
+                        icon: Icons.percent,
+                        label: 'Kemiripan ${(result.matches.first.similarity * 100).round()}%',
+                        bg: const Color(0xFFF7E7C1),
+                        fg: const Color(0xFF7A5410),
+                        small: true,
+                      ),
+                  ]),
                 ],
               ),
             ),
@@ -755,9 +839,8 @@ class _ResultCard extends StatelessWidget {
           spacing: 10,
           runSpacing: 4,
           children: [
-            _trustItem(Icons.verified_outlined, 'Provenansi Sah'),
-            _trustItem(Icons.workspace_premium_outlined, 'Sertifikat Kurator'),
-            _trustItem(Icons.local_shipping_outlined, 'Pengiriman Khusus'),
+            _trustItem(Icons.verified_outlined, 'Terdaftar di katalog'),
+            _trustItem(Icons.workspace_premium_outlined, 'Sertifikat digital keaslian'),
           ],
         ),
       ],
@@ -773,6 +856,7 @@ class _ResultCard extends StatelessWidget {
     String? detectedStyle,
     List<VisualSearchMatch> styleMatches,
   ) {
+    final kandidat = styleMatches.isNotEmpty ? styleMatches : result.matches;
     return Column(
       mainAxisSize: MainAxisSize.min,
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -838,13 +922,13 @@ class _ResultCard extends StatelessWidget {
                     child: scannedPhoto != null
                         ? Image.file(
                             scannedPhoto!,
-                            width: 56,
-                            height: 64,
+                            width: 72,
+                            height: 88,
                             fit: BoxFit.cover,
                           )
                         : Container(
-                            width: 56,
-                            height: 64,
+                            width: 72,
+                            height: 88,
                             color: AppColors.surfaceContainerHigh,
                           ),
                   ),
@@ -877,7 +961,7 @@ class _ResultCard extends StatelessWidget {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      'KOLEKSI TERDETEKSI',
+                      result.isAmbiguous ? 'MIRIP, BELUM PASTI' : 'HASIL PINDAIAN',
                       style: AppTextStyles.overline.copyWith(
                         fontSize: 8,
                         color: AppColors.outline,
@@ -888,7 +972,7 @@ class _ResultCard extends StatelessWidget {
                       detectedStyle == null
                           ? 'Karya yang Dipindai'
                           : 'Karya Bergaya $detectedStyle',
-                      style: AppTextStyles.headlineSm.copyWith(fontSize: 14),
+                      style: AppTextStyles.headlineSm.copyWith(fontSize: 16, fontWeight: FontWeight.w800),
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                     ),
@@ -896,10 +980,10 @@ class _ResultCard extends StatelessWidget {
                     Text(
                       result.verdictMessage,
                       style: AppTextStyles.bodySm.copyWith(
-                        fontSize: 10,
+                        fontSize: 11,
                         color: AppColors.onSurfaceVariant,
                       ),
-                      maxLines: 2,
+                      maxLines: 3,
                       overflow: TextOverflow.ellipsis,
                     ),
                   ],
@@ -909,38 +993,38 @@ class _ResultCard extends StatelessWidget {
           ),
         ),
         const SizedBox(height: AppSpacing.md),
+        // Daftar rekomendasi. Bila tak ada karya bergaya sama (atau gaya belum yakin), tampilkan KANDIDAT TERDEKAT
+        // dari hasil pencarian -- jangan kosong, karena pesan verdict menyuruh pengguna "cek kandidat di bawah".
         Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
-            Text('Rekomendasi Karakter Serupa', style: AppTextStyles.headlineSm),
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-              decoration: BoxDecoration(
-                color: AppColors.surfaceContainerHigh,
-                borderRadius: BorderRadius.circular(AppRadius.sm),
-              ),
+            Expanded(
               child: Text(
-                '${styleMatches.length} KARYA TERSEDIA',
-                style: AppTextStyles.overline.copyWith(
-                  fontSize: 8.5,
-                  color: AppColors.accent,
-                ),
+                styleMatches.isNotEmpty ? 'Rekomendasi Karakter Serupa' : 'Kandidat Terdekat di Katalog',
+                style: AppTextStyles.headlineSm.copyWith(fontSize: 17, fontWeight: FontWeight.w800),
               ),
             ),
+            if (kandidat.isNotEmpty)
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                decoration: BoxDecoration(color: const Color(0xFFF7E7C1), borderRadius: BorderRadius.circular(AppRadius.full)),
+                child: Text(
+                  '${kandidat.length} KARYA',
+                  style: AppTextStyles.overline.copyWith(fontSize: 8.5, color: const Color(0xFF7A5410), fontWeight: FontWeight.w800),
+                ),
+              ),
           ],
         ),
         const SizedBox(height: 4),
         Text(
-          detectedStyle == null
-              ? 'Kurasi karya lain di katalog GALERIA.'
-              : 'Kurasi karya lain beraliran $detectedStyle di katalog GALERIA.',
-          style: AppTextStyles.bodySm.copyWith(
-            color: AppColors.muted,
-            fontSize: 11,
-          ),
+          styleMatches.isNotEmpty
+              ? 'Kurasi karya lain beraliran $detectedStyle di katalog GALERIA.'
+              : (kandidat.isNotEmpty
+                  ? 'Karya katalog yang paling mirip dengan hasil pindaianmu. Persen kemiripan hanyalah perkiraan, bukan kepastian.'
+                  : 'Belum ada karya di katalog yang cukup mirip dengan hasil pindaianmu.'),
+          style: AppTextStyles.bodySm.copyWith(color: AppColors.muted, fontSize: 11),
         ),
         const SizedBox(height: AppSpacing.sm),
-        for (final m in styleMatches.take(3))
+        for (final m in kandidat.take(3))
           Padding(
             padding: const EdgeInsets.only(bottom: AppSpacing.xs),
             child: InkWell(
@@ -949,9 +1033,10 @@ class _ResultCard extends StatelessWidget {
               child: Container(
                 padding: const EdgeInsets.all(AppSpacing.xs),
                 decoration: BoxDecoration(
-                  color: AppColors.surfaceContainerLow.withValues(alpha: 0.7),
+                  color: Colors.white,
                   borderRadius: BorderRadius.circular(AppRadius.md),
                   border: Border.all(color: AppColors.border),
+                  boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.04), blurRadius: 8, offset: const Offset(0, 2))],
                 ),
                 child: Row(
                   children: [
@@ -959,35 +1044,17 @@ class _ResultCard extends StatelessWidget {
                       children: [
                         ClipRRect(
                           borderRadius: BorderRadius.circular(AppRadius.sm),
-                          child: Image.asset(
-                            m.karya.assetPath,
-                            width: 72,
-                            height: 80,
-                            fit: BoxFit.cover,
-                          ),
+                          child: SizedBox(width: 76, height: 92, child: KaryaImage(karya: m.karya)),
                         ),
                         Positioned(
                           top: 4,
                           left: 4,
                           child: Container(
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 5,
-                              vertical: 2,
-                            ),
-                            decoration: BoxDecoration(
-                              color: AppColors.successContainer.withValues(
-                                alpha: 0.9,
-                              ),
-                              borderRadius: BorderRadius.circular(
-                                AppRadius.full,
-                              ),
-                            ),
+                            padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 2),
+                            decoration: BoxDecoration(color: const Color(0xFF3E251E), borderRadius: BorderRadius.circular(AppRadius.full)),
                             child: Text(
-                              'TERSEDIA',
-                              style: AppTextStyles.overline.copyWith(
-                                fontSize: 6.5,
-                                color: AppColors.success,
-                              ),
+                              '${(m.similarity * 100).round()}%',
+                              style: AppTextStyles.overline.copyWith(fontSize: 8.5, color: const Color(0xFFF0C86A), fontWeight: FontWeight.w800),
                             ),
                           ),
                         ),
@@ -1000,59 +1067,42 @@ class _ResultCard extends StatelessWidget {
                         children: [
                           Text(
                             m.karya.title,
-                            style: AppTextStyles.headlineSm.copyWith(
-                              fontSize: 15,
-                              fontStyle: FontStyle.italic,
-                            ),
+                            style: AppTextStyles.headlineSm.copyWith(fontSize: 15, fontWeight: FontWeight.w800),
                             maxLines: 1,
                             overflow: TextOverflow.ellipsis,
                           ),
                           Text(
-                            '${m.karya.artistName} · ${m.karya.galleryName}',
-                            style: AppTextStyles.bodySm.copyWith(
-                              fontSize: 10,
-                              color: AppColors.muted,
-                            ),
+                            '${m.karya.artistName} · ${m.karya.styleName}',
+                            style: AppTextStyles.bodySm.copyWith(fontSize: 10.5, color: AppColors.muted),
                             maxLines: 1,
                             overflow: TextOverflow.ellipsis,
                           ),
+                          if (m.karya.lebarCm != null && m.karya.tinggiCm != null)
+                            Text(
+                              '${_cm(m.karya.lebarCm!)} × ${_cm(m.karya.tinggiCm!)} cm',
+                              style: AppTextStyles.bodySm.copyWith(fontSize: 10.5, color: AppColors.muted),
+                            ),
                           const SizedBox(height: 6),
                           Row(
                             mainAxisAlignment: MainAxisAlignment.spaceBetween,
                             children: [
-                              Text(
-                                m.karya.priceFormatted,
-                                style: AppTextStyles.labelMd.copyWith(
-                                  fontSize: 13,
+                              Flexible(
+                                child: Text(
+                                  m.karya.priceFormatted,
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                  style: AppTextStyles.labelMd.copyWith(fontSize: 14, fontWeight: FontWeight.w800, color: const Color(0xFF3E251E)),
                                 ),
                               ),
                               Container(
-                                padding: const EdgeInsets.symmetric(
-                                  horizontal: 8,
-                                  vertical: 3,
-                                ),
-                                decoration: BoxDecoration(
-                                  color: AppColors.primary,
-                                  borderRadius: BorderRadius.circular(
-                                    AppRadius.sm,
-                                  ),
-                                ),
+                                padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 4),
+                                decoration: BoxDecoration(color: const Color(0xFF3E251E), borderRadius: BorderRadius.circular(AppRadius.full)),
                                 child: Row(
                                   mainAxisSize: MainAxisSize.min,
                                   children: [
-                                    Text(
-                                      'Lihat',
-                                      style: AppTextStyles.labelSm.copyWith(
-                                        fontSize: 10,
-                                        color: Colors.white,
-                                      ),
-                                    ),
-                                    const SizedBox(width: 2),
-                                    const Icon(
-                                      Icons.arrow_forward,
-                                      size: 11,
-                                      color: Colors.white,
-                                    ),
+                                    Text('Lihat', style: AppTextStyles.labelSm.copyWith(fontSize: 10.5, color: Colors.white, fontWeight: FontWeight.w700)),
+                                    const SizedBox(width: 3),
+                                    const Icon(Icons.arrow_forward, size: 11, color: Color(0xFFF0C86A)),
                                   ],
                                 ),
                               ),
@@ -1066,19 +1116,56 @@ class _ResultCard extends StatelessWidget {
               ),
             ),
           ),
-        if (styleMatches.isEmpty)
-          Padding(
-            padding: const EdgeInsets.symmetric(vertical: AppSpacing.sm),
-            child: Text(
-              'Belum ada karya bergaya serupa di katalog GALERIA saat ini.',
-              style: AppTextStyles.bodySm.copyWith(color: AppColors.muted),
-            ),
+        if (kandidat.isEmpty)
+          Container(
+            margin: const EdgeInsets.only(bottom: AppSpacing.xs),
+            padding: const EdgeInsets.all(AppSpacing.sm),
+            decoration: BoxDecoration(color: AppColors.surfaceContainerLow, borderRadius: BorderRadius.circular(AppRadius.md), border: Border.all(color: AppColors.border)),
+            child: Row(children: [
+              const Icon(Icons.search_off, size: 22, color: AppColors.muted),
+              const SizedBox(width: AppSpacing.xs),
+              Expanded(
+                child: Text(
+                  'Lukisan ini kemungkinan belum ada di katalog GALERIA. Coba pindai ulang dengan pencahayaan lebih baik.',
+                  style: AppTextStyles.bodySm.copyWith(color: AppColors.onSurfaceVariant, fontSize: 11.5),
+                ),
+              ),
+            ]),
           ),
         const SizedBox(height: AppSpacing.xs),
-        OutlinedButton.icon(
-          onPressed: onClose,
-          icon: const Icon(Icons.auto_awesome_motion, size: 16),
-          label: const Text('Jelajahi Lukisan Serupa Lainnya'),
+        // tips memindai ulang (berlaku untuk hasil belum pasti)
+        Container(
+          padding: const EdgeInsets.all(AppSpacing.sm),
+          decoration: BoxDecoration(color: const Color(0xFFF7E7C1).withValues(alpha: 0.55), borderRadius: BorderRadius.circular(AppRadius.md)),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(children: [
+                const Icon(Icons.lightbulb_outline, size: 14, color: Color(0xFF7A5410)),
+                const SizedBox(width: 5),
+                Text('Tips agar lebih akurat', style: AppTextStyles.labelMd.copyWith(fontSize: 11.5, fontWeight: FontWeight.w800, color: const Color(0xFF7A5410))),
+              ]),
+              const SizedBox(height: 4),
+              for (final t in const ['Isi bingkai penuh dengan lukisan, tanpa bingkai fisik atau dinding.', 'Hindari pantulan cahaya dan bayangan di permukaan.', 'Pegang HP tegak lurus, tidak miring.'])
+                Padding(
+                  padding: const EdgeInsets.only(top: 2),
+                  child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                    Text('•  ', style: AppTextStyles.bodySm.copyWith(fontSize: 11, color: const Color(0xFF7A5410))),
+                    Expanded(child: Text(t, style: AppTextStyles.bodySm.copyWith(fontSize: 11, color: AppColors.onSurfaceVariant))),
+                  ]),
+                ),
+            ],
+          ),
+        ),
+        const SizedBox(height: AppSpacing.sm),
+        SizedBox(
+          width: double.infinity,
+          child: ElevatedButton.icon(
+            onPressed: onClose,
+            style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF3E251E), foregroundColor: Colors.white),
+            icon: const Icon(Icons.center_focus_strong, size: 18),
+            label: const Text('Pindai Ulang', style: TextStyle(fontWeight: FontWeight.w800)),
+          ),
         ),
       ],
     );

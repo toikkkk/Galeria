@@ -5,21 +5,18 @@ import 'package:share_plus/share_plus.dart';
 
 import '../../../models/karya.dart';
 import '../../../theme/app_theme.dart';
-import '../../../widgets/karya_image.dart';
-import '../../../widgets/kolektor/karya_grid_card.dart';
+import '../../../utils/format.dart';
+import '../../../widgets/commerce_widgets.dart';
 import '../../../widgets/favorit_hati.dart';
+import '../../../widgets/karya_image.dart';
 import '../../../widgets/keranjang_tombol.dart';
 import '../../../widgets/ulasan_karya_card.dart';
 
-/// Konversi dari
-/// docs/KOLEKTOR FITUR PEMBELIAN PEMBAYARAN/.../galeria_detail_karya_seni/code.html
+/// Halaman produk karya (pola Tokopedia/Shopee): gambar besar yang bisa diperbesar, harga, lencana,
+/// info ringkas, sertifikat keaslian digital, kartu penjual, ulasan, deskripsi, dan bilah beli lengket.
 ///
-/// "Sertifikat Keaslian Digital" di sini murni UI -- backend
-/// `ml-digital-art-identity/` belum ada (lihat CLAUDE.md: fitur ini
-/// mendeteksi duplikasi UPLOAD DIGITAL, BUKAN pemalsuan fisik).
-///
-/// Tombol "AR" di sticky bar membuka simulasi AR placeholder (belum
-/// ARCore/ARKit nyata) -- lihat scan/ar_ruangan_screen.dart.
+/// Semua isi berasal dari data karya nyata -- tidak ada angka karangan (pengikut, lokasi, dst.).
+/// "Sertifikat Keaslian Digital" = bukti registrasi kepemilikan digital di GALERIA, BUKAN pemeriksaan keaslian fisik.
 class DetailKaryaScreen extends StatelessWidget {
   const DetailKaryaScreen({
     super.key,
@@ -40,20 +37,15 @@ class DetailKaryaScreen extends StatelessWidget {
   final ValueChanged<String>? onLelangTap;
   final VoidCallback? onTokoTap;
 
+  bool get _dilelang => karya.lelangId != null;
+
   @override
   Widget build(BuildContext context) {
-    final related = sampleKarya
-        .where((k) => k.title != karya.title)
-        .take(3)
-        .toList();
-
     return Scaffold(
-      backgroundColor: AppColors.surface,
+      backgroundColor: kLatarMarketplace,
       appBar: AppBar(
-        leading: IconButton(
-          onPressed: onBack,
-          icon: const Icon(Icons.arrow_back),
-        ),
+        backgroundColor: Colors.white,
+        leading: IconButton(onPressed: onBack, icon: const Icon(Icons.arrow_back)),
         title: Text('Detail Karya', style: AppTextStyles.headlineSm),
         actions: [
           IconButton(
@@ -66,305 +58,88 @@ class DetailKaryaScreen extends StatelessWidget {
         ],
       ),
       body: ListView(
-        padding: const EdgeInsets.only(bottom: 100),
+        padding: const EdgeInsets.only(bottom: AppSpacing.lg),
         children: [
-          AspectRatio(
-            aspectRatio: 4 / 5,
-            child: KaryaImage(karya: karya),
+          _galeri(context),
+          _blokHarga(),
+          const SizedBox(height: AppSpacing.xs),
+          _infoKarya(),
+          if (karya.artworkId != null) _sertifikat(context),
+          _kartuPenjual(),
+          if (karya.id.isNotEmpty)
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: AppSpacing.sm),
+              child: UlasanKaryaCard(karyaId: karya.id),
+            ),
+          Padding(
+            padding: const EdgeInsets.fromLTRB(AppSpacing.sm, AppSpacing.xs, AppSpacing.sm, 0),
+            child: KartuBagian(
+              judul: 'Deskripsi Karya',
+              ikon: Icons.notes,
+              child: Text(
+                (karya.deskripsi != null && karya.deskripsi!.isNotEmpty)
+                    ? karya.deskripsi!
+                    : 'Karya beraliran ${karya.styleName} oleh ${karya.artistName}, ditawarkan oleh ${karya.galleryName}.',
+                style: AppTextStyles.bodyMd.copyWith(fontSize: 13.5),
+              ),
+            ),
           ),
           Padding(
-            padding: const EdgeInsets.symmetric(
-              horizontal: AppSpacing.screenGutter,
-              vertical: AppSpacing.sm,
-            ),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    Text(
-                      'KOLEKSI MAHAKARYA PRIMER',
-                      style: AppTextStyles.overline.copyWith(
-                        color: AppColors.muted,
-                      ),
-                    ),
-                    Container(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 6,
-                        vertical: 2,
-                      ),
-                      decoration: BoxDecoration(
-                        color: AppColors.surfaceContainer,
-                        borderRadius: BorderRadius.circular(4),
-                      ),
-                      child: Text(
-                        karya.styleName,
-                        style: AppTextStyles.labelSm.copyWith(fontSize: 10),
-                      ),
-                    ),
-                  ],
-                ),
-                Text(karya.title, style: AppTextStyles.headlineLg),
-                const SizedBox(height: AppSpacing.xs),
-                Text(
-                  'Rp ${karya.priceFormatted.replaceFirst('Rp', '')}',
-                  style: AppTextStyles.displayMd.copyWith(
-                    fontSize: 26,
-                    fontWeight: FontWeight.w700,
-                    color: AppColors.accent,
-                  ),
-                ),
-                Text(
-                  'Belum termasuk ongkos kirim',
-                  style: AppTextStyles.bodySm.copyWith(
-                    color: AppColors.muted,
-                    fontSize: 11,
-                  ),
-                ),
-                const SizedBox(height: AppSpacing.sm),
-                Wrap(
-                  spacing: 6,
-                  runSpacing: 6,
-                  children: [
-                    if (karya.lebarCm != null && karya.tinggiCm != null)
-                      _tag(Icons.aspect_ratio, '${_cm(karya.lebarCm!)} × ${_cm(karya.tinggiCm!)} cm'),
-                    _tag(Icons.palette_outlined, karya.styleName),
-                  ],
-                ),
-                const SizedBox(height: AppSpacing.md),
-                // Sertifikat Keaslian Digital -- hanya bila karya benar-benar punya Artwork ID
-                if (karya.artworkId != null)
-                Container(
-                  padding: const EdgeInsets.all(AppSpacing.md),
-                  decoration: BoxDecoration(
-                    color: AppColors.accentSoft.withValues(alpha: 0.3),
-                    borderRadius: BorderRadius.circular(AppRadius.md),
-                  ),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Row(
-                        children: [
-                          CircleAvatar(
-                            radius: 16,
-                            backgroundColor: AppColors.accentSoft,
-                            child: const Icon(
-                              Icons.verified_user,
-                              size: 16,
-                              color: AppColors.accent,
-                            ),
-                          ),
-                          const SizedBox(width: AppSpacing.xs),
-                          Expanded(
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Text(
-                                  'TERAUTENTIKASI GALERIA',
-                                  style: AppTextStyles.overline.copyWith(
-                                    fontSize: 9,
-                                    color: AppColors.accent,
-                                  ),
-                                ),
-                                Text(
-                                  'Sertifikat Keaslian Digital',
-                                  style: AppTextStyles.headlineSm.copyWith(
-                                    fontSize: 15,
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
-                        ],
-                      ),
-                      const SizedBox(height: AppSpacing.xs),
-                      Container(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: AppSpacing.sm,
-                          vertical: 8,
-                        ),
-                        decoration: BoxDecoration(
-                          color: Colors.white.withValues(alpha: 0.9),
-                          borderRadius: BorderRadius.circular(8),
-                        ),
-                        child: Row(
-                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                          children: [
-                            Flexible(
-                              child: Text(
-                                karya.artworkId ?? '',
-                                style: AppTextStyles.bodySm.copyWith(
-                                  fontFamily: 'monospace',
-                                  fontWeight: FontWeight.w600,
-                                ),
-                              ),
-                            ),
-                            GestureDetector(
-                              onTap: () async {
-                                await Clipboard.setData(ClipboardData(text: karya.artworkId ?? ''));
-                                if (context.mounted) {
-                                  ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('ID sertifikat disalin.')));
-                                }
-                              },
-                              child: const Icon(Icons.content_copy, size: 14, color: AppColors.muted),
-                            ),
-                          ],
-                        ),
-                      ),
-                      const SizedBox(height: 4),
-                      Text(
-                        'Bukti registrasi kepemilikan digital karya ini di platform GALERIA -- '
-                        'bukan pemeriksaan keaslian fisik lukisan.',
-                        style: AppTextStyles.bodySm.copyWith(
-                          color: AppColors.muted,
-                          fontSize: 10.5,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-                const SizedBox(height: AppSpacing.md),
-                InkWell(
-                  onTap: onTokoTap,
-                  borderRadius: BorderRadius.circular(AppRadius.lg),
-                  child: Container(
-                    padding: const EdgeInsets.all(AppSpacing.sm),
-                    decoration: BoxDecoration(
-                      color: AppColors.surfaceContainerLow,
-                      borderRadius: BorderRadius.circular(AppRadius.lg),
-                    ),
-                    child: Row(
-                      children: [
-                        CircleAvatar(
-                          radius: 20,
-                          backgroundColor: AppColors.primary,
-                          child: Text(
-                            karya.artistName.substring(0, 2).toUpperCase(),
-                            style: const TextStyle(
-                              color: Colors.white,
-                              fontSize: 12,
-                              fontWeight: FontWeight.w700,
-                            ),
-                          ),
-                        ),
-                        const SizedBox(width: AppSpacing.sm),
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(
-                                karya.artistName,
-                                style: AppTextStyles.headlineSm.copyWith(
-                                  fontSize: 15,
-                                ),
-                              ),
-                              Text(
-                                '12,4rb Pengikut · Jakarta Selatan',
-                                style: AppTextStyles.bodySm.copyWith(
-                                  color: AppColors.muted,
-                                  fontSize: 11,
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                        TextButton(
-                          onPressed: onTokoTap,
-                          style: TextButton.styleFrom(
-                            backgroundColor: AppColors.surfaceContainerHighest,
-                          ),
-                          child: const Text('Kunjungi Galeri'),
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
-                if (karya.id.isNotEmpty) ...[
-                  const SizedBox(height: AppSpacing.md),
-                  UlasanKaryaCard(karyaId: karya.id),
+            padding: const EdgeInsets.symmetric(horizontal: AppSpacing.sm),
+            child: KartuBagian(
+              judul: 'Belanja Aman di GALERIA',
+              ikon: Icons.shield_outlined,
+              child: const Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  CatatanIkon('Karya seni bersifat unik: hanya ada satu stok per karya.', ikon: Icons.looks_one_outlined),
+                  SizedBox(height: 6),
+                  CatatanIkon('Kepemilikan tercatat atas namamu setelah pesanan selesai.', ikon: Icons.assignment_turned_in_outlined),
+                  SizedBox(height: 6),
+                  CatatanIkon('Sertifikat digital hanya menandai registrasi di GALERIA, bukan pemeriksaan keaslian fisik lukisan.', ikon: Icons.info_outline),
                 ],
-                const SizedBox(height: AppSpacing.md),
-                Text('Cerita Karya', style: AppTextStyles.headlineMd),
-                const SizedBox(height: 4),
-                Text(
-                  (karya.deskripsi != null && karya.deskripsi!.isNotEmpty)
-                      ? karya.deskripsi!
-                      : 'Karya beraliran ${karya.styleName} oleh ${karya.artistName}, ditawarkan oleh ${karya.galleryName}. '
-                          'Karya ini sudah melewati pemeriksaan keaslian digital GALERIA (deteksi duplikat dan deteksi gambar AI).',
-                  style: AppTextStyles.bodyMd.copyWith(
-                    color: AppColors.onSurface,
-                  ),
-                ),
-                const SizedBox(height: AppSpacing.md),
-                Row(
-                  children: [
-                    Expanded(
-                      child: _bentoBox(
-                        'Ukuran',
-                        (karya.lebarCm != null && karya.tinggiCm != null)
-                            ? '${_cm(karya.lebarCm!)} × ${_cm(karya.tinggiCm!)} cm'
-                            : 'Belum dicantumkan',
-                      ),
-                    ),
-                    const SizedBox(width: AppSpacing.xs),
-                    Expanded(child: _bentoBox('Ketersediaan', karya.terjual ? 'Sudah terjual' : 'Tersedia')),
-                  ],
-                ),
-                const SizedBox(height: AppSpacing.md),
-                Text('Karya Serupa', style: AppTextStyles.headlineMd),
-                const SizedBox(height: AppSpacing.sm),
-                SizedBox(
-                  height: 220,
-                  child: ListView.separated(
-                    scrollDirection: Axis.horizontal,
-                    itemCount: related.length,
-                    separatorBuilder: (context, i) =>
-                        const SizedBox(width: AppSpacing.sm),
-                    itemBuilder: (context, i) => SizedBox(
-                      width: 150,
-                      child: KaryaGridCard(karya: related[i], overline: null),
-                    ),
-                  ),
-                ),
-              ],
+              ),
             ),
           ),
         ],
       ),
-      bottomSheet: Container(
-        padding: const EdgeInsets.fromLTRB(
-          AppSpacing.screenGutter,
-          AppSpacing.sm,
-          AppSpacing.screenGutter,
-          AppSpacing.md,
-        ),
-        decoration: const BoxDecoration(
-          color: AppColors.surface,
-          border: Border(top: BorderSide(color: AppColors.border)),
-        ),
-        child: Row(
+      bottomNavigationBar: _bilahBeli(),
+    );
+  }
+
+  Widget _galeri(BuildContext context) {
+    return Container(
+      color: Colors.white,
+      child: AspectRatio(
+        aspectRatio: 1,
+        child: Stack(
+          fit: StackFit.expand,
           children: [
-            IconButton.outlined(
-              onPressed: onArTap,
-              icon: const Icon(
-                Icons.view_in_ar_outlined,
-                color: AppColors.accent,
-              ),
-              tooltip: 'Coba di Ruangan (AR)',
+            GestureDetector(
+              onTap: () => _perbesar(context),
+              child: Container(color: AppColors.surfaceContainer, child: KaryaImage(karya: karya, fit: BoxFit.contain)),
             ),
-            const SizedBox(width: AppSpacing.xs),
-            KeranjangTombol(karya: karya),
-            const SizedBox(width: AppSpacing.xs),
-            Expanded(
-              child: ElevatedButton(
-                onPressed: karya.terjual
-                    ? null
-                    : (karya.lelangId != null ? () => onLelangTap?.call(karya.lelangId!) : onBeliTap),
-                child: Text(
-                  karya.terjual
-                      ? 'Sudah terjual'
-                      : (karya.lelangId != null ? 'Sedang dilelang · Ikuti Lelang' : 'Beli Sekarang · ${karya.priceFormatted}'),
+            Positioned(
+              left: AppSpacing.sm,
+              top: AppSpacing.sm,
+              child: Wrap(
+                spacing: 6,
+                children: [
+                  if (karya.statusVerifikasi == 'terverifikasi') const LencanaKecil('Terverifikasi', ikon: Icons.verified, warna: AppColors.success),
+                  if (_dilelang) const LencanaKecil('Sedang dilelang', ikon: Icons.gavel),
+                  if (karya.isPromoted) const LencanaKecil('Promosi', ikon: Icons.campaign_outlined, warna: AppColors.primary),
+                ].map((w) => DecoratedBox(decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(AppRadius.full)), child: w)).toList(),
+              ),
+            ),
+            Positioned(
+              right: AppSpacing.sm,
+              bottom: AppSpacing.sm,
+              child: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                decoration: BoxDecoration(color: Colors.black54, borderRadius: BorderRadius.circular(AppRadius.full)),
+                child: const Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [Icon(Icons.zoom_out_map, size: 13, color: Colors.white), SizedBox(width: 4), Text('Ketuk untuk perbesar', style: TextStyle(color: Colors.white, fontSize: 10))],
                 ),
               ),
             ),
@@ -374,40 +149,187 @@ class DetailKaryaScreen extends StatelessWidget {
     );
   }
 
+  void _perbesar(BuildContext context) {
+    showDialog<void>(
+      context: context,
+      barrierColor: Colors.black,
+      builder: (ctx) => Stack(
+        children: [
+          Positioned.fill(
+            child: InteractiveViewer(minScale: 1, maxScale: 5, child: Center(child: KaryaImage(karya: karya, fit: BoxFit.contain))),
+          ),
+          Positioned(
+            top: MediaQuery.of(ctx).padding.top + 8,
+            right: 8,
+            child: IconButton.filled(
+              onPressed: () => Navigator.pop(ctx),
+              style: IconButton.styleFrom(backgroundColor: Colors.white24),
+              icon: const Icon(Icons.close, color: Colors.white),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _blokHarga() {
+    return Container(
+      color: Colors.white,
+      padding: const EdgeInsets.all(AppSpacing.md),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(formatRupiah(karya.priceIdr), style: AppTextStyles.displayMd.copyWith(fontSize: 26, fontWeight: FontWeight.w700, color: AppColors.onSurface)),
+          const SizedBox(height: 2),
+          Text(karya.title, style: AppTextStyles.headlineMd.copyWith(fontSize: 20)),
+          const SizedBox(height: 4),
+          Text('${karya.artistName} · ${karya.styleName}', style: AppTextStyles.bodySm.copyWith(fontSize: 12.5)),
+          const SizedBox(height: AppSpacing.xs),
+          Wrap(
+            spacing: 6,
+            runSpacing: 6,
+            children: [
+              LencanaKecil(karya.terjual ? 'Sudah terjual' : 'Tersedia · stok 1', ikon: karya.terjual ? Icons.block : Icons.inventory_2_outlined, warna: karya.terjual ? AppColors.error : AppColors.success),
+              const LencanaKecil('Karya unik', ikon: Icons.diamond_outlined, warna: AppColors.onSurfaceVariant),
+            ],
+          ),
+          const SizedBox(height: 6),
+          Text('Belum termasuk ongkos kirim', style: AppTextStyles.bodySm.copyWith(color: AppColors.muted, fontSize: 11)),
+        ],
+      ),
+    );
+  }
+
+  Widget _infoKarya() {
+    final ukuran = (karya.lebarCm != null && karya.tinggiCm != null) ? '${_cm(karya.lebarCm!)} × ${_cm(karya.tinggiCm!)} cm' : 'Belum dicantumkan';
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: AppSpacing.sm),
+      child: KartuBagian(
+        judul: 'Informasi Karya',
+        ikon: Icons.palette_outlined,
+        child: Column(
+          children: [
+            _barisInfo('Seniman', karya.artistName),
+            _barisInfo('Aliran', karya.styleName),
+            _barisInfo('Ukuran', ukuran),
+            _barisInfo('Galeri', karya.galleryName),
+            _barisInfo('Ketersediaan', karya.terjual ? 'Sudah terjual' : 'Tersedia'),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _barisInfo(String l, String v) => Padding(
+        padding: const EdgeInsets.symmetric(vertical: 5),
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            SizedBox(width: 104, child: Text(l, style: AppTextStyles.bodySm.copyWith(fontSize: 12.5))),
+            Expanded(child: Text(v, style: AppTextStyles.labelMd.copyWith(fontSize: 12.5, fontWeight: FontWeight.w500))),
+          ],
+        ),
+      );
+
+  Widget _sertifikat(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(AppSpacing.sm, 0, AppSpacing.sm, 0),
+      child: KartuBagian(
+        judul: 'Sertifikat Keaslian Digital',
+        ikon: Icons.verified_user_outlined,
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: AppSpacing.sm, vertical: 8),
+              decoration: BoxDecoration(color: AppColors.accentSoft.withValues(alpha: 0.35), borderRadius: BorderRadius.circular(AppRadius.md)),
+              child: Row(
+                children: [
+                  Expanded(child: Text(karya.artworkId ?? '', style: AppTextStyles.bodySm.copyWith(fontFamily: 'monospace', fontWeight: FontWeight.w600, color: AppColors.onSurface))),
+                  GestureDetector(
+                    onTap: () async {
+                      await Clipboard.setData(ClipboardData(text: karya.artworkId ?? ''));
+                      if (context.mounted) {
+                        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('ID sertifikat disalin.')));
+                      }
+                    },
+                    child: const Icon(Icons.content_copy, size: 15, color: AppColors.muted),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 6),
+            Text(
+              'Bukti registrasi kepemilikan digital karya ini di platform GALERIA, ditandatangani secara kriptografis.',
+              style: AppTextStyles.bodySm.copyWith(color: AppColors.muted, fontSize: 11),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _kartuPenjual() {
+    final inisial = karya.artistName.trim().isEmpty ? '?' : karya.artistName.trim().substring(0, karya.artistName.trim().length >= 2 ? 2 : 1).toUpperCase();
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: AppSpacing.sm),
+      child: KartuBagian(
+        child: Row(
+          children: [
+            CircleAvatar(
+              radius: 24,
+              backgroundColor: AppColors.primary,
+              child: Text(inisial, style: const TextStyle(color: Colors.white, fontSize: 13, fontWeight: FontWeight.w700)),
+            ),
+            const SizedBox(width: AppSpacing.sm),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(karya.artistName, style: AppTextStyles.headlineSm.copyWith(fontSize: 15), maxLines: 1, overflow: TextOverflow.ellipsis),
+                  Text(karya.galleryName, style: AppTextStyles.bodySm.copyWith(color: AppColors.muted, fontSize: 11.5), maxLines: 1, overflow: TextOverflow.ellipsis),
+                ],
+              ),
+            ),
+            OutlinedButton(
+              onPressed: onTokoTap,
+              style: OutlinedButton.styleFrom(minimumSize: const Size(0, 36), padding: const EdgeInsets.symmetric(horizontal: AppSpacing.sm)),
+              child: const Text('Kunjungi Toko'),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _bilahBeli() {
+    return BarBawah(
+      child: Row(
+        children: [
+          IconButton.outlined(
+            onPressed: onArTap,
+            icon: const Icon(Icons.view_in_ar_outlined, color: AppColors.accent),
+            tooltip: 'Coba di Ruangan (AR)',
+          ),
+          const SizedBox(width: AppSpacing.xs),
+          KeranjangTombol(karya: karya),
+          const SizedBox(width: AppSpacing.xs),
+          Expanded(
+            child: ElevatedButton(
+              onPressed: karya.terjual ? null : (_dilelang ? () => onLelangTap?.call(karya.lelangId!) : onBeliTap),
+              style: ElevatedButton.styleFrom(backgroundColor: AppColors.accent, foregroundColor: AppColors.onSurface),
+              child: Text(
+                karya.terjual ? 'Sudah terjual' : (_dilelang ? 'Sedang dilelang · Ikuti Lelang' : 'Beli Sekarang · ${karya.priceFormatted}'),
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
   /// 60.0 -> "60", 60.5 -> "60,5".
   static String _cm(double v) => (v == v.roundToDouble() ? v.toInt().toString() : v.toString().replaceAll('.', ','));
-
-  Widget _tag(IconData icon, String label) => Container(
-    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 5),
-    decoration: BoxDecoration(
-      color: AppColors.surfaceContainer,
-      borderRadius: BorderRadius.circular(8),
-    ),
-    child: Row(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        Icon(icon, size: 13, color: AppColors.muted),
-        const SizedBox(width: 4),
-        Text(label, style: AppTextStyles.labelSm.copyWith(fontSize: 11)),
-      ],
-    ),
-  );
-
-  Widget _bentoBox(String label, String value) => Container(
-    padding: const EdgeInsets.all(AppSpacing.sm),
-    decoration: BoxDecoration(
-      color: AppColors.surfaceContainerLow,
-      borderRadius: BorderRadius.circular(AppRadius.md),
-    ),
-    child: Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(
-          label.toUpperCase(),
-          style: AppTextStyles.overline.copyWith(fontSize: 8),
-        ),
-        Text(value, style: AppTextStyles.labelMd.copyWith(fontSize: 13)),
-      ],
-    ),
-  );
 }

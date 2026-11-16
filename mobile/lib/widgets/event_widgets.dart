@@ -26,3 +26,35 @@ class StatusEventChip extends StatelessWidget {
     );
   }
 }
+
+const _bulanPendek = ['JAN', 'FEB', 'MAR', 'APR', 'MEI', 'JUN', 'JUL', 'AGU', 'SEP', 'OKT', 'NOV', 'DES'];
+
+/// Blok tanggal ala potongan tiket: tanggal besar di atas, bulan singkat di bawah.
+class TanggalTile extends StatelessWidget {
+  const TanggalTile({super.key, required this.tanggal, this.ukuran = 58, this.terang = false});
+
+  final DateTime tanggal;
+  final double ukuran;
+
+  /// true = kotak putih (di atas latar gelap); false = kotak emas.
+  final bool terang;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: ukuran,
+      padding: const EdgeInsets.symmetric(vertical: 6),
+      decoration: BoxDecoration(
+        color: terang ? Colors.white : AppColors.accent,
+        borderRadius: BorderRadius.circular(AppRadius.md),
+      ),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Text('${tanggal.day}', style: AppTextStyles.headlineMd.copyWith(fontSize: ukuran * 0.40, height: 1.05, color: AppColors.onSurface)),
+          Text(_bulanPendek[tanggal.month - 1], style: AppTextStyles.overline.copyWith(fontSize: 10, color: AppColors.onSurface)),
+        ],
+      ),
+    );
+  }
+}

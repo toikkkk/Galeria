@@ -5,10 +5,11 @@ import '../../../models/pesanan.dart';
 import '../../../services/pesanan_service.dart';
 import '../../../theme/app_theme.dart';
 import '../../../utils/format.dart';
+import '../../../widgets/commerce_widgets.dart';
 import '../../../widgets/karya_image.dart';
 import '../../../widgets/pesanan_widgets.dart';
 
-/// Konfirmasi pesanan: ringkasan karya + pilih alamat pengiriman, lalu membuat pesanan di server
+/// Checkout satu karya: alamat, rincian barang, ringkasan pembayaran, lalu membuat pesanan di server
 /// (`POST /api/pesanan`). Harga & komisi ditentukan server dari harga karya, bukan dari layar ini.
 /// Ongkos kirim belum dihitung otomatis (tidak ada integrasi kurir), jadi total = harga karya.
 class KonfirmasiPesananScreen extends StatefulWidget {
@@ -40,6 +41,8 @@ class _KonfirmasiPesananScreenState extends State<KonfirmasiPesananScreen> {
   bool _memuat = true;
   bool _mengirim = false;
   String? _error;
+
+  Alamat? get _alamatTerpilih => _alamat.where((a) => a.id == _dipilih).firstOrNull;
 
   @override
   void initState() {
@@ -75,6 +78,14 @@ class _KonfirmasiPesananScreenState extends State<KonfirmasiPesananScreen> {
     });
   }
 
+  Future<void> _ubahAlamat() async {
+    if (_alamat.isEmpty) return _tambahAlamat();
+    final id = await tampilkanPilihAlamat(context, daftar: _alamat, dipilih: _dipilih);
+    if (id == null || !mounted) return;
+    if (id == kAlamatBaru) return _tambahAlamat();
+    setState(() => _dipilih = id);
+  }
+
   Future<void> _buat() async {
     final id = _dipilih;
     if (id == null) {
@@ -102,165 +113,150 @@ class _KonfirmasiPesananScreenState extends State<KonfirmasiPesananScreen> {
   Widget build(BuildContext context) {
     final karya = widget.karya;
     return Scaffold(
-      backgroundColor: AppColors.surface,
+      backgroundColor: kLatarMarketplace,
       appBar: AppBar(
+        backgroundColor: Colors.white,
         leading: IconButton(onPressed: widget.onBack, icon: const Icon(Icons.arrow_back)),
         title: Text('Konfirmasi Pesanan', style: AppTextStyles.headlineSm),
       ),
-      body: ListView(
-        padding: const EdgeInsets.all(AppSpacing.screenGutter),
+      body: Column(
         children: [
-          _kartu(
-            child: Row(
+          const IndikatorLangkah(aktif: 0),
+          const Divider(height: 1),
+          Expanded(
+            child: ListView(
+              padding: const EdgeInsets.all(AppSpacing.sm),
               children: [
-                ClipRRect(
-                  borderRadius: BorderRadius.circular(AppRadius.sm),
-                  child: SizedBox(width: 80, height: 80, child: KaryaImage(karya: karya)),
-                ),
-                const SizedBox(width: AppSpacing.sm),
-                Expanded(
+                AlamatTile(alamat: _alamatTerpilih, memuat: _memuat, onUbah: _ubahAlamat),
+                KartuBagian(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text(karya.title, style: AppTextStyles.labelMd, maxLines: 2, overflow: TextOverflow.ellipsis),
-                      Text(karya.artistName, style: AppTextStyles.bodySm.copyWith(color: AppColors.muted)),
-                      const SizedBox(height: 4),
-                      Text(formatRupiah(karya.priceIdr), style: AppTextStyles.labelMd),
-                    ],
-                  ),
-                ),
-              ],
-            ),
-          ),
-          const SizedBox(height: AppSpacing.md),
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Text('Alamat Pengiriman', style: AppTextStyles.headlineSm),
-              TextButton.icon(
-                onPressed: _memuat ? null : _tambahAlamat,
-                icon: const Icon(Icons.add, size: 18),
-                label: const Text('Tambah'),
-              ),
-            ],
-          ),
-          if (_memuat)
-            const Padding(padding: EdgeInsets.all(AppSpacing.md), child: Center(child: CircularProgressIndicator()))
-          else if (_alamat.isEmpty)
-            _kartu(
-              child: Column(
-                children: [
-                  Text(
-                    'Kamu belum punya alamat pengiriman.',
-                    style: AppTextStyles.bodySm.copyWith(color: AppColors.muted),
-                  ),
-                  const SizedBox(height: AppSpacing.xs),
-                  OutlinedButton.icon(
-                    onPressed: _tambahAlamat,
-                    icon: const Icon(Icons.add_location_alt_outlined, size: 18),
-                    label: const Text('Tambah alamat'),
-                  ),
-                ],
-              ),
-            )
-          else
-            for (final a in _alamat)
-              GestureDetector(
-                onTap: () => setState(() => _dipilih = a.id),
-                child: Container(
-                  margin: const EdgeInsets.only(bottom: AppSpacing.xs),
-                  padding: const EdgeInsets.all(AppSpacing.sm),
-                  decoration: BoxDecoration(
-                    color: Colors.white,
-                    borderRadius: BorderRadius.circular(AppRadius.md),
-                    border: Border.all(color: _dipilih == a.id ? AppColors.accent : AppColors.border, width: _dipilih == a.id ? 1.6 : 1),
-                  ),
-                  child: Row(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Icon(
-                        _dipilih == a.id ? Icons.radio_button_checked : Icons.radio_button_off,
-                        size: 20,
-                        color: _dipilih == a.id ? AppColors.accent : AppColors.muted,
-                      ),
-                      const SizedBox(width: AppSpacing.xs),
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Row(
+                      TokoBaris(nama: karya.galleryName.isNotEmpty ? karya.galleryName : karya.artistName),
+                      const Divider(height: AppSpacing.md),
+                      Row(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          ClipRRect(
+                            borderRadius: BorderRadius.circular(AppRadius.md),
+                            child: SizedBox(width: 84, height: 84, child: KaryaImage(karya: karya)),
+                          ),
+                          const SizedBox(width: AppSpacing.sm),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
-                                Text(a.label, style: AppTextStyles.labelMd),
-                                if (a.isUtama) ...[
-                                  const SizedBox(width: 6),
-                                  Text('UTAMA', style: AppTextStyles.overline.copyWith(fontSize: 8, color: AppColors.accent)),
-                                ],
+                                Text(karya.title, style: AppTextStyles.labelMd.copyWith(fontSize: 14), maxLines: 2, overflow: TextOverflow.ellipsis),
+                                Text(karya.artistName, style: AppTextStyles.bodySm.copyWith(color: AppColors.muted)),
+                                const SizedBox(height: 6),
+                                Wrap(
+                                  spacing: 6,
+                                  runSpacing: 4,
+                                  children: [
+                                    LencanaKecil(karya.styleName, ikon: Icons.palette_outlined, warna: AppColors.onSurfaceVariant),
+                                    if (karya.lebarCm != null && karya.tinggiCm != null)
+                                      LencanaKecil('${_cm(karya.lebarCm!)} × ${_cm(karya.tinggiCm!)} cm', ikon: Icons.aspect_ratio, warna: AppColors.onSurfaceVariant),
+                                  ],
+                                ),
+                                const SizedBox(height: 6),
+                                Text(formatRupiah(karya.priceIdr), style: AppTextStyles.labelMd.copyWith(fontSize: 14)),
                               ],
                             ),
-                            Text('${a.namaPenerima} · ${a.telepon}', style: AppTextStyles.bodySm.copyWith(fontSize: 11)),
-                            Text(a.ringkas, style: AppTextStyles.bodySm.copyWith(color: AppColors.muted, fontSize: 11)),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: AppSpacing.sm),
+                      Container(
+                        padding: const EdgeInsets.all(AppSpacing.sm),
+                        decoration: BoxDecoration(color: AppColors.surfaceContainerLow, borderRadius: BorderRadius.circular(AppRadius.md)),
+                        child: Row(
+                          children: [
+                            const Icon(Icons.local_shipping_outlined, size: 18, color: AppColors.primary),
+                            const SizedBox(width: AppSpacing.xs),
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text('Pengiriman oleh seniman', style: AppTextStyles.labelMd.copyWith(fontSize: 12.5)),
+                                  Text('Seniman mengirim lewat kurir dan mengisi nomor resi. Ongkos kirim belum dihitung otomatis.',
+                                      style: AppTextStyles.bodySm.copyWith(fontSize: 11, color: AppColors.muted)),
+                                ],
+                              ),
+                            ),
                           ],
                         ),
                       ),
                     ],
                   ),
                 ),
-              ),
-          const SizedBox(height: AppSpacing.md),
-          Text('Ringkasan Pembayaran', style: AppTextStyles.headlineSm),
-          const SizedBox(height: AppSpacing.xs),
-          _kartu(
-            child: Column(
-              children: [
-                _baris('Harga karya', formatRupiah(karya.priceIdr)),
-                const Divider(height: AppSpacing.md),
-                _baris('Total', formatRupiah(karya.priceIdr), tebal: true),
-                const SizedBox(height: 6),
-                Text(
-                  'Ongkos kirim belum dihitung otomatis di versi ini; atur bersama seniman bila diperlukan.',
-                  style: AppTextStyles.bodySm.copyWith(color: AppColors.muted, fontSize: 11),
+                KartuBagian(
+                  judul: 'Metode Pembayaran',
+                  ikon: Icons.account_balance_wallet_outlined,
+                  child: const CatatanIkon('Dipilih di langkah berikutnya: Virtual Account BCA, Mandiri, BNI, atau QRIS.', ikon: Icons.payments_outlined),
                 ),
+                KartuBagian(
+                  judul: 'Ringkasan Pembayaran',
+                  ikon: Icons.receipt_long_outlined,
+                  child: Column(
+                    children: [
+                      BarisHarga('Subtotal karya', formatRupiah(karya.priceIdr)),
+                      const BarisHarga('Ongkos kirim', 'Belum dihitung'),
+                      const Divider(height: AppSpacing.md),
+                      BarisHarga('Total Pembayaran', formatRupiah(karya.priceIdr), tebal: true),
+                    ],
+                  ),
+                ),
+                const Padding(
+                  padding: EdgeInsets.symmetric(horizontal: AppSpacing.xs, vertical: AppSpacing.xxs),
+                  child: CatatanIkon(
+                    'Setelah pesanan selesai, karya tercatat atas namamu di GALERIA beserta sertifikat digital keaslian bila tersedia.',
+                    ikon: Icons.verified_user_outlined,
+                  ),
+                ),
+                if (_error != null) ...[
+                  const SizedBox(height: AppSpacing.sm),
+                  Text(_error!, style: AppTextStyles.bodySm.copyWith(color: AppColors.error)),
+                  if (_alamat.isEmpty && !_memuat) TextButton(onPressed: _muat, child: const Text('Muat ulang alamat')),
+                ],
+                const SizedBox(height: AppSpacing.lg),
               ],
             ),
           ),
-          if (_error != null) ...[
-            const SizedBox(height: AppSpacing.sm),
-            Text(_error!, style: AppTextStyles.bodySm.copyWith(color: AppColors.error)),
-            if (_alamat.isEmpty && !_memuat)
-              TextButton(onPressed: _muat, child: const Text('Muat ulang alamat')),
-          ],
-          const SizedBox(height: AppSpacing.md),
-          SizedBox(
-            width: double.infinity,
-            child: ElevatedButton(
-              onPressed: (_mengirim || _memuat) ? null : _buat,
-              child: _mengirim
-                  ? const SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2))
-                  : const Text('Buat Pesanan & Lanjut Bayar'),
-            ),
-          ),
-          const SizedBox(height: AppSpacing.lg),
         ],
+      ),
+      bottomNavigationBar: BarBawah(
+        child: Row(
+          children: [
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text('Total', style: AppTextStyles.bodySm.copyWith(fontSize: 11)),
+                  Text(formatRupiah(karya.priceIdr), style: AppTextStyles.headlineMd.copyWith(fontSize: 19, color: AppColors.onSurface)),
+                ],
+              ),
+            ),
+            const SizedBox(width: AppSpacing.sm),
+            Flexible(
+              child: ElevatedButton(
+                onPressed: (_mengirim || _memuat) ? null : _buat,
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: AppColors.accent,
+                  foregroundColor: AppColors.onSurface,
+                  minimumSize: const Size(0, 48),
+                  padding: const EdgeInsets.symmetric(horizontal: AppSpacing.md),
+                ),
+                child: _mengirim
+                    ? const SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2))
+                    : const Text('Buat Pesanan & Lanjut Bayar', maxLines: 1, overflow: TextOverflow.ellipsis),
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
 
-  Widget _kartu({required Widget child}) => Container(
-        width: double.infinity,
-        padding: const EdgeInsets.all(AppSpacing.sm),
-        decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(AppRadius.md),
-          boxShadow: const [BoxShadow(color: Colors.black12, blurRadius: 6)],
-        ),
-        child: child,
-      );
-
-  Widget _baris(String l, String v, {bool tebal = false}) => Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-        children: [
-          Text(l, style: tebal ? AppTextStyles.labelMd : AppTextStyles.bodySm),
-          Text(v, style: tebal ? AppTextStyles.labelMd : AppTextStyles.bodySm),
-        ],
-      );
+  static String _cm(double v) => v == v.roundToDouble() ? v.toInt().toString() : v.toString().replaceAll('.', ',');
 }

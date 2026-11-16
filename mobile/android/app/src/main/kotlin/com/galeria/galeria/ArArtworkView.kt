@@ -7,6 +7,11 @@ import android.content.Context
 import android.content.pm.PackageManager
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
+import android.graphics.Canvas
+import android.graphics.Color
+import android.graphics.Paint
+import android.graphics.RectF
+import android.graphics.Typeface
 import android.opengl.GLES11Ext
 import android.opengl.GLES20
 import android.opengl.GLSurfaceView
@@ -41,6 +46,8 @@ import java.nio.FloatBuffer
 import javax.microedition.khronos.egl.EGLConfig
 import javax.microedition.khronos.opengles.GL10
 import kotlin.math.max
+import kotlin.math.min
+import kotlin.math.roundToInt
 import kotlin.math.sqrt
 
 /**
@@ -103,6 +110,17 @@ class ArArtworkView(
     @Volatile private var pendingTap: FloatArray? = null
     @Volatile private var pendingReset = false
     @Volatile private var captureResult: MethodChannel.Result? = null
+    // Terkunci = ketukan tidak memindahkan lukisan (mencegah lukisan 'bergeser sendiri' karena sentuhan tak sengaja)
+    @Volatile private var locked = true
+    @Volatile private var showDims = true
+    private var smoothP: FloatArray? = null
+    private var smoothN: FloatArray? = null
+    private var lastJarakMs = 0L
+    private var labelWTex = 0
+    private var labelHTex = 0
+    private var labelWAspect = 2.5f
+    private var labelHAspect = 2.5f
+    private var gradProg = 0
 
     // State GL
     private var cameraTex = 0
@@ -160,6 +178,8 @@ class ArArtworkView(
     override fun onMethodCall(call: MethodCall, result: MethodChannel.Result) {
         when (call.method) {
             "reset" -> { pendingReset = true; result.success(null) }
+            "kunci" -> { locked = (call.arguments as? Boolean) ?: true; result.success(null) }
+            "ukuran" -> { showDims = (call.arguments as? Boolean) ?: true; result.success(null) }
             "ambilFoto" -> captureResult = result
             else -> result.notImplemented()
         }
@@ -224,8 +244,8 @@ class ArArtworkView(
     // ------------------------------------------------------------------ GL
     override fun onSurfaceCreated(gl: GL10?, c: EGLConfig?) {
         GLES20.glClearColor(0f, 0f, 0f, 1f)
-        val tex = IntArray(2)
-        GLES20.glGenTextures(2, tex, 0)
+        val tex = IntArray(4)
+        GLES20.glGenTextures(4, tex, 0)
         cameraTex = tex[0]
         GLES20.glBindTexture(GLES11Ext.GL_TEXTURE_EXTERNAL_OES, cameraTex)
         GLES20.glTexParameteri(GLES11Ext.GL_TEXTURE_EXTERNAL_OES, GLES20.GL_TEXTURE_MIN_FILTER, GLES20.GL_LINEAR)
@@ -239,6 +259,9 @@ class ArArtworkView(
         GLES20.glTexParameteri(GLES20.GL_TEXTURE_2D, GLES20.GL_TEXTURE_WRAP_T, GLES20.GL_CLAMP_TO_EDGE)
         artBitmap?.let { GLUtils.texImage2D(GLES20.GL_TEXTURE_2D, 0, it, 0) }
         Log.i(TAG, "tekstur lukisan diunggah: ${artBitmap != null}, glError=${GLES20.glGetError()}")
+        labelWTex = tex[2]; labelHTex = tex[3]
+        labelWAspect = uploadLabel(labelWTex, "${fmtCm(artW * 100f)} cm")
+        labelHAspect = uploadLabel(labelHTex, "${fmtCm(artH * 100f)} cm")
 
         bgProg = program(
             "attribute vec4 a_Pos; attribute vec2 a_UV; varying vec2 v_UV;" +
@@ -252,6 +275,11 @@ class ArArtworkView(
                 "void main(){ gl_Position=u_MVP*vec4(a_Pos,1.0); v_UV=a_UV; }",
             "precision mediump float; varying vec2 v_UV; uniform sampler2D u_Tex;" +
                 "void main(){ gl_FragColor=texture2D(u_Tex,v_UV); }",
+        )
+        gradProg = program(
+            "attribute vec3 a_Pos; attribute vec4 a_Col; uniform mat4 u_MVP; varying vec4 v_Col;" +
+                "void main(){ gl_Position=u_MVP*vec4(a_Pos,1.0); v_Col=a_Col; }",
+            "precision mediump float; varying vec4 v_Col; void main(){ gl_FragColor=v_Col; }",
         )
         colProg = program(
             "attribute vec3 a_Pos; uniform mat4 u_MVP;" +
@@ -305,7 +333,7 @@ class ArArtworkView(
 
         if (pendingReset) {
             pendingReset = false
-            anchor?.detach(); anchor = null; fixedNormal = null; loggedDraw = false
+            anchor?.detach(); anchor = null; fixedNormal = null; loggedDraw = false; smoothP = null; smoothN = null
         }
 
         val verticalPlanes = s.getAllTrackables(Plane::class.java).filter {
@@ -315,6 +343,7 @@ class ArArtworkView(
 
         pendingTap?.let { tap ->
             pendingTap = null
+            if (anchor != null && locked) return@let
             Log.i(TAG, "tap (${tap[0]}, ${tap[1]}) bidangVertikal=${verticalPlanes.size}")
             val hit = frame.hitTest(tap[0], tap[1]).firstOrNull {
                 val tr = it.trackable
@@ -325,6 +354,7 @@ class ArArtworkView(
                 anchor?.detach()
                 anchor = hit.createAnchor()
                 fixedNormal = null
+                smoothP = null; smoothN = null
             } else {
                 // Cadangan: dinding polos sering tak terdeteksi -> tempel via Instant Placement
                 // (jarak awal ~2 m, tegak, menghadap pengguna; ARCore menyempurnakan jaraknya).
@@ -335,6 +365,7 @@ class ArArtworkView(
                     val nh = floatArrayOf(back[0], 0f, back[2])
                     anchor?.detach()
                     anchor = inst.createAnchor()
+                    smoothP = null; smoothN = null
                     fixedNormal = if (len(nh) > 1e-3f) norm(nh) else floatArrayOf(0f, 0f, 1f)
                 } else {
                     status("tak_kena")
@@ -399,35 +430,148 @@ class ArArtworkView(
 
     private fun drawArtwork(a: Anchor, camPos: FloatArray) {
         val pose = a.pose
-        val p = pose.translation
-        var n = fixedNormal ?: pose.getTransformedAxis(1, 1f) // sumbu Y bidang = normal dinding
+        val pr = pose.translation
+        var nr = fixedNormal ?: pose.getTransformedAxis(1, 1f) // sumbu Y bidang = normal dinding
         if (fixedNormal == null) {
-            val toCam = floatArrayOf(camPos[0] - p[0], camPos[1] - p[1], camPos[2] - p[2])
-            if (dot(n, toCam) < 0) n = floatArrayOf(-n[0], -n[1], -n[2])
+            val toCam = floatArrayOf(camPos[0] - pr[0], camPos[1] - pr[1], camPos[2] - pr[2])
+            if (dot(nr, toCam) < 0) nr = floatArrayOf(-nr[0], -nr[1], -nr[2])
         }
+        // Penghalusan: ARCore terus menyempurnakan pose anchor (terutama Instant Placement). Tanpa filter,
+        // koreksi kecil itu tampak sebagai lukisan yang "bergerak sendiri". Filter low-pass membuatnya mulus.
+        val sp = smoothP; val sn = smoothN
+        val k = 0.12f
+        val p = if (sp == null) pr.copyOf() else floatArrayOf(
+            sp[0] + (pr[0] - sp[0]) * k, sp[1] + (pr[1] - sp[1]) * k, sp[2] + (pr[2] - sp[2]) * k)
+        val n = if (sn == null) norm(nr) else norm(floatArrayOf(
+            sn[0] + (nr[0] - sn[0]) * k, sn[1] + (nr[1] - sn[1]) * k, sn[2] + (nr[2] - sn[2]) * k))
+        smoothP = p; smoothN = n
+
         val up = floatArrayOf(0f, 1f, 0f)
         var r = cross(up, n)
         if (len(r) < 1e-4f) r = floatArrayOf(1f, 0f, 0f)
         r = norm(r)
         val u = norm(cross(n, r))
 
-        fun quad(w: Float, h: Float, off: Float): FloatArray {
-            val hw = w / 2; val hh = h / 2
-            fun pt(sx: Float, sy: Float) = floatArrayOf(
-                p[0] + r[0] * hw * sx + u[0] * hh * sy + n[0] * off,
-                p[1] + r[1] * hw * sx + u[1] * hh * sy + n[1] * off,
-                p[2] + r[2] * hw * sx + u[2] * hh * sy + n[2] * off,
-            )
-            val tl = pt(-1f, 1f); val tr = pt(1f, 1f); val bl = pt(-1f, -1f); val br = pt(1f, -1f)
-            // urutan TRIANGLE_STRIP: tl, tr, bl, br
-            return tl + tr + bl + br
+        // titik pada bidang lukisan: x ke kanan, y ke atas (meter dari pusat), off = jarak keluar dari dinding
+        fun pt(x: Float, y: Float, off: Float) = floatArrayOf(
+            p[0] + r[0] * x + u[0] * y + n[0] * off,
+            p[1] + r[1] * x + u[1] * y + n[1] * off,
+            p[2] + r[2] * x + u[2] * y + n[2] * off,
+        )
+        // urutan TRIANGLE_STRIP: kiri-atas, kanan-atas, kiri-bawah, kanan-bawah
+        fun rect(hw: Float, hh: Float, off: Float) = pt(-hw, hh, off) + pt(hw, hh, off) + pt(-hw, -hh, off) + pt(hw, -hh, off)
+        fun rectAt(cx: Float, cy: Float, hw: Float, hh: Float, off: Float) =
+            pt(cx - hw, cy + hh, off) + pt(cx + hw, cy + hh, off) + pt(cx - hw, cy - hh, off) + pt(cx + hw, cy - hh, off)
+        fun seg(x1: Float, y1: Float, x2: Float, y2: Float, th: Float, off: Float): FloatArray {
+            val dx = x2 - x1; val dy = y2 - y1
+            val l = sqrt(dx * dx + dy * dy).coerceAtLeast(1e-6f)
+            val mx = -dy / l * th / 2; val my = dx / l * th / 2
+            return pt(x1 + mx, y1 + my, off) + pt(x1 - mx, y1 - my, off) + pt(x2 + mx, y2 + my, off) + pt(x2 - mx, y2 - my, off)
         }
 
+        val hw = artW / 2; val hh = artH / 2
+        val mat = 0.015f; val trim = 0.006f; val wood = 0.035f
+        val extra = mat + trim + wood
+
         GLES20.glDisable(GLES20.GL_DEPTH_TEST)
-        // bingkai (kayu gelap) lalu lukisan
-        drawSolid(quad(artW + 2 * borderM, artH + 2 * borderM, 0.001f), GLES20.GL_TRIANGLE_STRIP,
-            floatArrayOf(0.24f, 0.16f, 0.10f, 1f))
-        drawTextured(quad(artW, artH, 0.003f))
+        GLES20.glEnable(GLES20.GL_BLEND)
+        GLES20.glBlendFunc(GLES20.GL_SRC_ALPHA, GLES20.GL_ONE_MINUS_SRC_ALPHA)
+
+        // bayangan lembut di dinding (bergeser sedikit ke bawah-kanan) supaya bingkai terasa menempel & bervolume
+        run {
+            val sx = hw + extra + 0.085f; val sy = hh + extra + 0.085f
+            val ox = 0.010f; val oy = -0.016f
+            val e = 0.0004f
+            val v = pt(ox, oy, e) + pt(-sx + ox, sy + oy, e) + pt(sx + ox, sy + oy, e) +
+                pt(sx + ox, -sy + oy, e) + pt(-sx + ox, -sy + oy, e) + pt(-sx + ox, sy + oy, e)
+            val c = floatArrayOf(0f, 0f, 0f, 0.55f) +
+                floatArrayOf(0f, 0f, 0f, 0f) + floatArrayOf(0f, 0f, 0f, 0f) + floatArrayOf(0f, 0f, 0f, 0f) +
+                floatArrayOf(0f, 0f, 0f, 0f) + floatArrayOf(0f, 0f, 0f, 0f)
+            drawGradient(v, c, GLES20.GL_TRIANGLE_FAN)
+        }
+        // bingkai kayu: rim terang -> badan gelap -> list emas -> passe-partout krem -> lukisan
+        drawSolid(rect(hw + extra, hh + extra, 0.0008f), GLES20.GL_TRIANGLE_STRIP, floatArrayOf(0.37f, 0.24f, 0.15f, 1f))
+        drawSolid(rect(hw + extra - 0.006f, hh + extra - 0.006f, 0.0010f), GLES20.GL_TRIANGLE_STRIP, floatArrayOf(0.24f, 0.15f, 0.10f, 1f))
+        drawSolid(rect(hw + mat + trim, hh + mat + trim, 0.0012f), GLES20.GL_TRIANGLE_STRIP, floatArrayOf(0.86f, 0.63f, 0.17f, 1f))
+        drawSolid(rect(hw + mat, hh + mat, 0.0016f), GLES20.GL_TRIANGLE_STRIP, floatArrayOf(0.96f, 0.94f, 0.89f, 1f))
+        drawSolid(rect(hw + 0.003f, hh + 0.003f, 0.0018f), GLES20.GL_TRIANGLE_STRIP, floatArrayOf(0f, 0f, 0f, 0.35f)) // bayangan dalam passe-partout
+        drawTextured(rect(hw, hh, 0.0022f), artTex)
+        // kilau tipis di pojok kiri-atas (kaca bingkai)
+        drawGradient(rect(hw, hh, 0.0026f),
+            floatArrayOf(1f, 1f, 1f, 0.16f, 1f, 1f, 1f, 0f, 1f, 1f, 1f, 0f, 1f, 1f, 1f, 0f), GLES20.GL_TRIANGLE_STRIP)
+
+        if (showDims) {
+            val gold = floatArrayOf(0.99f, 0.78f, 0.25f, 1f)
+            val fy = hh + extra; val fx = hw + extra
+            val gap = 0.075f
+            val th = 0.0035f
+            val o = 0.0030f
+            val yL = -(fy + gap); val xL = fx + gap
+            // garis ukuran lebar (di bawah) + garis bantu dari tepi lukisan
+            drawSolid(seg(-hw, yL, hw, yL, th, o), GLES20.GL_TRIANGLE_STRIP, gold)
+            drawSolid(seg(-hw, -fy, -hw, yL - 0.02f, th * 0.7f, o), GLES20.GL_TRIANGLE_STRIP, gold)
+            drawSolid(seg(hw, -fy, hw, yL - 0.02f, th * 0.7f, o), GLES20.GL_TRIANGLE_STRIP, gold)
+            // garis ukuran tinggi (di kanan)
+            drawSolid(seg(xL, -hh, xL, hh, th, o), GLES20.GL_TRIANGLE_STRIP, gold)
+            drawSolid(seg(fx, -hh, xL + 0.02f, -hh, th * 0.7f, o), GLES20.GL_TRIANGLE_STRIP, gold)
+            drawSolid(seg(fx, hh, xL + 0.02f, hh, th * 0.7f, o), GLES20.GL_TRIANGLE_STRIP, gold)
+            // label angka (sejajar dinding, menghadap depan)
+            val lh = (min(artW, artH) * 0.14f).coerceIn(0.04f, 0.08f)
+            drawTextured(rectAt(0f, yL, lh / 2 * labelWAspect, lh / 2, 0.0036f), labelWTex)
+            drawTextured(rectAt(xL, 0f, lh / 2 * labelHAspect, lh / 2, 0.0036f), labelHTex)
+        }
+        GLES20.glDisable(GLES20.GL_BLEND)
+
+        // jarak kamera -> lukisan (untuk panel ukuran di Flutter), dikirim ~3x per detik
+        val now = System.currentTimeMillis()
+        if (now - lastJarakMs > 330) {
+            lastJarakMs = now
+            val dx = camPos[0] - p[0]; val dy = camPos[1] - p[1]; val dz = camPos[2] - p[2]
+            val d = sqrt(dx * dx + dy * dy + dz * dz).toDouble()
+            main.post { if (!disposed) channel.invokeMethod("jarak", d) }
+        }
+    }
+
+    private fun fmtCm(v: Float): String {
+        val bulat = v.roundToInt().toFloat()
+        return if (kotlin.math.abs(v - bulat) < 0.05f) bulat.toInt().toString() else String.format(java.util.Locale("id"), "%.1f", v)
+    }
+
+    /** Lencana angka ukuran (cokelat tua + garis emas) -> tekstur. Mengembalikan rasio lebar/tinggi. */
+    private fun uploadLabel(tex: Int, text: String): Float {
+        val paint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+            color = Color.WHITE; textSize = 56f; typeface = Typeface.create(Typeface.DEFAULT, Typeface.BOLD); textAlign = Paint.Align.CENTER
+        }
+        val h = 96
+        val w = (paint.measureText(text) + 72f).toInt()
+        val bmp = Bitmap.createBitmap(w, h, Bitmap.Config.ARGB_8888)
+        val c = Canvas(bmp)
+        c.drawRoundRect(RectF(0f, 0f, w.toFloat(), h.toFloat()), h / 2f, h / 2f, Paint(Paint.ANTI_ALIAS_FLAG).apply { color = Color.argb(235, 62, 37, 30) })
+        c.drawRoundRect(RectF(3f, 3f, w - 3f, h - 3f), h / 2f - 3f, h / 2f - 3f, Paint(Paint.ANTI_ALIAS_FLAG).apply {
+            style = Paint.Style.STROKE; strokeWidth = 5f; color = Color.rgb(219, 161, 44)
+        })
+        c.drawText(text, w / 2f, h / 2f + paint.textSize * 0.35f, paint)
+        GLES20.glBindTexture(GLES20.GL_TEXTURE_2D, tex)
+        GLES20.glTexParameteri(GLES20.GL_TEXTURE_2D, GLES20.GL_TEXTURE_MIN_FILTER, GLES20.GL_LINEAR)
+        GLES20.glTexParameteri(GLES20.GL_TEXTURE_2D, GLES20.GL_TEXTURE_MAG_FILTER, GLES20.GL_LINEAR)
+        GLES20.glTexParameteri(GLES20.GL_TEXTURE_2D, GLES20.GL_TEXTURE_WRAP_S, GLES20.GL_CLAMP_TO_EDGE)
+        GLES20.glTexParameteri(GLES20.GL_TEXTURE_2D, GLES20.GL_TEXTURE_WRAP_T, GLES20.GL_CLAMP_TO_EDGE)
+        GLUtils.texImage2D(GLES20.GL_TEXTURE_2D, 0, bmp, 0)
+        val aspect = w.toFloat() / h
+        bmp.recycle()
+        return aspect
+    }
+
+    private fun drawGradient(verts: FloatArray, cols: FloatArray, mode: Int) {
+        GLES20.glUseProgram(gradProg)
+        GLES20.glUniformMatrix4fv(GLES20.glGetUniformLocation(gradProg, "u_MVP"), 1, false, vp, 0)
+        val pos = GLES20.glGetAttribLocation(gradProg, "a_Pos")
+        val col = GLES20.glGetAttribLocation(gradProg, "a_Col")
+        GLES20.glEnableVertexAttribArray(pos); GLES20.glEnableVertexAttribArray(col)
+        GLES20.glVertexAttribPointer(pos, 3, GLES20.GL_FLOAT, false, 0, floatBufferOf(*verts))
+        GLES20.glVertexAttribPointer(col, 4, GLES20.GL_FLOAT, false, 0, floatBufferOf(*cols))
+        GLES20.glDrawArrays(mode, 0, verts.size / 3)
+        GLES20.glDisableVertexAttribArray(pos); GLES20.glDisableVertexAttribArray(col)
     }
 
     private fun drawSolid(verts: FloatArray, mode: Int, color: FloatArray) {
@@ -442,11 +586,11 @@ class ArArtworkView(
         GLES20.glDisableVertexAttribArray(pos)
     }
 
-    private fun drawTextured(verts: FloatArray) {
+    private fun drawTextured(verts: FloatArray, texId: Int) {
         GLES20.glUseProgram(texProg)
         GLES20.glUniformMatrix4fv(GLES20.glGetUniformLocation(texProg, "u_MVP"), 1, false, vp, 0)
         GLES20.glActiveTexture(GLES20.GL_TEXTURE0)
-        GLES20.glBindTexture(GLES20.GL_TEXTURE_2D, artTex)
+        GLES20.glBindTexture(GLES20.GL_TEXTURE_2D, texId)
         GLES20.glUniform1i(GLES20.glGetUniformLocation(texProg, "u_Tex"), 0)
         val pos = GLES20.glGetAttribLocation(texProg, "a_Pos")
         val uv = GLES20.glGetAttribLocation(texProg, "a_UV")

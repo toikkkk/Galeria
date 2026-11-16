@@ -6,6 +6,7 @@ import '../../services/dashboard_service.dart';
 import '../../services/langganan_service.dart';
 import '../../services/sentimen_service.dart';
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
 
 import '../../theme/app_theme.dart';
 import '../../utils/coming_soon.dart';
@@ -181,21 +182,31 @@ class _ProfilScreenState extends State<ProfilScreen> {
                           Text(user?.email ?? '',
                               style: AppTextStyles.bodySm.copyWith(color: AppColors.muted)),
                           const SizedBox(height: 6),
-                          Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                            decoration: BoxDecoration(
-                              color: const Color(0xFFFFE08E).withValues(alpha: 0.4),
-                              borderRadius: BorderRadius.circular(AppRadius.full),
-                            ),
-                            child: Row(
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                const Icon(Icons.verified_user, size: 12, color: Color(0xFF584400)),
-                                const SizedBox(width: 4),
-                                Text((user?.emailVerified ?? false) ? 'Email Terverifikasi' : 'Email Belum Diverifikasi',
-                                    style: AppTextStyles.labelSm
-                                        .copyWith(fontSize: 10.5, color: const Color(0xFF584400))),
-                              ],
+                          GestureDetector(
+                            key: const Key('verifikasi_email_tautan'),
+                            // belum terverifikasi -> ketuk untuk membuka layar kode
+                            onTap: (user?.emailVerified ?? false)
+                                ? null
+                                : () async {
+                                    await context.push('/verifikasi-email');
+                                    if (mounted) setState(() {});
+                                  },
+                            child: Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                              decoration: BoxDecoration(
+                                color: const Color(0xFFFFE08E).withValues(alpha: 0.4),
+                                borderRadius: BorderRadius.circular(AppRadius.full),
+                              ),
+                              child: Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  const Icon(Icons.verified_user, size: 12, color: Color(0xFF584400)),
+                                  const SizedBox(width: 4),
+                                  Text((user?.emailVerified ?? false) ? 'Email Terverifikasi' : 'Email Belum Diverifikasi · Verifikasi ›',
+                                      style: AppTextStyles.labelSm
+                                          .copyWith(fontSize: 10.5, color: const Color(0xFF584400))),
+                                ],
+                              ),
                             ),
                           ),
                         ],

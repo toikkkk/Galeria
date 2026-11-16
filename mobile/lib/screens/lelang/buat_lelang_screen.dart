@@ -5,6 +5,7 @@ import '../../models/lelang.dart';
 import '../../services/katalog_service.dart';
 import '../../services/lelang_service.dart';
 import '../../theme/app_theme.dart';
+import '../../widgets/commerce_widgets.dart';
 import '../../utils/format.dart';
 import '../../utils/format_waktu.dart';
 import '../../widgets/karya_image.dart';
@@ -142,134 +143,170 @@ class _BuatLelangScreenState extends State<BuatLelangScreen> {
   @override
   Widget build(BuildContext context) {
     final layak = _layak;
+    final awal = _angka(_hargaAwal) ?? 0;
     return Scaffold(
-      backgroundColor: AppColors.surface,
+      backgroundColor: kLatarMarketplace,
       appBar: AppBar(
+        backgroundColor: Colors.white,
         leading: IconButton(onPressed: widget.onBack, icon: const Icon(Icons.arrow_back)),
         title: Text('Buat Lelang', style: AppTextStyles.headlineSm),
         actions: [TextButton(onPressed: widget.onLelangSaya, child: const Text('Lelang saya'))],
       ),
       body: ListView(
-        padding: const EdgeInsets.all(AppSpacing.screenGutter),
+        padding: const EdgeInsets.all(AppSpacing.sm),
         children: [
-          Text('Karya', style: AppTextStyles.headlineSm),
-          const SizedBox(height: AppSpacing.xs),
-          if (layak == null && _error == null)
-            const Padding(padding: EdgeInsets.all(AppSpacing.md), child: Center(child: CircularProgressIndicator()))
-          else if (layak != null && layak.isEmpty)
-            Container(
-              padding: const EdgeInsets.all(AppSpacing.md),
-              decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(AppRadius.md)),
+          KartuBagian(
+            judul: '1. Pilih Karya',
+            ikon: Icons.palette_outlined,
+            child: layak == null && _error == null
+                ? const Padding(padding: EdgeInsets.all(AppSpacing.md), child: Center(child: CircularProgressIndicator()))
+                : layak != null && layak.isEmpty
+                    ? Column(
+                        children: [
+                          Text(
+                            'Belum ada karya yang bisa dilelang. Karya harus sudah terverifikasi, belum terjual, dan belum sedang dilelang.',
+                            textAlign: TextAlign.center,
+                            style: AppTextStyles.bodySm.copyWith(color: AppColors.muted),
+                          ),
+                          if (widget.onUnggahKarya != null)
+                            TextButton.icon(onPressed: widget.onUnggahKarya, icon: const Icon(Icons.add), label: const Text('Unggah karya')),
+                        ],
+                      )
+                    : layak == null
+                        ? const SizedBox.shrink()
+                        : SizedBox(
+                            height: 150,
+                            child: ListView.separated(
+                              scrollDirection: Axis.horizontal,
+                              itemCount: layak.length,
+                              separatorBuilder: (context, i) => const SizedBox(width: AppSpacing.xs),
+                              itemBuilder: (context, i) {
+                                final k = layak[i];
+                                final aktif = _karya?.id == k.id;
+                                return GestureDetector(
+                                  onTap: () => setState(() {
+                                    _karya = k;
+                                    if (_hargaAwal.text.isEmpty) _hargaAwal.text = k.priceIdr.toString();
+                                  }),
+                                  child: Container(
+                                    width: 110,
+                                    decoration: BoxDecoration(
+                                      color: Colors.white,
+                                      borderRadius: BorderRadius.circular(AppRadius.md),
+                                      border: Border.all(color: aktif ? AppColors.accent : AppColors.border, width: aktif ? 2 : 1),
+                                    ),
+                                    clipBehavior: Clip.antiAlias,
+                                    child: Column(
+                                      children: [
+                                        Expanded(child: SizedBox.expand(child: KaryaImage(karya: k))),
+                                        Padding(
+                                          padding: const EdgeInsets.all(4),
+                                          child: Text(k.title, maxLines: 1, overflow: TextOverflow.ellipsis, style: AppTextStyles.labelSm.copyWith(fontSize: 11)),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                );
+                              },
+                            ),
+                          ),
+          ),
+          KartuBagian(
+            judul: '2. Harga',
+            ikon: Icons.payments_outlined,
+            child: Column(
+              children: [
+                TextField(controller: _hargaAwal, keyboardType: TextInputType.number, onChanged: (_) => setState(() {}), decoration: _dekor('Harga awal')),
+                const SizedBox(height: AppSpacing.xs),
+                TextField(controller: _kelipatan, keyboardType: TextInputType.number, decoration: _dekor('Kelipatan tawaran', hint: 'mis. 100000')),
+              ],
+            ),
+          ),
+          KartuBagian(
+            judul: '3. Waktu',
+            ikon: Icons.schedule,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                SegmentedButton<bool>(
+                  segments: const [ButtonSegment(value: true, label: Text('Mulai sekarang')), ButtonSegment(value: false, label: Text('Jadwalkan'))],
+                  selected: {_mulaiSekarang},
+                  onSelectionChanged: (s) => setState(() => _mulaiSekarang = s.first),
+                ),
+                if (!_mulaiSekarang)
+                  Padding(
+                    padding: const EdgeInsets.only(top: AppSpacing.xs),
+                    child: OutlinedButton.icon(
+                      onPressed: _pilihJadwal,
+                      icon: const Icon(Icons.event, size: 18),
+                      label: Text(_mulaiJadwal == null
+                          ? 'Pilih tanggal & jam mulai'
+                          : '${formatTanggal(_mulaiJadwal!)} ${_mulaiJadwal!.hour.toString().padLeft(2, '0')}:${_mulaiJadwal!.minute.toString().padLeft(2, '0')}'),
+                    ),
+                  ),
+                const SizedBox(height: AppSpacing.sm),
+                Text('Durasi', style: AppTextStyles.bodySm.copyWith(color: AppColors.muted)),
+                Wrap(
+                  spacing: AppSpacing.xs,
+                  children: [
+                    for (var i = 0; i < _durasi.length; i++)
+                      ChoiceChip(
+                        label: Text(_durasi[i].$1),
+                        selected: _durasiIdx == i,
+                        selectedColor: AppColors.accent,
+                        onSelected: (_) => setState(() => _durasiIdx = i),
+                      ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+          if (_karya != null)
+            KartuBagian(
+              judul: 'Ringkasan',
+              ikon: Icons.receipt_long_outlined,
               child: Column(
                 children: [
-                  Text(
-                    'Belum ada karya yang bisa dilelang. Karya harus sudah terverifikasi, belum terjual, dan belum sedang dilelang.',
-                    textAlign: TextAlign.center,
-                    style: AppTextStyles.bodySm.copyWith(color: AppColors.muted),
-                  ),
-                  if (widget.onUnggahKarya != null)
-                    TextButton.icon(onPressed: widget.onUnggahKarya, icon: const Icon(Icons.add), label: const Text('Unggah karya')),
+                  BarisHarga('Karya', _karya!.title),
+                  BarisHarga('Harga awal', formatRupiah(awal)),
+                  BarisHarga('Durasi', _durasi[_durasiIdx].$1),
                 ],
               ),
-            )
-          else if (layak != null)
-            SizedBox(
-              height: 150,
-              child: ListView.separated(
-                scrollDirection: Axis.horizontal,
-                itemCount: layak.length,
-                separatorBuilder: (context, i) => const SizedBox(width: AppSpacing.xs),
-                itemBuilder: (context, i) {
-                  final k = layak[i];
-                  final aktif = _karya?.id == k.id;
-                  return GestureDetector(
-                    onTap: () => setState(() {
-                      _karya = k;
-                      if (_hargaAwal.text.isEmpty) _hargaAwal.text = k.priceIdr.toString();
-                    }),
-                    child: Container(
-                      width: 110,
-                      decoration: BoxDecoration(
-                        color: Colors.white,
-                        borderRadius: BorderRadius.circular(AppRadius.md),
-                        border: Border.all(color: aktif ? AppColors.accent : AppColors.border, width: aktif ? 2 : 1),
-                      ),
-                      clipBehavior: Clip.antiAlias,
-                      child: Column(
-                        children: [
-                          Expanded(child: SizedBox.expand(child: KaryaImage(karya: k))),
-                          Padding(
-                            padding: const EdgeInsets.all(4),
-                            child: Text(k.title, maxLines: 1, overflow: TextOverflow.ellipsis, style: AppTextStyles.labelSm.copyWith(fontSize: 11)),
-                          ),
-                        ],
-                      ),
-                    ),
-                  );
-                },
-              ),
             ),
-          const SizedBox(height: AppSpacing.md),
-          Text('Harga', style: AppTextStyles.headlineSm),
-          const SizedBox(height: AppSpacing.xs),
-          TextField(controller: _hargaAwal, keyboardType: TextInputType.number, decoration: _dekor('Harga awal')),
-          const SizedBox(height: AppSpacing.xs),
-          TextField(controller: _kelipatan, keyboardType: TextInputType.number, decoration: _dekor('Kelipatan tawaran', hint: 'mis. 100000')),
-          const SizedBox(height: AppSpacing.md),
-          Text('Waktu', style: AppTextStyles.headlineSm),
-          const SizedBox(height: AppSpacing.xs),
-          SegmentedButton<bool>(
-            segments: const [ButtonSegment(value: true, label: Text('Mulai sekarang')), ButtonSegment(value: false, label: Text('Jadwalkan'))],
-            selected: {_mulaiSekarang},
-            onSelectionChanged: (s) => setState(() => _mulaiSekarang = s.first),
-          ),
-          if (!_mulaiSekarang)
-            Padding(
-              padding: const EdgeInsets.only(top: AppSpacing.xs),
-              child: OutlinedButton.icon(
-                onPressed: _pilihJadwal,
-                icon: const Icon(Icons.event, size: 18),
-                label: Text(_mulaiJadwal == null
-                    ? 'Pilih tanggal & jam mulai'
-                    : '${formatTanggal(_mulaiJadwal!)} ${_mulaiJadwal!.hour.toString().padLeft(2, '0')}:${_mulaiJadwal!.minute.toString().padLeft(2, '0')}'),
-              ),
-            ),
-          const SizedBox(height: AppSpacing.sm),
-          Text('Durasi', style: AppTextStyles.bodySm.copyWith(color: AppColors.muted)),
-          Wrap(
-            spacing: AppSpacing.xs,
-            children: [
-              for (var i = 0; i < _durasi.length; i++)
-                ChoiceChip(label: Text(_durasi[i].$1), selected: _durasiIdx == i, onSelected: (_) => setState(() => _durasiIdx = i)),
-            ],
-          ),
-          const SizedBox(height: AppSpacing.sm),
           Container(
             padding: const EdgeInsets.all(AppSpacing.sm),
-            decoration: BoxDecoration(color: const Color(0xFFFFF3CD), borderRadius: BorderRadius.circular(AppRadius.sm)),
+            decoration: BoxDecoration(color: const Color(0xFFFFF3CD), borderRadius: BorderRadius.circular(AppRadius.md)),
             child: Text(
               'Setelah lelang dimulai dan ada tawaran, lelang tidak bisa dibatalkan. Penawar tertinggi saat waktu habis otomatis '
               'mendapat pesanan dan harus membayar dalam 24 jam. Komisi platform dihitung dari harga akhir.',
               style: AppTextStyles.bodySm.copyWith(fontSize: 11, color: const Color(0xFF584400)),
             ),
           ),
-          if (_error != null) ...[
-            const SizedBox(height: AppSpacing.sm),
-            Text(_error!, style: AppTextStyles.bodySm.copyWith(color: AppColors.error)),
-          ],
-          const SizedBox(height: AppSpacing.md),
-          SizedBox(
-            width: double.infinity,
-            child: ElevatedButton(
-              key: const Key('terbitkan_lelang'),
-              onPressed: _kirim ? null : _submit,
-              child: _kirim
-                  ? const SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2))
-                  : Text(_karya == null ? 'Terbitkan Lelang' : 'Terbitkan Lelang · ${formatRupiah(_angka(_hargaAwal) ?? 0)}'),
-            ),
-          ),
           const SizedBox(height: AppSpacing.lg),
         ],
+      ),
+      bottomNavigationBar: BarBawah(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            if (_error != null)
+              Padding(
+                padding: const EdgeInsets.only(bottom: AppSpacing.xs),
+                child: Text(_error!, style: AppTextStyles.bodySm.copyWith(color: AppColors.error)),
+              ),
+            SizedBox(
+              width: double.infinity,
+              child: ElevatedButton(
+                key: const Key('terbitkan_lelang'),
+                onPressed: _kirim ? null : _submit,
+                style: ElevatedButton.styleFrom(backgroundColor: AppColors.accent, foregroundColor: AppColors.onSurface),
+                child: _kirim
+                    ? const SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2))
+                    : Text(_karya == null ? 'Terbitkan Lelang' : 'Terbitkan Lelang · ${formatRupiah(awal)}'),
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }

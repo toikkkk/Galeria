@@ -1,4 +1,6 @@
 
+import 'dart:math';
+
 import 'package:http_parser/http_parser.dart';
 
 import '../models/karya.dart';
@@ -14,6 +16,11 @@ class KatalogDummyPage {
   final int page;
   final int total;
 }
+
+/// Benih acak SATU KALI per proses aplikasi: dipakai untuk mengacak katalog. Aplikasi ditutup lalu dibuka lagi
+/// = proses baru = benih baru = susunan katalog berbeda. Selama aplikasi terbuka benihnya tetap, jadi
+/// halaman berikutnya konsisten (tidak ada karya dobel atau terlewat).
+final int kSeedSesi = Random().nextInt(0x3fffffff);
 
 class KatalogService {
   KatalogService({ApiClient? client}) : _client = client ?? ApiClient();
@@ -58,11 +65,13 @@ class KatalogService {
     int? hargaMaks,
     String? q,
     String urut = 'terbaru',
+    int? seed,
   }) async {
     final query = <String, String>{
       'page': '$page',
       'page_size': '$pageSize',
       'urut': urut,
+      if (urut == 'acak') 'seed': '${seed ?? kSeedSesi}',
       if (gaya != null && gaya.isNotEmpty) 'gaya': gaya,
       if (hargaMin != null) 'harga_min': '$hargaMin',
       if (hargaMaks != null) 'harga_maks': '$hargaMaks',

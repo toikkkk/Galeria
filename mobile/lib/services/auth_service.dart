@@ -178,7 +178,7 @@ class AuthService extends ChangeNotifier {
     try {
       await _client
           .post(Uri.parse('$_base/api/auth/logout'),
-              headers: {'Content-Type': 'application/json'}, body: jsonEncode({'refresh_token': refresh}))
+              headers: {'Content-Type': 'application/json', ...headerTunnel(_base)}, body: jsonEncode({'refresh_token': refresh}))
           .timeout(const Duration(seconds: 8));
     } catch (_) {
       // best-effort: sesi di server tetap kedaluwarsa sendiri (30 hari)
@@ -198,12 +198,74 @@ class AuthService extends ChangeNotifier {
     return (_access != null && habis != null && habis.isAfter(_now())) ? _access : null;
   }
 
+  // ------------------------------------------------------------------ kode lewat email
+  /// Minta kode reset password ke [email]. Jawaban server SELALU sama (terdaftar atau tidak), jadi tidak bisa dipakai
+  /// menebak email mana yang punya akun.
+  Future<String> lupaPassword(String email) async {
+    final j = await _postJson('/api/auth/lupa-password', {'email': email.trim()});
+    return (j['pesan'] as String?) ?? 'Jika email itu terdaftar, kode reset sudah dikirim.';
+  }
+
+  /// Ganti password memakai kode dari email. Semua sesi login lama dicabut server, jadi pengguna harus masuk lagi.
+  Future<String> resetPassword({required String email, required String kode, required String passwordBaru}) async {
+    final j = await _postJson('/api/auth/reset-password', {'email': email.trim(), 'kode': kode.trim(), 'password_baru': passwordBaru});
+    return (j['pesan'] as String?) ?? 'Password berhasil diubah.';
+  }
+
+  /// Kirim (ulang) kode verifikasi ke email akun yang sedang masuk. `sudah` = server menyatakan email sudah terverifikasi.
+  Future<({bool sudah, String pesan})> kirimVerifikasi() async {
+    final j = await _postJson('/api/auth/kirim-verifikasi', {}, auth: true);
+    final sudah = j['sudah_terverifikasi'] == true;
+    if (sudah) await _tandaiTerverifikasi();
+    return (sudah: sudah, pesan: (j['pesan'] as String?) ?? '');
+  }
+
+  /// Verifikasi email dengan kode 6 digit; memperbarui data pengguna lokal.
+  Future<AuthUser> verifikasiEmail(String kode) async {
+    final j = await _postJson('/api/auth/verifikasi-email', {'kode': kode.trim()}, auth: true);
+    final u = AuthUser.fromJson(j);
+    _user = u;
+    await _store.write(_kUser, jsonEncode(u.toJson()));
+    notifyListeners();
+    return u;
+  }
+
+  Future<void> _tandaiTerverifikasi() async {
+    final u = _user;
+    if (u == null || u.emailVerified) return;
+    _user = AuthUser(
+      id: u.id, email: u.email, displayName: u.displayName, role: u.role,
+      avatarUrl: u.avatarUrl, nomorHp: u.nomorHp, emailVerified: true,
+    );
+    await _store.write(_kUser, jsonEncode(_user!.toJson()));
+    notifyListeners();
+  }
+
+  Future<Map<String, dynamic>> _postJson(String path, Map<String, dynamic> body, {bool auth = false}) async {
+    final headers = {'Content-Type': 'application/json', ...headerTunnel(_base)};
+    if (auth) {
+      final token = await accessToken();
+      if (token == null) throw AuthException('Sesi berakhir. Silakan masuk lagi.', statusCode: 401);
+      headers['Authorization'] = 'Bearer $token';
+    }
+    final http.Response res;
+    try {
+      res = await _client.post(Uri.parse('$_base$path'), headers: headers, body: jsonEncode(body)).timeout(const Duration(seconds: 20));
+    } catch (_) {
+      throw AuthException('Tidak bisa terhubung ke server. Periksa koneksi internetmu lalu coba lagi.');
+    }
+    if (res.statusCode < 200 || res.statusCode >= 300) {
+      throw AuthException(_pesanError(res), statusCode: res.statusCode);
+    }
+    return jsonDecode(res.body) as Map<String, dynamic>;
+  }
+
   // ------------------------------------------------------------------ internal
   Future<AuthUser> _masuk(String path, Map<String, dynamic> body) async {
     final http.Response res;
     try {
       res = await _client
-          .post(Uri.parse('$_base$path'), headers: {'Content-Type': 'application/json'}, body: jsonEncode(body))
+          .post(Uri.parse('$_base$path'), headers: {'Content-Type': 'application/json', ...headerTunnel(_base)}, body: jsonEncode(body))
           .timeout(const Duration(seconds: 20));
     } catch (_) {
       throw AuthException('Tidak bisa terhubung ke server. Periksa koneksi internetmu lalu coba lagi.');
@@ -235,7 +297,7 @@ class AuthService extends ChangeNotifier {
     try {
       res = await _client
           .post(Uri.parse('$_base/api/auth/refresh'),
-              headers: {'Content-Type': 'application/json'}, body: jsonEncode({'refresh_token': refresh}))
+              headers: {'Content-Type': 'application/json', ...headerTunnel(_base)}, body: jsonEncode({'refresh_token': refresh}))
           .timeout(const Duration(seconds: 15));
     } catch (_) {
       return false; // offline/timeout: pertahankan login, coba lagi nanti

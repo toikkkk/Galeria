@@ -15,6 +15,12 @@ class ArArtworkController {
 
   /// Tangkap tampilan AR (kamera + karya) -> path file JPEG di cache.
   Future<String?> ambilFoto() => _channel.invokeMethod<String>('ambilFoto');
+
+  /// Kunci posisi: bila true, ketukan layar tidak memindahkan lukisan (cegah bergeser tak sengaja).
+  Future<void> setKunci(bool v) => _channel.invokeMethod<void>('kunci', v);
+
+  /// Tampilkan/sembunyikan garis & angka ukuran (lebar × tinggi) di dinding.
+  Future<void> setUkuran(bool v) => _channel.invokeMethod<void>('ukuran', v);
 }
 
 /// Cek dukungan ARCore di HP: "supported" | "needs_install" | "checking" | "unsupported".
@@ -44,12 +50,16 @@ class ArArtworkView extends StatelessWidget {
     required this.tinggiCm,
     required this.onStatus,
     required this.onCreated,
+    this.onJarak,
   });
 
   final Uint8List image;
   final double lebarCm;
   final double tinggiCm;
   final ValueChanged<String> onStatus;
+
+  /// Jarak kamera ke lukisan (meter), ~3x per detik selama lukisan terpasang.
+  final ValueChanged<double>? onJarak;
   final ValueChanged<ArArtworkController> onCreated;
 
   static const _viewType = 'galeria/ar_artwork';
@@ -83,6 +93,7 @@ class ArArtworkView extends StatelessWidget {
           final channel = MethodChannel('galeria/ar_artwork/$id');
           channel.setMethodCallHandler((call) async {
             if (call.method == 'status') onStatus(call.arguments as String);
+            if (call.method == 'jarak') onJarak?.call((call.arguments as num).toDouble());
           });
           onCreated(ArArtworkController._(channel));
         });

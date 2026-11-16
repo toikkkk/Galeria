@@ -235,7 +235,7 @@ void main() {
     await tester.pumpWidget(MaterialApp(home: KoleksiSayaScreen(service: _FakeFavorit())));
     await tester.pumpAndSettle();
     expect(find.text('Senja m1'), findsOneWidget);
-    expect(find.textContaining('Dimenangkan lewat lelang'), findsOneWidget);
+    expect(find.textContaining('Menang lelang'), findsOneWidget);
     expect(find.text('ID Sertifikat: GAL-ART-2026-000001'), findsOneWidget);
     expect(find.text('Periksa sertifikat'), findsOneWidget);
     expect(find.text('Dimiliki (1)'), findsOneWidget);

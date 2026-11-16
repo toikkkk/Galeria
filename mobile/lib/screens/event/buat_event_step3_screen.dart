@@ -5,6 +5,7 @@ import '../../models/event.dart';
 import '../../services/event_service.dart';
 import '../../state/studio_store.dart';
 import '../../theme/app_theme.dart';
+import '../../widgets/commerce_widgets.dart';
 import '../../utils/format.dart';
 import '../../widgets/event_stepper.dart';
 import 'event_form_widgets.dart';
@@ -176,8 +177,9 @@ class _BuatEventStep3ScreenState extends State<BuatEventStep3Screen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: AppColors.surface,
+      backgroundColor: kLatarMarketplace,
       appBar: AppBar(
+        backgroundColor: Colors.white,
         leading: IconButton(onPressed: widget.onKembali, icon: const Icon(Icons.arrow_back)),
         title: Text('Tiket & Publikasi', style: AppTextStyles.headlineSm),
       ),

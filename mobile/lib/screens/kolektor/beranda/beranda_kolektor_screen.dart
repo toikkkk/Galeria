@@ -1,6 +1,7 @@
 import '../../../widgets/keranjang_tombol.dart';
 import '../../../services/auth_service.dart';
 import 'dart:async';
+import 'dart:math';
 
 import 'package:flutter/material.dart';
 
@@ -103,8 +104,8 @@ class _BerandaKolektorScreenState extends State<BerandaKolektorScreen> {
     try {
       final service = KatalogService();
       final nyata = (await _karyaSeniman(service)).where((k) => k.styleName == gaya).toList();
-      final dummy = (await service.fetchKatalogDummy(gaya: gaya)).items;
-      if (mounted && _filterIndex == i) setState(() => _hasilFilter = [...nyata, ...dummy]);
+      final dummy = (await service.fetchKatalogDummy(gaya: gaya, urut: 'acak')).items;
+      if (mounted && _filterIndex == i) setState(() => _hasilFilter = [...nyata, ...dummy]..shuffle(Random(kSeedSesi)));
     } catch (e) {
       if (mounted && _filterIndex == i) setState(() => _errorFilter = 'Gagal memuat: $e');
     } finally {
@@ -125,8 +126,13 @@ class _BerandaKolektorScreenState extends State<BerandaKolektorScreen> {
   Future<void> _loadKatalog() async {
     try {
       final service = KatalogService();
+      // Susunan berbeda tiap aplikasi dibuka (benih = kSeedSesi): karya seniman nyata dan 20 karya katalog yang
+      // terpilih diacak bersama, supaya beranda tidak selalu menampilkan karya yang sama di depan.
       final karya = kPakaiDataDummy
-          ? [...await _karyaSeniman(service), ...(await service.fetchKatalogDummy()).items]
+          ? ([
+              ...await _karyaSeniman(service),
+              ...(await service.fetchKatalogDummy(urut: 'acak')).items,
+            ]..shuffle(Random(kSeedSesi)))
           : await service.fetchKatalog();
       if (mounted) setState(() => _karya = karya);
     } catch (e) {

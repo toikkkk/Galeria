@@ -96,6 +96,13 @@ class _KoleksiSayaScreenState extends State<KoleksiSayaScreen> {
           padding: const EdgeInsets.symmetric(horizontal: AppSpacing.screenGutter, vertical: AppSpacing.sm),
           children: [
             SegmentedButton<int>(
+              style: SegmentedButton.styleFrom(
+                backgroundColor: Colors.white,
+                foregroundColor: const Color(0xFF3E251E),
+                selectedBackgroundColor: const Color(0xFF3E251E),
+                selectedForegroundColor: Colors.white,
+                textStyle: const TextStyle(fontWeight: FontWeight.w700),
+              ),
               segments: [
                 ButtonSegment(value: 0, label: Text('Dimiliki${_milik == null ? '' : ' (${_milik!.length})'}')),
                 ButtonSegment(value: 1, label: Text('Favorit${_favorit == null ? '' : ' (${_favorit!.length})'}')),
@@ -136,16 +143,25 @@ class _KoleksiSayaScreenState extends State<KoleksiSayaScreen> {
     return [
       Container(
         padding: const EdgeInsets.all(AppSpacing.md),
-        decoration: BoxDecoration(color: AppColors.surfaceContainerLow, borderRadius: BorderRadius.circular(AppRadius.md)),
-        child: Row(children: [
-          Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-            Text('TOTAL KARYA', style: AppTextStyles.overline.copyWith(fontSize: 9)),
-            Text('${d.length} Karya', style: AppTextStyles.headlineLg.copyWith(fontSize: 22)),
-          ])),
-          Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-            Text('TOTAL YANG DIBAYAR', style: AppTextStyles.overline.copyWith(fontSize: 9)),
-            Text(formatRupiahRingkas(total), style: AppTextStyles.headlineLg.copyWith(fontSize: 22)),
-          ])),
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(AppRadius.lg),
+          gradient: const LinearGradient(begin: Alignment.topLeft, end: Alignment.bottomRight, colors: [Color(0xFF4D2F26), Color(0xFF2F1B15)]),
+        ),
+        child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+          Row(children: [
+            const Icon(Icons.collections_bookmark_outlined, size: 15, color: Color(0xFFF0C86A)),
+            const SizedBox(width: 6),
+            Text('NILAI KOLEKSI', style: AppTextStyles.overline.copyWith(fontSize: 10, color: Colors.white70)),
+          ]),
+          const SizedBox(height: 4),
+          Text(formatRupiah(total), style: AppTextStyles.headlineLg.copyWith(fontSize: 26, color: const Color(0xFFF0C86A), fontWeight: FontWeight.w800)),
+          Text('Total yang kamu bayarkan untuk semua karya', style: AppTextStyles.bodySm.copyWith(color: Colors.white60, fontSize: 11)),
+          const SizedBox(height: AppSpacing.sm),
+          Row(children: [
+            _statKoleksi('${d.length}', 'Karya'),
+            _statKoleksi('${d.where((x) => x.karya.artworkId != null).length}', 'Bersertifikat'),
+            _statKoleksi('${d.map((x) => x.karya.artistName).toSet().length}', 'Seniman'),
+          ]),
         ]),
       ),
       const SizedBox(height: AppSpacing.sm),
@@ -155,26 +171,54 @@ class _KoleksiSayaScreenState extends State<KoleksiSayaScreen> {
           child: Container(
             margin: const EdgeInsets.only(bottom: AppSpacing.sm),
             padding: const EdgeInsets.all(AppSpacing.sm),
-            decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(AppRadius.md), boxShadow: const [BoxShadow(color: Colors.black12, blurRadius: 6)]),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(AppRadius.lg),
+              border: Border.all(color: AppColors.border),
+              boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.04), blurRadius: 10, offset: const Offset(0, 3))],
+            ),
             child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
-              ClipRRect(borderRadius: BorderRadius.circular(AppRadius.sm), child: SizedBox(width: 84, height: 100, child: KaryaImage(karya: x.karya))),
+              ClipRRect(borderRadius: BorderRadius.circular(AppRadius.md), child: SizedBox(width: 92, height: 124, child: KaryaImage(karya: x.karya))),
               const SizedBox(width: AppSpacing.sm),
               Expanded(
                 child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                  Text(x.karya.title, style: AppTextStyles.labelMd, maxLines: 2, overflow: TextOverflow.ellipsis),
-                  Text(x.karya.artistName, style: AppTextStyles.bodySm.copyWith(color: AppColors.muted, fontSize: 11)),
-                  const SizedBox(height: 4),
-                  Text('${x.sumber == 'lelang' ? 'Dimenangkan lewat lelang' : 'Dibeli'} ${formatTanggal(x.diperoleh)}', style: AppTextStyles.bodySm.copyWith(fontSize: 11)),
-                  if (x.hargaIdr != null) Text(formatRupiah(x.hargaIdr!), style: AppTextStyles.labelMd.copyWith(color: AppColors.accent, fontSize: 13)),
-                  const SizedBox(height: 4),
-                  Text(x.karya.artworkId != null ? 'ID Sertifikat: ${x.karya.artworkId}' : 'Belum bersertifikat digital', style: AppTextStyles.bodySm.copyWith(fontSize: 10.5, fontFamily: x.karya.artworkId != null ? 'monospace' : null, color: AppColors.muted)),
                   if (x.karya.artworkId != null)
-                    TextButton.icon(
-                      style: TextButton.styleFrom(padding: EdgeInsets.zero, minimumSize: const Size(0, 30), alignment: Alignment.centerLeft),
-                      onPressed: () => _periksa(x.karya),
-                      icon: const Icon(Icons.verified_user_outlined, size: 16),
-                      label: const Text('Periksa sertifikat'),
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
+                      decoration: BoxDecoration(color: const Color(0xFFF7E7C1), borderRadius: BorderRadius.circular(AppRadius.full)),
+                      child: Row(mainAxisSize: MainAxisSize.min, children: [
+                        const Icon(Icons.verified, size: 12, color: Color(0xFF7A5410)),
+                        const SizedBox(width: 3),
+                        Text('BERSERTIFIKAT', style: AppTextStyles.overline.copyWith(fontSize: 8.5, color: const Color(0xFF7A5410), fontWeight: FontWeight.w800)),
+                      ]),
                     ),
+                  const SizedBox(height: 4),
+                  Text(x.karya.title, style: AppTextStyles.labelMd.copyWith(fontSize: 15, fontWeight: FontWeight.w800), maxLines: 2, overflow: TextOverflow.ellipsis),
+                  Text(x.karya.artistName, style: AppTextStyles.bodySm.copyWith(color: AppColors.muted, fontSize: 11.5)),
+                  const SizedBox(height: 4),
+                  Text('${x.sumber == 'lelang' ? 'Menang lelang' : 'Dibeli'} · ${formatTanggal(x.diperoleh)}', style: AppTextStyles.bodySm.copyWith(fontSize: 11, color: AppColors.muted)),
+                  if (x.hargaIdr != null) Text(formatRupiah(x.hargaIdr!), style: AppTextStyles.labelMd.copyWith(color: const Color(0xFF3E251E), fontSize: 15.5, fontWeight: FontWeight.w800)),
+                  if (x.karya.artworkId != null)
+                    Padding(
+                      padding: const EdgeInsets.only(top: 3),
+                      child: Text('ID Sertifikat: ${x.karya.artworkId}', maxLines: 1, overflow: TextOverflow.ellipsis, style: AppTextStyles.bodySm.copyWith(fontSize: 10, fontFamily: 'monospace', color: AppColors.muted)),
+                    ),
+                  const SizedBox(height: 6),
+                  if (x.karya.artworkId != null)
+                    GestureDetector(
+                      onTap: () => _periksa(x.karya),
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                        decoration: BoxDecoration(color: const Color(0xFF3E251E), borderRadius: BorderRadius.circular(AppRadius.full)),
+                        child: Row(mainAxisSize: MainAxisSize.min, children: [
+                          const Icon(Icons.verified_user_outlined, size: 14, color: Color(0xFFF0C86A)),
+                          const SizedBox(width: 5),
+                          Text('Periksa sertifikat', style: AppTextStyles.labelSm.copyWith(color: Colors.white, fontSize: 11.5, fontWeight: FontWeight.w700)),
+                        ]),
+                      ),
+                    )
+                  else
+                    Text('Belum bersertifikat digital', style: AppTextStyles.bodySm.copyWith(fontSize: 10.5, color: AppColors.muted)),
                 ]),
               ),
             ]),
@@ -182,6 +226,18 @@ class _KoleksiSayaScreenState extends State<KoleksiSayaScreen> {
         ),
     ];
   }
+
+  Widget _statKoleksi(String nilai, String label) => Expanded(
+        child: Container(
+          margin: const EdgeInsets.only(right: 8),
+          padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 10),
+          decoration: BoxDecoration(color: Colors.white.withValues(alpha: 0.1), borderRadius: BorderRadius.circular(10)),
+          child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+            Text(nilai, style: AppTextStyles.headlineSm.copyWith(fontSize: 20, color: Colors.white, fontWeight: FontWeight.w800)),
+            Text(label, style: AppTextStyles.bodySm.copyWith(color: Colors.white70, fontSize: 11)),
+          ]),
+        ),
+      );
 
   List<Widget> _favoritList() {
     final d = _favorit!;
@@ -216,9 +272,9 @@ class _KoleksiSayaScreenState extends State<KoleksiSayaScreen> {
                 Padding(
                   padding: const EdgeInsets.all(AppSpacing.xs),
                   child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                    Text(k.title, maxLines: 1, overflow: TextOverflow.ellipsis, style: AppTextStyles.labelMd.copyWith(fontSize: 12.5)),
+                    Text(k.title, maxLines: 1, overflow: TextOverflow.ellipsis, style: AppTextStyles.labelMd.copyWith(fontSize: 13, fontWeight: FontWeight.w800)),
                     Text(k.artistName, maxLines: 1, overflow: TextOverflow.ellipsis, style: AppTextStyles.bodySm.copyWith(fontSize: 11, color: AppColors.muted)),
-                    Text(k.terjual ? 'Terjual' : k.priceFormatted, style: AppTextStyles.bodySm.copyWith(fontSize: 11, fontWeight: FontWeight.w600)),
+                    Text(k.terjual ? 'Terjual' : k.priceFormatted, style: AppTextStyles.labelMd.copyWith(fontSize: 13, fontWeight: FontWeight.w800, color: k.terjual ? AppColors.muted : const Color(0xFF3E251E))),
                   ]),
                 ),
               ]),

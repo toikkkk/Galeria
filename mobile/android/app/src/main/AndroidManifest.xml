@@ -1,4 +1,7 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
+    <!-- Wajib untuk build rilis: Flutter hanya menaruh INTERNET di manifest debug/profile, jadi tanpa baris ini
+         APK hasil `flutter build apk` tidak bisa memanggil backend sama sekali. -->
+    <uses-permission android:name="android.permission.INTERNET"/>
     <uses-permission android:name="android.permission.CAMERA"/>
     <!-- AR opsional: app tetap bisa dipasang di HP tanpa ARCore (fallback simulasi manual) -->
     <uses-feature android:name="android.hardware.camera.ar" android:required="false"/>

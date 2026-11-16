@@ -2,7 +2,6 @@ import 'dart:async';
 
 import 'models/picked_image.dart';
 
-import 'package:flutter/cupertino.dart' show CupertinoPageTransitionsBuilder;
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
@@ -13,6 +12,8 @@ import 'services/digital_art_identity_service.dart';
 import 'models/karya.dart';
 import 'screens/auth/daftar_seniman_screen.dart';
 import 'screens/auth/login_screen.dart';
+import 'screens/auth/lupa_password_screen.dart';
+import 'screens/auth/verifikasi_email_screen.dart';
 import 'screens/auth/verifikasi_identitas_screen.dart';
 import 'screens/community/community_detail_screen.dart';
 import 'screens/dashboard/dashboard_screen.dart';
@@ -222,6 +223,9 @@ String _berandaUntuk(String path) {
 
 String _lokasiSekarang() => _router.routeInformationProvider.value.uri.path;
 
+/// Beranda sesuai peran akun yang sedang masuk (dipakai bila layar dibuka tanpa riwayat navigasi).
+String _berandaUntukUser() => (AuthService.instance.user?.isSeniman ?? false) ? _dasborSeniman : _berandaKolektor;
+
 /// Tombol kembali di dalam layar: kembali satu langkah bila ada riwayat; bila layar dibuka lewat
 /// `go()` (tanpa riwayat) -- yang membuat `pop()` biasa tidak berbuat apa-apa -- pindah ke beranda
 /// peran yang sama, kecuali sudah di beranda.
@@ -269,7 +273,7 @@ String? _jagaRute(BuildContext context, GoRouterState state) {
   final privatSeniman = _cocok(path, _rutePrivatSeniman);
   final privatKolektor = _cocok(path, _rutePrivatKolektor);
 
-  if (!masuk) return (privatSeniman || privatKolektor) ? '/login' : null;
+  if (!masuk) return (privatSeniman || privatKolektor || path == '/verifikasi-email') ? '/login' : null;
   if (privatSeniman && !user.isSeniman) return '/beranda-kolektor';
   if (privatKolektor && user.isSeniman) return '/dashboard';
   return null;
@@ -381,6 +385,22 @@ final _router = GoRouter(
         },
         // push -- sama alasan di atas.
         onRegisterTap: () => context.push('/role-selection'),
+        onLupaPasswordTap: () => context.push('/lupa-password'),
+      ),
+    ),
+    GoRoute(
+      path: '/lupa-password',
+      builder: (context, state) => LupaPasswordScreen(
+        onBack: () => _kembali(context),
+        // berhasil: kembali ke layar masuk (sesi lama sudah dicabut server, jadi memang harus masuk lagi)
+        onSelesai: () => context.canPop() ? context.pop() : context.go('/login'),
+      ),
+    ),
+    GoRoute(
+      path: '/verifikasi-email',
+      builder: (context, state) => VerifikasiEmailScreen(
+        onBack: () => _kembali(context),
+        onSelesai: () => context.canPop() ? context.pop(true) : context.go(_berandaUntukUser()),
       ),
     ),
 
@@ -807,16 +827,24 @@ final _router = GoRouter(
           onArTap: () => _bukaAr(context, karya),
           onBeliTap: () => _beli(context, karya),
           onLelangTap: (id) => context.push('/lelang/detail', extra: id),
-          onTokoTap: () => context.push('/toko'),
+          onTokoTap: () => context.push('/toko', extra: karya),
         );
       },
     ),
     GoRoute(
       path: '/toko',
-      builder: (context, state) => ProfilTokoScreen(
-        onBack: () => _kembali(context),
-        onKaryaTap: (karya) => context.push('/karya/detail', extra: karya),
-      ),
+      builder: (context, state) {
+        // extra = karya yang sedang dibuka (toko penjualnya); tanpa extra = tokoku sendiri (dari profil seniman)
+        final dari = state.extra as Karya?;
+        final user = AuthService.instance.user;
+        return ProfilTokoScreen(
+          onBack: () => _kembali(context),
+          onKaryaTap: (karya) => context.push('/karya/detail', extra: karya),
+          senimanId: dari?.senimanId ?? user?.id,
+          nama: dari?.artistName ?? user?.displayName ?? 'Seniman',
+          galeri: dari?.galleryName,
+        );
+      },
     ),
     GoRoute(
       path: '/pesanan',

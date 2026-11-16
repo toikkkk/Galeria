@@ -3,10 +3,12 @@ import 'package:flutter/material.dart';
 import '../../../models/pesanan.dart';
 import '../../../services/pesanan_service.dart';
 import '../../../theme/app_theme.dart';
+import '../../../widgets/commerce_widgets.dart';
 import '../../../widgets/kolektor/kolektor_bottom_nav.dart';
 import '../../../widgets/pesanan_widgets.dart';
 
-/// Tab "Pesanan" kolektor: semua pesananmu dari server (`GET /api/pesanan`).
+/// Tab "Pesanan" kolektor: semua pesananmu dari server (`GET /api/pesanan`),
+/// dengan tab status berlencana jumlah (pola Shopee "Pesanan Saya").
 class DaftarPesananScreen extends StatefulWidget {
   const DaftarPesananScreen({
     super.key,
@@ -36,9 +38,9 @@ class _DaftarPesananScreenState extends State<DaftarPesananScreen> {
   List<Pesanan> _semua = [];
   bool _memuat = true;
   String? _error;
-  int _filter = 0; // 0 semua, 1 belum dibayar, 2 diproses/dikirim, 3 selesai, 4 dibatalkan
+  int _filter = 0; // 0 semua, 1 belum dibayar, 2 diproses, 3 dikirim, 4 selesai, 5 dibatalkan
 
-  static const _label = ['Semua', 'Belum dibayar', 'Diproses', 'Selesai', 'Dibatalkan'];
+  static const _label = ['Semua', 'Belum dibayar', 'Diproses', 'Dikirim', 'Selesai', 'Dibatalkan'];
 
   @override
   void initState() {
@@ -61,72 +63,79 @@ class _DaftarPesananScreenState extends State<DaftarPesananScreen> {
     }
   }
 
-  bool _cocok(Pesanan p) => switch (_filter) {
+  bool _cocokDi(int f, Pesanan p) => switch (f) {
         1 => p.status == 'menunggu_pembayaran',
-        2 => p.status == 'dibayar' || p.status == 'dikonfirmasi',
-        3 => p.status == 'selesai',
-        4 => p.status == 'dibatalkan',
+        2 => p.status == 'dibayar' || (p.status == 'dikonfirmasi' && !p.sudahDikirim),
+        3 => p.status == 'dikonfirmasi' && p.sudahDikirim,
+        4 => p.status == 'selesai',
+        5 => p.status == 'dibatalkan',
         _ => true,
       };
 
+  int _jumlah(int f) => _semua.where((p) => _cocokDi(f, p)).length;
+
   @override
   Widget build(BuildContext context) {
-    final tampil = _semua.where(_cocok).toList();
+    final tampil = _semua.where((p) => _cocokDi(_filter, p)).toList();
     return Scaffold(
-      backgroundColor: AppColors.surface,
-      appBar: AppBar(title: Text('Pesanan Saya', style: AppTextStyles.headlineMd)),
+      backgroundColor: kLatarMarketplace,
+      appBar: AppBar(
+        backgroundColor: Colors.white,
+        title: Text('Pesanan Saya', style: AppTextStyles.headlineMd),
+        bottom: PreferredSize(
+          preferredSize: const Size.fromHeight(46),
+          child: Container(
+            color: Colors.white,
+            height: 46,
+            child: ListView.builder(
+              scrollDirection: Axis.horizontal,
+              padding: const EdgeInsets.symmetric(horizontal: AppSpacing.xs),
+              itemCount: _label.length,
+              itemBuilder: (_, i) => _tab(i),
+            ),
+          ),
+        ),
+      ),
       body: RefreshIndicator(
         onRefresh: _muat,
         child: ListView(
           physics: const AlwaysScrollableScrollPhysics(),
-          padding: const EdgeInsets.all(AppSpacing.screenGutter),
+          padding: const EdgeInsets.all(AppSpacing.sm),
           children: [
-            SingleChildScrollView(
-              scrollDirection: Axis.horizontal,
-              child: Row(
-                children: [
-                  for (var i = 0; i < _label.length; i++)
-                    Padding(
-                      padding: const EdgeInsets.only(right: AppSpacing.xs),
-                      child: ChoiceChip(label: Text(_label[i]), selected: _filter == i, onSelected: (_) => setState(() => _filter = i)),
-                    ),
-                ],
-              ),
-            ),
-            const SizedBox(height: AppSpacing.sm),
             if (_error != null)
-              Column(
-                children: [
-                  Text(_error!, textAlign: TextAlign.center, style: AppTextStyles.bodySm.copyWith(color: AppColors.error)),
-                  const SizedBox(height: AppSpacing.xs),
-                  OutlinedButton.icon(onPressed: _muat, icon: const Icon(Icons.refresh, size: 16), label: const Text('Coba Lagi')),
-                ],
+              KartuBagian(
+                child: Column(
+                  children: [
+                    Text(_error!, textAlign: TextAlign.center, style: AppTextStyles.bodySm.copyWith(color: AppColors.error)),
+                    const SizedBox(height: AppSpacing.xs),
+                    OutlinedButton.icon(onPressed: _muat, icon: const Icon(Icons.refresh, size: 16), label: const Text('Coba Lagi')),
+                  ],
+                ),
               )
             else if (_memuat && _semua.isEmpty)
               const Padding(padding: EdgeInsets.all(AppSpacing.xl), child: Center(child: CircularProgressIndicator()))
             else if (_semua.isEmpty)
-              Padding(
-                padding: const EdgeInsets.all(AppSpacing.xl),
-                child: Text(
-                  'Belum ada pesanan. Pilih karya di beranda lalu tekan "Beli Sekarang".',
-                  textAlign: TextAlign.center,
-                  style: AppTextStyles.bodySm.copyWith(color: AppColors.muted),
-                ),
+              _kosong(
+                Icons.shopping_bag_outlined,
+                'Belum ada pesanan. Pilih karya di beranda lalu tekan "Beli Sekarang".',
               )
             else if (tampil.isEmpty)
-              Padding(
-                padding: const EdgeInsets.all(AppSpacing.xl),
-                child: Text('Tidak ada pesanan di kategori ini.', textAlign: TextAlign.center, style: AppTextStyles.bodySm.copyWith(color: AppColors.muted)),
-              )
+              _kosong(Icons.inbox_outlined, 'Tidak ada pesanan di kategori ini.')
             else
               for (final p in tampil)
                 PesananKartu(
                   pesanan: p,
                   onTap: () => widget.onDetailTap?.call(p),
                   tombol: p.bisa('bayar')
-                      ? SizedBox(
-                          width: double.infinity,
-                          child: OutlinedButton(onPressed: () => widget.onBayarTap?.call(p), child: const Text('Bayar sekarang')),
+                      ? FilledButton(
+                          onPressed: () => widget.onBayarTap?.call(p),
+                          style: FilledButton.styleFrom(
+                            backgroundColor: AppColors.accent,
+                            foregroundColor: AppColors.onSurface,
+                            minimumSize: const Size(0, 36),
+                            padding: const EdgeInsets.symmetric(horizontal: AppSpacing.md),
+                          ),
+                          child: const Text('Bayar sekarang'),
                         )
                       : null,
                 ),
@@ -141,4 +150,43 @@ class _DaftarPesananScreenState extends State<DaftarPesananScreen> {
       ),
     );
   }
+
+  Widget _tab(int i) {
+    final aktif = _filter == i;
+    final n = i == 0 ? 0 : _jumlah(i);
+    return InkWell(
+      onTap: () => setState(() => _filter = i),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: AppSpacing.sm),
+        decoration: BoxDecoration(border: Border(bottom: BorderSide(color: aktif ? AppColors.accent : Colors.transparent, width: 2.5))),
+        child: Row(
+          children: [
+            Text(
+              _label[i],
+              style: AppTextStyles.labelMd.copyWith(fontSize: 13, color: aktif ? AppColors.onSurface : AppColors.muted, fontWeight: aktif ? FontWeight.w700 : FontWeight.w500),
+            ),
+            if (n > 0) ...[
+              const SizedBox(width: 5),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 1),
+                decoration: BoxDecoration(color: aktif ? AppColors.accent : AppColors.surfaceContainerHigh, borderRadius: BorderRadius.circular(AppRadius.full)),
+                child: Text('$n', style: AppTextStyles.labelSm.copyWith(fontSize: 10, color: AppColors.onSurface)),
+              ),
+            ],
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _kosong(IconData ikon, String teks) => Padding(
+        padding: const EdgeInsets.symmetric(vertical: AppSpacing.xxl, horizontal: AppSpacing.lg),
+        child: Column(
+          children: [
+            CircleAvatar(radius: 34, backgroundColor: AppColors.surfaceContainerHigh, child: Icon(ikon, size: 32, color: AppColors.muted)),
+            const SizedBox(height: AppSpacing.sm),
+            Text(teks, textAlign: TextAlign.center, style: AppTextStyles.bodySm.copyWith(color: AppColors.muted, fontSize: 13)),
+          ],
+        ),
+      );
 }

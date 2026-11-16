@@ -1,188 +1,138 @@
-import 'dart:async';
-
 import 'package:flutter/material.dart';
 
 import '../../theme/app_theme.dart';
 import '../../widgets/galeria_logo.dart';
 
-/// Konversi dari docs/design/role_seniman_1/.../galeria_splash_screen/code.html
+/// Splash minimalis: hanya logo + tulisan GALERIA, dianimasikan bertahap seperti timeline GSAP
+/// (logo membesar dengan pantulan halus -> huruf muncul satu per satu -> garis emas memanjang),
+/// lalu content keluar (membesar & memudar) sebelum aplikasi terbuka.
 ///
-/// TODO(asset): ganti [Icons.auto_awesome] dengan logo GALERIA asli
-/// (di HTML sumber masih pakai URL gambar sementara dari Google).
+/// Catatan: GSAP adalah library JavaScript dan tidak bisa dipakai di Flutter; animasinya dibuat dengan
+/// `AnimationController` + `Interval` (satu controller = satu timeline, tiap elemen punya jendela waktunya).
 class SplashScreen extends StatefulWidget {
   const SplashScreen({super.key, required this.onFinished});
 
-  /// Dipanggil setelah splash selesai (progress bar penuh) -- biasanya
-  /// dipakai utk pindah ke welcome screen lewat router.
+  /// Dipanggil sekali setelah animasi masuk + keluar selesai.
   final VoidCallback onFinished;
 
   @override
   State<SplashScreen> createState() => _SplashScreenState();
 }
 
-class _SplashScreenState extends State<SplashScreen> {
-  double _progress = 0.12;
-  Timer? _timer;
+class _SplashScreenState extends State<SplashScreen> with TickerProviderStateMixin {
+  static const _kata = 'GALERIA';
+
+  late final AnimationController _masuk = AnimationController(vsync: this, duration: const Duration(milliseconds: 1900));
+  // 250 ms pertama = jeda tahan (hasil akhir terbaca), sisanya animasi keluar.
+  late final AnimationController _keluar = AnimationController(vsync: this, duration: const Duration(milliseconds: 730));
+  bool _selesai = false;
 
   @override
   void initState() {
     super.initState();
-    // Simulasi loading bar seperti di source HTML (increment acak tiap 450ms).
-    _timer = Timer.periodic(const Duration(milliseconds: 450), (timer) {
-      setState(() {
-        final increment = 8 + (DateTime.now().millisecond % 18);
-        _progress = (_progress + increment / 100).clamp(0.0, 0.96);
-      });
-      if (_progress >= 0.96) {
-        timer.cancel();
-        Future.delayed(const Duration(milliseconds: 400), widget.onFinished);
+    _masuk.addStatusListener((s) {
+      if (s == AnimationStatus.completed && mounted) _keluar.forward();
+    });
+    _keluar.addStatusListener((s) {
+      if (s == AnimationStatus.completed && !_selesai) {
+        _selesai = true;
+        widget.onFinished();
       }
+    });
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) _masuk.forward();
     });
   }
 
   @override
   void dispose() {
-    _timer?.cancel();
+    _masuk.dispose();
+    _keluar.dispose();
     super.dispose();
   }
 
+  /// Nilai 0..1 untuk satu elemen pada jendela waktu [awal, akhir] dari timeline masuk.
+  double _t(double awal, double akhir, Curve kurva) => Interval(awal, akhir, curve: kurva).transform(_masuk.value);
+
   @override
   Widget build(BuildContext context) {
+    final kurangiGerak = MediaQuery.of(context).disableAnimations;
+    if (kurangiGerak && !_masuk.isAnimating && _masuk.value == 0) {
+      // aksesibilitas: tanpa gerak, tampilkan langsung lalu lanjut
+      _masuk.duration = const Duration(milliseconds: 350);
+      _keluar.duration = const Duration(milliseconds: 300);
+    }
     return Scaffold(
       backgroundColor: AppColors.surface,
-      body: SafeArea(
-        child: Stack(
-          children: [
-            Padding(
-              padding: const EdgeInsets.symmetric(
-                horizontal: AppSpacing.screenGutter,
-                vertical: AppSpacing.xxl,
-              ),
-              child: Column(
-                children: [
-                  // Top bar
-                  Opacity(
-                    opacity: 0.6,
-                    child: Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        Text('KATALOG RESMI', style: AppTextStyles.overline),
-                        const Icon(Icons.verified,
-                            color: AppColors.accent, size: 16),
-                      ],
-                    ),
-                  ),
-                  const Spacer(),
-                  // Center logo + title
-                  Column(
+      body: Center(
+        child: AnimatedBuilder(
+          animation: Listenable.merge([_masuk, _keluar]),
+          builder: (context, _) {
+            final k = const Interval(0.34, 1.0, curve: Curves.easeInCubic).transform(_keluar.value);
+            final logoSkala = 0.55 + 0.45 * _t(0.0, 0.38, Curves.easeOutBack);
+            final logoAlpha = _t(0.0, 0.2, Curves.easeOut);
+            final halo = _t(0.05, 0.5, Curves.easeOutCubic);
+            final garis = _t(0.62, 0.84, Curves.easeInOutCubic);
+            return Opacity(
+              opacity: 1 - k,
+              child: Transform.translate(
+                offset: Offset(0, -14 * k),
+                child: Transform.scale(
+                  scale: 1 + 0.12 * k,
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
                     children: [
-                      const GaleriaLogo(size: 160),
-                      const SizedBox(height: AppSpacing.lg),
-                      Text(
-                        'G A L E R I A',
-                        style: AppTextStyles.displayLg.copyWith(
-                          letterSpacing: 6,
-                        ),
-                      ),
-                      const SizedBox(height: AppSpacing.sm),
-                      Container(
-                        width: 32,
-                        height: 2,
-                        color: AppColors.accent.withValues(alpha: 0.4),
-                      ),
-                      const SizedBox(height: AppSpacing.sm),
-                      Text(
-                        'AUTENTIKASI & PERDAGANGAN KARYA SENI',
-                        textAlign: TextAlign.center,
-                        style: AppTextStyles.labelSm.copyWith(
-                          letterSpacing: 2,
-                        ),
-                      ),
-                      const SizedBox(height: AppSpacing.lg),
-                      Container(
-                        padding: const EdgeInsets.symmetric(
-                            horizontal: AppSpacing.sm, vertical: 6),
-                        decoration: BoxDecoration(
-                          color: AppColors.surfaceContainerLow,
-                          borderRadius: BorderRadius.circular(AppRadius.full),
-                          boxShadow: const [
-                            BoxShadow(color: Colors.black12, blurRadius: 4),
-                          ],
-                        ),
-                        child: Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            Container(
-                              width: 6,
-                              height: 6,
-                              decoration: const BoxDecoration(
+                      Stack(
+                        alignment: Alignment.center,
+                        children: [
+                          // halo emas lembut yang melebar di belakang logo
+                          Opacity(
+                            opacity: (1 - halo) * 0.55,
+                            child: Container(
+                              width: 120 + 120 * halo,
+                              height: 120 + 120 * halo,
+                              decoration: BoxDecoration(
                                 shape: BoxShape.circle,
-                                color: AppColors.accent,
+                                border: Border.all(color: AppColors.accent, width: 1.5),
                               ),
                             ),
-                            const SizedBox(width: AppSpacing.xs),
-                            Text('KOLEKSI TERVERIFIKASI',
-                                style: AppTextStyles.labelSm
-                                    .copyWith(fontSize: 10)),
-                          ],
-                        ),
-                      ),
-                    ],
-                  ),
-                  const Spacer(),
-                  // Bottom progress + info
-                  Column(
-                    children: [
-                      ClipRRect(
-                        borderRadius: BorderRadius.circular(AppRadius.full),
-                        child: SizedBox(
-                          width: 144,
-                          height: 2,
-                          child: LinearProgressIndicator(
-                            value: _progress,
-                            backgroundColor: AppColors.surfaceContainerHighest,
-                            valueColor: const AlwaysStoppedAnimation(
-                                AppColors.accent),
                           ),
-                        ),
+                          Opacity(
+                            opacity: logoAlpha,
+                            child: Transform.scale(scale: logoSkala, child: const GaleriaLogo(size: 124)),
+                          ),
+                        ],
                       ),
-                      const SizedBox(height: AppSpacing.md),
+                      const SizedBox(height: AppSpacing.lg),
                       Row(
                         mainAxisSize: MainAxisSize.min,
                         children: [
-                          Text('EDISI TERKURASI',
-                              style: AppTextStyles.overline
-                                  .copyWith(color: AppColors.outline)),
-                          _dotSeparator(),
-                          Text('JAKARTA • PARIS',
-                              style: AppTextStyles.overline
-                                  .copyWith(color: AppColors.outline)),
-                          _dotSeparator(),
-                          Text('V1.0',
-                              style: AppTextStyles.overline
-                                  .copyWith(color: AppColors.outline)),
+                          for (var i = 0; i < _kata.length; i++) _huruf(i),
                         ],
                       ),
+                      const SizedBox(height: AppSpacing.sm),
+                      Container(width: 48 * garis, height: 2, color: AppColors.accent),
                     ],
                   ),
-                ],
+                ),
               ),
-            ),
-          ],
+            );
+          },
         ),
       ),
     );
   }
 
-  Widget _dotSeparator() => Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 6),
-        child: Container(
-          width: 3,
-          height: 3,
-          decoration: const BoxDecoration(
-            shape: BoxShape.circle,
-            color: AppColors.outlineVariant,
-          ),
-        ),
-      );
+  /// Satu huruf: bergantian (stagger 70 ms), naik 18 px sambil memudar masuk.
+  Widget _huruf(int i) {
+    const mulai = 0.24, jeda = 0.045, lama = 0.22;
+    final t = _t(mulai + i * jeda, mulai + i * jeda + lama, Curves.easeOutCubic);
+    return Opacity(
+      opacity: t,
+      child: Transform.translate(
+        offset: Offset(0, 18 * (1 - t)),
+        child: Text(_kata[i], style: AppTextStyles.displayLg.copyWith(fontSize: 38, letterSpacing: 7, fontWeight: FontWeight.w500)),
+      ),
+    );
+  }
 }

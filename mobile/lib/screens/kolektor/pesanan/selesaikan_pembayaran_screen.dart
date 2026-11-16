@@ -1,18 +1,20 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:qr_flutter/qr_flutter.dart';
 
 import '../../../models/pesanan.dart';
 import '../../../services/pesanan_service.dart';
 import '../../../theme/app_theme.dart';
 import '../../../utils/format.dart';
-import '../../../utils/format_waktu.dart';
+import '../../../widgets/commerce_widgets.dart';
 import '../../../widgets/pesanan_widgets.dart';
 
-const _metode = <(String, String, IconData)>[
-  ('va_bca', 'Virtual Account BCA', Icons.account_balance_outlined),
-  ('va_mandiri', 'Virtual Account Mandiri', Icons.account_balance_outlined),
-  ('va_bni', 'Virtual Account BNI', Icons.account_balance_outlined),
-  ('qris', 'QRIS', Icons.qr_code_2),
+/// (kode, nama, warna merek, singkatan, kelompok)
+const _metode = <(String, String, Color, String, String)>[
+  ('va_bca', 'BCA Virtual Account', Color(0xFF0060AF), 'BCA', 'Transfer Virtual Account'),
+  ('va_mandiri', 'Mandiri Virtual Account', Color(0xFF003D79), 'MDR', 'Transfer Virtual Account'),
+  ('va_bni', 'BNI Virtual Account', Color(0xFFF15A23), 'BNI', 'Transfer Virtual Account'),
+  ('qris', 'QRIS', Color(0xFFD7263D), 'QR', 'Dompet digital & QR'),
 ];
 
 /// Pilih metode pembayaran, tampilkan instruksi, dan (mode sandbox) simulasikan pembayaran.
@@ -70,6 +72,14 @@ class _SelesaikanPembayaranScreenState extends State<SelesaikanPembayaranScreen>
     await _jalankan(() => _service.pilihAlamat(_pesanan.id, baru.id));
   }
 
+  Future<void> _ubahAlamat() async {
+    if (_alamat.isEmpty) return _tambahAlamat();
+    final id = await tampilkanPilihAlamat(context, daftar: _alamat, dipilih: null);
+    if (id == null || !mounted) return;
+    if (id == kAlamatBaru) return _tambahAlamat();
+    await _jalankan(() => _service.pilihAlamat(_pesanan.id, id));
+  }
+
   Future<void> _jalankan(Future<Pesanan> Function() kerja, {bool selesai = false}) async {
     setState(() {
       _sibuk = true;
@@ -105,179 +115,253 @@ class _SelesaikanPembayaranScreenState extends State<SelesaikanPembayaranScreen>
     if (ya == true) await _jalankan(() => _service.batal(_pesanan.id), selesai: true);
   }
 
+  Future<void> _salin(String teks, String pesan) async {
+    await Clipboard.setData(ClipboardData(text: teks));
+    if (mounted) tampilkanPesan(context, pesan);
+  }
+
+  Widget _tileMetode((String, String, Color, String, String) m) {
+    final dipilih = _pesanan.metodePembayaranTerpilih == m.$1;
+    final terkunci = _sibuk || _pesanan.perluAlamat;
+    return InkWell(
+      onTap: terkunci ? null : () => _jalankan(() => _service.pilihMetode(_pesanan.id, m.$1)),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(vertical: AppSpacing.xs + 2),
+        child: Row(
+          children: [
+            Container(
+              width: 44,
+              height: 30,
+              alignment: Alignment.center,
+              decoration: BoxDecoration(color: m.$3, borderRadius: BorderRadius.circular(6)),
+              child: Text(m.$4, style: const TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.w800)),
+            ),
+            const SizedBox(width: AppSpacing.sm),
+            Expanded(child: Text(m.$2, style: AppTextStyles.labelMd.copyWith(fontSize: 13.5))),
+            Icon(dipilih ? Icons.radio_button_checked : Icons.radio_button_off, color: dipilih ? AppColors.accent : AppColors.outlineVariant, size: 22),
+          ],
+        ),
+      ),
+    );
+  }
+
+  List<Widget> _kelompokMetode() {
+    final kelompok = <String, List<(String, String, Color, String, String)>>{};
+    for (final m in _metode) {
+      kelompok.putIfAbsent(m.$5, () => []).add(m);
+    }
+    return [
+      for (final e in kelompok.entries)
+        KartuBagian(
+          judul: e.key,
+          padding: const EdgeInsets.fromLTRB(AppSpacing.md, AppSpacing.xxs, AppSpacing.md, AppSpacing.xxs),
+          child: Column(
+            children: [
+              for (var i = 0; i < e.value.length; i++) ...[
+                if (i > 0) const Divider(height: 1),
+                _tileMetode(e.value[i]),
+              ],
+            ],
+          ),
+        ),
+    ];
+  }
+
+  Widget _instruksi(InstruksiBayar ins) {
+    final qris = ins.metode == 'qris';
+    return KartuBagian(
+      judul: qris ? 'Pindai Kode QRIS' : 'Nomor ${ins.namaMetode}',
+      ikon: qris ? Icons.qr_code_2 : Icons.pin_outlined,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          if (qris)
+            Center(
+              child: Container(
+                padding: const EdgeInsets.all(AppSpacing.sm),
+                decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(AppRadius.md), border: Border.all(color: AppColors.border)),
+                child: QrImageView(data: ins.nomor, size: 170, padding: EdgeInsets.zero),
+              ),
+            ),
+          if (qris) const SizedBox(height: AppSpacing.xs),
+          Row(
+            children: [
+              Expanded(child: SelectableText(ins.nomor, style: AppTextStyles.headlineSm.copyWith(letterSpacing: qris ? 0.2 : 1.2, fontSize: qris ? 13 : 19))),
+              TextButton.icon(
+                onPressed: () => _salin(ins.nomor, 'Nomor disalin.'),
+                icon: const Icon(Icons.copy, size: 16),
+                label: const Text('Salin'),
+              ),
+            ],
+          ),
+          const Divider(height: AppSpacing.md),
+          Row(
+            children: [
+              Expanded(child: Text('Jumlah yang harus dibayar', style: AppTextStyles.bodySm)),
+              Text(formatRupiah(ins.jumlahIdr), style: AppTextStyles.labelMd.copyWith(fontSize: 14)),
+              IconButton(
+                onPressed: () => _salin(ins.jumlahIdr.toString(), 'Jumlah disalin.'),
+                icon: const Icon(Icons.copy, size: 16),
+                visualDensity: VisualDensity.compact,
+                tooltip: 'Salin jumlah',
+              ),
+            ],
+          ),
+          ExpansionTile(
+            tilePadding: EdgeInsets.zero,
+            childrenPadding: const EdgeInsets.only(bottom: AppSpacing.xs),
+            shape: const Border(),
+            collapsedShape: const Border(),
+            title: Text('Cara membayar', style: AppTextStyles.labelMd.copyWith(fontSize: 13)),
+            children: [
+              for (final (i, l) in (qris
+                      ? const ['Buka aplikasi dompet digital atau m-banking yang mendukung QRIS.', 'Pilih menu Bayar / Scan lalu pindai kode di atas.', 'Periksa nominal, lalu konfirmasi pembayaran.']
+                      : const ['Buka m-banking atau ATM bank yang dipilih.', 'Pilih menu Transfer / Virtual Account, lalu masukkan nomor di atas.', 'Periksa nama dan nominal, lalu konfirmasi pembayaran.'])
+                  .indexed)
+                Padding(
+                  padding: const EdgeInsets.symmetric(vertical: 3),
+                  child: Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      CircleAvatar(radius: 9, backgroundColor: AppColors.surfaceContainerHigh, child: Text('${i + 1}', style: AppTextStyles.labelSm.copyWith(fontSize: 10))),
+                      const SizedBox(width: AppSpacing.xs),
+                      Expanded(child: Text(l, style: AppTextStyles.bodySm.copyWith(fontSize: 12, color: AppColors.onSurface))),
+                    ],
+                  ),
+                ),
+            ],
+          ),
+          if (ins.sandbox)
+            Container(
+              padding: const EdgeInsets.all(AppSpacing.xs + 2),
+              decoration: BoxDecoration(color: const Color(0xFFFFF3CD), borderRadius: BorderRadius.circular(AppRadius.sm)),
+              child: Text(
+                'Mode sandbox: nomor ini hanya contoh, tidak ada uang sungguhan. Gunakan tombol di bawah untuk mensimulasikan pembayaran masuk.',
+                style: AppTextStyles.bodySm.copyWith(fontSize: 11, color: const Color(0xFF584400)),
+              ),
+            ),
+        ],
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final ins = _pesanan.instruksi;
+    final batas = _pesanan.batasBayarAt;
     return Scaffold(
-      backgroundColor: AppColors.surface,
+      backgroundColor: kLatarMarketplace,
       appBar: AppBar(
+        backgroundColor: Colors.white,
         leading: IconButton(onPressed: widget.onBack, icon: const Icon(Icons.arrow_back)),
         title: Text('Selesaikan Pembayaran', style: AppTextStyles.headlineSm),
       ),
-      body: ListView(
-        padding: const EdgeInsets.all(AppSpacing.screenGutter),
+      body: Column(
         children: [
-          Container(
-            padding: const EdgeInsets.all(AppSpacing.md),
-            decoration: BoxDecoration(color: AppColors.primary, borderRadius: BorderRadius.circular(AppRadius.md)),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
+          const IndikatorLangkah(aktif: 1),
+          const Divider(height: 1),
+          Expanded(
+            child: ListView(
+              padding: const EdgeInsets.all(AppSpacing.sm),
               children: [
-                Text('Total pembayaran', style: AppTextStyles.bodySm.copyWith(color: Colors.white70)),
-                Text(formatRupiah(_pesanan.hargaIdr), style: AppTextStyles.displayMd.copyWith(color: Colors.white, fontSize: 28)),
-                const SizedBox(height: 4),
-                Text('${_pesanan.judul} · ${_pesanan.kode}', style: AppTextStyles.bodySm.copyWith(color: Colors.white70)),
-                if (_pesanan.batasBayarAt != null)
-                  Text(
-                    'Bayar sebelum ${formatTanggal(_pesanan.batasBayarAt!)} '
-                    '${_pesanan.batasBayarAt!.hour.toString().padLeft(2, '0')}:${_pesanan.batasBayarAt!.minute.toString().padLeft(2, '0')}',
-                    style: AppTextStyles.bodySm.copyWith(color: Colors.white70, fontSize: 11),
+                BannerStatus(
+                  warna: AppColors.primary,
+                  ikon: Icons.schedule,
+                  judul: batas != null ? 'Bayar dalam' : 'Menunggu pembayaran',
+                  subjudul: '${_pesanan.judul} · ${_pesanan.kode}',
+                  trailing: batas == null
+                      ? null
+                      : HitungMundurBatas(
+                          batas: batas,
+                          gaya: AppTextStyles.headlineSm.copyWith(color: AppColors.accentSoft, fontSize: 18),
+                        ),
+                ),
+                const SizedBox(height: AppSpacing.xs),
+                KartuBagian(
+                  child: Row(
+                    children: [
+                      PesananGambar(pesanan: _pesanan, ukuran: 56),
+                      const SizedBox(width: AppSpacing.sm),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(_pesanan.judul, style: AppTextStyles.labelMd, maxLines: 1, overflow: TextOverflow.ellipsis),
+                            Text('Total pembayaran', style: AppTextStyles.bodySm.copyWith(fontSize: 11)),
+                          ],
+                        ),
+                      ),
+                      Text(formatRupiah(_pesanan.hargaIdr), style: AppTextStyles.headlineSm.copyWith(fontSize: 17)),
+                    ],
                   ),
+                ),
+                if (_pesanan.perluAlamat)
+                  KartuBagian(
+                    judul: 'Alamat Pengiriman',
+                    ikon: Icons.location_on_outlined,
+                    aksi: TextButton(onPressed: _sibuk ? null : _ubahAlamat, child: Text(_alamat.isEmpty ? 'Tambah' : 'Pilih')),
+                    child: Text(
+                      'Pesanan dari lelang belum punya alamat. Pilih alamat pengiriman sebelum membayar.',
+                      style: AppTextStyles.bodySm.copyWith(color: AppColors.muted),
+                    ),
+                  )
+                else if (_pesanan.dariLelang && _pesanan.alamat != null)
+                  KartuBagian(
+                    judul: 'Dikirim ke',
+                    ikon: Icons.location_on_outlined,
+                    child: Text(_pesanan.alamatRingkas, style: AppTextStyles.bodySm.copyWith(color: AppColors.onSurface)),
+                  ),
+                ..._kelompokMetode(),
+                ?(ins == null ? null : _instruksi(ins)),
+                if (_error != null)
+                  Padding(
+                    padding: const EdgeInsets.all(AppSpacing.xs),
+                    child: Text(_error!, style: AppTextStyles.bodySm.copyWith(color: AppColors.error)),
+                  ),
+                Center(
+                  child: TextButton(
+                    onPressed: _sibuk ? null : _batal,
+                    child: const Text('Batalkan pesanan', style: TextStyle(color: AppColors.error)),
+                  ),
+                ),
+                const SizedBox(height: AppSpacing.lg),
               ],
             ),
           ),
-          const SizedBox(height: AppSpacing.md),
-          if (_pesanan.perluAlamat) ...[
-            Text('Alamat Pengiriman', style: AppTextStyles.headlineSm),
-            const SizedBox(height: 2),
-            Text(
-              'Pesanan dari lelang belum punya alamat. Pilih alamat pengiriman sebelum membayar.',
-              style: AppTextStyles.bodySm.copyWith(color: AppColors.muted),
-            ),
-            const SizedBox(height: AppSpacing.xs),
-            for (final a in _alamat)
-              GestureDetector(
-                onTap: _sibuk ? null : () => _jalankan(() => _service.pilihAlamat(_pesanan.id, a.id)),
-                child: Container(
-                  margin: const EdgeInsets.only(bottom: AppSpacing.xs),
-                  padding: const EdgeInsets.all(AppSpacing.sm),
-                  decoration: BoxDecoration(
-                    color: Colors.white,
-                    borderRadius: BorderRadius.circular(AppRadius.md),
-                    border: Border.all(color: AppColors.border),
-                  ),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text('${a.label} · ${a.namaPenerima}', style: AppTextStyles.labelMd),
-                      Text(a.ringkas, style: AppTextStyles.bodySm.copyWith(color: AppColors.muted, fontSize: 11)),
-                    ],
-                  ),
-                ),
-              ),
-            OutlinedButton.icon(
-              onPressed: _sibuk ? null : _tambahAlamat,
-              icon: const Icon(Icons.add_location_alt_outlined, size: 18),
-              label: const Text('Tambah alamat baru'),
-            ),
-            const SizedBox(height: AppSpacing.md),
-          ] else if (_pesanan.dariLelang && _pesanan.alamat != null) ...[
-            Text('Dikirim ke', style: AppTextStyles.bodySm.copyWith(color: AppColors.muted)),
-            Text(_pesanan.alamatRingkas, style: AppTextStyles.bodySm),
-            const SizedBox(height: AppSpacing.md),
-          ],
-          Text('Metode Pembayaran', style: AppTextStyles.headlineSm),
-          const SizedBox(height: AppSpacing.xs),
-          for (final m in _metode)
-            GestureDetector(
-              onTap: (_sibuk || _pesanan.perluAlamat) ? null : () => _jalankan(() => _service.pilihMetode(_pesanan.id, m.$1)),
-              child: Container(
-                margin: const EdgeInsets.only(bottom: AppSpacing.xs),
-                padding: const EdgeInsets.all(AppSpacing.sm),
-                decoration: BoxDecoration(
-                  color: Colors.white,
-                  borderRadius: BorderRadius.circular(AppRadius.md),
-                  border: Border.all(
-                    color: _pesanan.metodePembayaranTerpilih == m.$1 ? AppColors.accent : AppColors.border,
-                    width: _pesanan.metodePembayaranTerpilih == m.$1 ? 1.6 : 1,
-                  ),
-                ),
-                child: Row(
-                  children: [
-                    Icon(m.$3, color: AppColors.primary),
-                    const SizedBox(width: AppSpacing.sm),
-                    Expanded(child: Text(m.$2, style: AppTextStyles.labelMd)),
-                    Icon(
-                      _pesanan.metodePembayaranTerpilih == m.$1 ? Icons.radio_button_checked : Icons.radio_button_off,
-                      color: _pesanan.metodePembayaranTerpilih == m.$1 ? AppColors.accent : AppColors.muted,
-                    ),
-                  ],
-                ),
-              ),
-            ),
-          if (ins != null) ...[
-            const SizedBox(height: AppSpacing.sm),
-            Container(
-              padding: const EdgeInsets.all(AppSpacing.md),
-              decoration: BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.circular(AppRadius.md),
-                boxShadow: const [BoxShadow(color: Colors.black12, blurRadius: 6)],
-              ),
+        ],
+      ),
+      bottomNavigationBar: BarBawah(
+        child: Row(
+          children: [
+            Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisSize: MainAxisSize.min,
                 children: [
-                  Text(ins.metode == 'qris' ? 'Kode QRIS' : 'Nomor ${ins.namaMetode}', style: AppTextStyles.bodySm.copyWith(color: AppColors.muted)),
-                  const SizedBox(height: 4),
-                  Row(
-                    children: [
-                      Expanded(
-                        child: SelectableText(ins.nomor, style: AppTextStyles.headlineSm.copyWith(letterSpacing: 1)),
-                      ),
-                      IconButton(
-                        onPressed: () async {
-                          await Clipboard.setData(ClipboardData(text: ins.nomor));
-                          if (context.mounted) tampilkanPesan(context, 'Nomor disalin.');
-                        },
-                        icon: const Icon(Icons.copy, size: 18),
-                        tooltip: 'Salin',
-                      ),
-                    ],
-                  ),
-                  Text('Jumlah: ${formatRupiah(ins.jumlahIdr)}', style: AppTextStyles.labelMd),
-                  if (ins.sandbox) ...[
-                    const SizedBox(height: AppSpacing.xs),
-                    Container(
-                      padding: const EdgeInsets.all(AppSpacing.xs),
-                      decoration: BoxDecoration(
-                        color: const Color(0xFFFFF3CD),
-                        borderRadius: BorderRadius.circular(AppRadius.sm),
-                      ),
-                      child: Text(
-                        'Mode sandbox: nomor ini hanya contoh, tidak ada uang sungguhan. Gunakan tombol di bawah untuk mensimulasikan pembayaran masuk.',
-                        style: AppTextStyles.bodySm.copyWith(fontSize: 11, color: const Color(0xFF584400)),
-                      ),
-                    ),
-                  ],
+                  Text('Total', style: AppTextStyles.bodySm.copyWith(fontSize: 11)),
+                  Text(formatRupiah(_pesanan.hargaIdr), style: AppTextStyles.headlineMd.copyWith(fontSize: 19, color: AppColors.onSurface)),
                 ],
               ),
             ),
-          ],
-          if (_error != null) ...[
-            const SizedBox(height: AppSpacing.sm),
-            Text(_error!, style: AppTextStyles.bodySm.copyWith(color: AppColors.error)),
-          ],
-          const SizedBox(height: AppSpacing.md),
-          SizedBox(
-            width: double.infinity,
-            child: ElevatedButton.icon(
-              onPressed: (_sibuk || ins == null || !ins.sandbox) ? null : () => _jalankan(() => _service.simulasiBayar(_pesanan.id), selesai: true),
-              icon: _sibuk
-                  ? const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2))
-                  : const Icon(Icons.check_circle_outline),
-              label: Text(ins == null ? 'Pilih metode pembayaran dulu' : 'Simulasikan pembayaran (sandbox)'),
+            const SizedBox(width: AppSpacing.sm),
+            Flexible(
+              flex: 2,
+              child: ElevatedButton.icon(
+                onPressed: (_sibuk || ins == null || !ins.sandbox) ? null : () => _jalankan(() => _service.simulasiBayar(_pesanan.id), selesai: true),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: AppColors.accent,
+                  foregroundColor: AppColors.onSurface,
+                  minimumSize: const Size(0, 48),
+                  padding: const EdgeInsets.symmetric(horizontal: AppSpacing.sm),
+                ),
+                icon: _sibuk
+                    ? const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2))
+                    : const Icon(Icons.check_circle_outline, size: 18),
+                label: Text(ins == null ? 'Pilih metode dulu' : 'Simulasikan bayar (sandbox)', maxLines: 1, overflow: TextOverflow.ellipsis),
+              ),
             ),
-          ),
-          const SizedBox(height: AppSpacing.xs),
-          SizedBox(
-            width: double.infinity,
-            child: TextButton(
-              onPressed: _sibuk ? null : _batal,
-              child: const Text('Batalkan pesanan', style: TextStyle(color: AppColors.error)),
-            ),
-          ),
-          const SizedBox(height: AppSpacing.lg),
-        ],
+          ],
+        ),
       ),
     );
   }

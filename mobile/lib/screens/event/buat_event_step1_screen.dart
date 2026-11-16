@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../../state/studio_store.dart';
 import '../../theme/app_theme.dart';
+import '../../widgets/commerce_widgets.dart';
 import '../../widgets/event_stepper.dart';
 import '../../widgets/karya_image.dart';
 import '../../widgets/karya_picker.dart';
@@ -74,8 +75,9 @@ class _BuatEventStep1ScreenState extends State<BuatEventStep1Screen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: AppColors.surface,
+      backgroundColor: kLatarMarketplace,
       appBar: AppBar(
+        backgroundColor: Colors.white,
         leading: IconButton(onPressed: widget.onClose, icon: const Icon(Icons.close)),
         title: Text('Buat Event', style: AppTextStyles.headlineSm),
       ),

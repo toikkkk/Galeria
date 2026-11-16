@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
 
 import '../../../models/pesanan.dart';
 import '../../../services/auth_service.dart';
@@ -137,7 +138,19 @@ class _ProfilKolektorScreenState extends State<ProfilKolektorScreen> {
                               style: AppTextStyles.overline.copyWith(fontSize: 9, color: AppColors.outline),
                             ),
                             if (!(user?.emailVerified ?? false))
-                              Text('Email belum diverifikasi', style: AppTextStyles.bodySm.copyWith(fontSize: 10.5, color: const Color(0xFFB26A00))),
+                              GestureDetector(
+                                key: const Key('verifikasi_email_tautan'),
+                                onTap: () async {
+                                  await context.push('/verifikasi-email');
+                                  if (mounted) setState(() {});
+                                },
+                                child: Padding(
+                                  padding: const EdgeInsets.symmetric(vertical: 3),
+                                  child: Text('Email belum diverifikasi · Verifikasi sekarang ›',
+                                      style: AppTextStyles.bodySm.copyWith(
+                                          fontSize: 10.5, color: const Color(0xFFB26A00), fontWeight: FontWeight.w700, decoration: TextDecoration.underline)),
+                                ),
+                              ),
                           ],
                         ),
                       ),

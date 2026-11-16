@@ -26,6 +26,11 @@ const kApiBaseUrl = String.fromEnvironment(
 /// karya Visual Search). Ganti: `--dart-define=DATA_DUMMY=false`.
 const kPakaiDataDummy = bool.fromEnvironment('DATA_DUMMY', defaultValue: true);
 
+/// Alamat ngrok (paket gratis) menyisipkan halaman peringatan untuk lalu lintas yang dikira "browser". Header ini
+/// melewatinya. Hanya ditambahkan bila alamatnya memang ngrok, jadi tidak mengubah apa pun untuk alamat lain.
+Map<String, String> headerTunnel([String? url]) =>
+    (url ?? kApiBaseUrl).contains('ngrok') ? const {'ngrok-skip-browser-warning': '1'} : const {};
+
 /// Dilempar kalau request ke backend gagal (network error ATAU response
 /// bukan 2xx) -- caller (services/screens) tangkap ini utk fallback data
 /// lokal / tampilkan pesan error, JANGAN biarkan app crash.
@@ -61,7 +66,8 @@ class ApiClient {
 
   /// Header untuk request ber-auth (`Authorization: Bearer ...`). Tanpa token, hanya header dasar.
   static Future<Map<String, String>> _header({required bool auth, bool paksa = false, bool json = false}) async {
-    final h = <String, String>{if (json) 'Content-Type': 'application/json'};
+    final h = <String, String>{if (json) 'Content-Type': 'application/json', ...headerTunnel()};
+    if (!json) h.addAll(headerTunnel());
     if (auth) {
       final token = await tokenProvider?.call(paksaPerbarui: paksa);
       if (token != null) h['Authorization'] = 'Bearer $token';

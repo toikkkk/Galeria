@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../../models/komunitas.dart';
 import '../../services/komunitas_service.dart';
 import '../../theme/app_theme.dart';
+import '../../widgets/commerce_widgets.dart';
 
 const aliranKomunitas = [
   'Impresionisme', 'Realisme', 'Ekspresionisme', 'Surealisme', 'Art Nouveau', 'Abstrak', 'Romantisisme', 'Pop Art',
@@ -70,8 +71,9 @@ class _KomunitasSenimanScreenState extends State<KomunitasSenimanScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: AppColors.surface,
+      backgroundColor: kLatarMarketplace,
       appBar: AppBar(
+        backgroundColor: Colors.white,
         leading: IconButton(onPressed: widget.onBack, icon: const Icon(Icons.arrow_back)),
         title: Text('Komunitas', style: AppTextStyles.headlineSm),
         actions: [IconButton(onPressed: _memuat ? null : _muat, icon: const Icon(Icons.refresh))],
@@ -79,16 +81,25 @@ class _KomunitasSenimanScreenState extends State<KomunitasSenimanScreen> {
       floatingActionButton: FloatingActionButton.extended(
         key: const Key('buat_komunitas'),
         onPressed: _buat,
+        backgroundColor: const Color(0xFF3E251E),
+        foregroundColor: Colors.white,
         icon: const Icon(Icons.add),
-        label: const Text('Buat Komunitas'),
+        label: const Text('Buat Komunitas', style: TextStyle(fontWeight: FontWeight.w700)),
       ),
       body: RefreshIndicator(
         onRefresh: _muat,
         child: ListView(
           physics: const AlwaysScrollableScrollPhysics(),
-          padding: const EdgeInsets.fromLTRB(AppSpacing.screenGutter, AppSpacing.sm, AppSpacing.screenGutter, 96),
+          padding: const EdgeInsets.fromLTRB(AppSpacing.sm, AppSpacing.sm, AppSpacing.sm, 96),
           children: [
             SegmentedButton<bool>(
+              style: SegmentedButton.styleFrom(
+                backgroundColor: Colors.white,
+                foregroundColor: const Color(0xFF3E251E),
+                selectedBackgroundColor: const Color(0xFF3E251E),
+                selectedForegroundColor: Colors.white,
+                textStyle: const TextStyle(fontWeight: FontWeight.w700),
+              ),
               segments: const [ButtonSegment(value: true, label: Text('Komunitas Saya')), ButtonSegment(value: false, label: Text('Jelajahi'))],
               selected: {_saya},
               onSelectionChanged: (s) {
@@ -146,7 +157,7 @@ class _Kartu extends StatelessWidget {
   Widget build(BuildContext context) {
     final status = switch (k.saya) {
       'pemilik' => ('PEMILIK', AppColors.accent),
-      'anggota' => ('ANGGOTA', AppColors.primary),
+      'anggota' => ('ANGGOTA', AppColors.success),
       'menunggu' => ('MENUNGGU', const Color(0xFFB26A00)),
       _ => null,
     };
@@ -154,57 +165,91 @@ class _Kartu extends StatelessWidget {
       onTap: onTap,
       child: Container(
         margin: const EdgeInsets.only(bottom: AppSpacing.sm),
-        padding: const EdgeInsets.all(AppSpacing.md),
-        decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(AppRadius.md), boxShadow: const [BoxShadow(color: Colors.black12, blurRadius: 6)]),
-        child: Row(
+        decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(AppRadius.lg), border: Border.all(color: AppColors.border)),
+        clipBehavior: Clip.antiAlias,
+        child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
+            // kepala gelap: avatar inisial + nama + status
             Container(
-              width: 52,
-              height: 52,
-              alignment: Alignment.center,
-              decoration: BoxDecoration(color: AppColors.primary, borderRadius: BorderRadius.circular(AppRadius.md)),
-              child: Text(k.inisial, style: AppTextStyles.headlineSm.copyWith(color: const Color(0xFFECC246))),
-            ),
-            const SizedBox(width: AppSpacing.sm),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
+              padding: const EdgeInsets.all(AppSpacing.sm),
+              decoration: const BoxDecoration(
+                gradient: LinearGradient(colors: [Color(0xFF4D2F26), Color(0xFF2F1B15)], begin: Alignment.topLeft, end: Alignment.bottomRight),
+              ),
+              child: Row(
                 children: [
-                  Row(children: [
-                    Flexible(child: Text(k.nama, style: AppTextStyles.labelMd, maxLines: 1, overflow: TextOverflow.ellipsis)),
-                    if (status != null) ...[
-                      const SizedBox(width: 6),
-                      Text(status.$1, style: AppTextStyles.overline.copyWith(fontSize: 8.5, color: status.$2)),
-                    ],
-                  ]),
-                  Text(
-                    '${k.jumlahAnggota} anggota · ${k.terbuka ? 'Terbuka' : 'Tertutup'} · oleh ${k.pemilikNama}',
-                    style: AppTextStyles.bodySm.copyWith(color: AppColors.muted, fontSize: 11),
+                  Container(
+                    width: 50,
+                    height: 50,
+                    alignment: Alignment.center,
+                    decoration: BoxDecoration(color: const Color(0xFFDBA12C), borderRadius: BorderRadius.circular(AppRadius.md)),
+                    child: Text(k.inisial, style: AppTextStyles.headlineSm.copyWith(color: const Color(0xFF3E251E), fontWeight: FontWeight.w800)),
                   ),
-                  if (k.deskripsi != null) Text(k.deskripsi!, maxLines: 2, overflow: TextOverflow.ellipsis, style: AppTextStyles.bodySm),
-                  if (k.aliran.isNotEmpty)
-                    Padding(
-                      padding: const EdgeInsets.only(top: 4),
-                      child: Wrap(spacing: 4, runSpacing: 4, children: [
-                        for (final a in k.aliran.take(3))
-                          Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                            decoration: BoxDecoration(color: AppColors.accentSoft.withValues(alpha: 0.5), borderRadius: BorderRadius.circular(AppRadius.full)),
-                            child: Text(a, style: AppTextStyles.bodySm.copyWith(fontSize: 10)),
-                          ),
-                      ]),
+                  const SizedBox(width: AppSpacing.sm),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(k.nama, style: AppTextStyles.headlineSm.copyWith(color: Colors.white, fontSize: 16, fontWeight: FontWeight.w700), maxLines: 1, overflow: TextOverflow.ellipsis),
+                        const SizedBox(height: 3),
+                        Row(
+                          children: [
+                            Icon(k.terbuka ? Icons.public : Icons.lock_outline, size: 13, color: Colors.white70),
+                            const SizedBox(width: 4),
+                            Text(k.terbuka ? 'Terbuka' : 'Tertutup', style: AppTextStyles.bodySm.copyWith(color: Colors.white70, fontSize: 11)),
+                            if (status != null) ...[
+                              const SizedBox(width: 8),
+                              Container(
+                                padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
+                                decoration: BoxDecoration(color: status.$1 == 'PEMILIK' ? const Color(0xFFDBA12C) : Colors.white.withValues(alpha: 0.18), borderRadius: BorderRadius.circular(AppRadius.full)),
+                                child: Text(status.$1, style: AppTextStyles.overline.copyWith(fontSize: 8.5, color: status.$1 == 'PEMILIK' ? const Color(0xFF3E251E) : Colors.white, fontWeight: FontWeight.w800)),
+                              ),
+                            ],
+                          ],
+                        ),
+                      ],
+                    ),
+                  ),
+                  if (k.pemilik && (k.jumlahPermintaan ?? 0) > 0)
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                      decoration: BoxDecoration(color: AppColors.error, borderRadius: BorderRadius.circular(AppRadius.full)),
+                      child: Text('${k.jumlahPermintaan}', style: const TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.w700)),
                     ),
                 ],
               ),
             ),
-            if (k.pemilik && (k.jumlahPermintaan ?? 0) > 0)
-              Container(
-                margin: const EdgeInsets.only(left: 4),
-                padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3),
-                decoration: BoxDecoration(color: AppColors.error, borderRadius: BorderRadius.circular(AppRadius.full)),
-                child: Text('${k.jumlahPermintaan}', style: const TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.w700)),
+            Padding(
+              padding: const EdgeInsets.all(AppSpacing.sm),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  if (k.deskripsi != null) Text(k.deskripsi!, maxLines: 2, overflow: TextOverflow.ellipsis, style: AppTextStyles.bodySm.copyWith(fontSize: 12.5, color: AppColors.onSurface)),
+                  if (k.aliran.isNotEmpty)
+                    Padding(
+                      padding: const EdgeInsets.only(top: 6),
+                      child: Wrap(spacing: 4, runSpacing: 4, children: [
+                        for (final a in k.aliran.take(3))
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
+                            decoration: BoxDecoration(color: const Color(0xFFF7E7C1), borderRadius: BorderRadius.circular(AppRadius.full)),
+                            child: Text(a, style: AppTextStyles.bodySm.copyWith(fontSize: 10.5, fontWeight: FontWeight.w700, color: const Color(0xFF7A5410))),
+                          ),
+                      ]),
+                    ),
+                  const Divider(height: AppSpacing.md),
+                  Row(
+                    children: [
+                      const Icon(Icons.groups_2_outlined, size: 17, color: Color(0xFF3E251E)),
+                      const SizedBox(width: 5),
+                      Text('${k.jumlahAnggota} anggota', style: AppTextStyles.labelMd.copyWith(fontSize: 12.5, fontWeight: FontWeight.w800, color: const Color(0xFF3E251E))),
+                      const Spacer(),
+                      Flexible(child: Text('oleh ${k.pemilikNama}', maxLines: 1, overflow: TextOverflow.ellipsis, style: AppTextStyles.bodySm.copyWith(fontSize: 11.5, color: AppColors.muted))),
+                    ],
+                  ),
+                ],
               ),
+            ),
           ],
         ),
       ),

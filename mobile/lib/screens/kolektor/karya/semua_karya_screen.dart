@@ -44,6 +44,7 @@ const _rentangHarga = [
 ];
 
 const _urutan = {
+  'acak': 'Acak (beda tiap dibuka)',
   'terbaru': 'Terbaru',
   'harga_asc': 'Harga terendah',
   'harga_desc': 'Harga tertinggi',
@@ -80,7 +81,7 @@ class _SemuaKaryaScreenState extends State<SemuaKaryaScreen> {
 
   String? _gaya;
   int _hargaIdx = 0;
-  String _urut = 'terbaru';
+  String _urut = 'acak';
 
   @override
   void initState() {

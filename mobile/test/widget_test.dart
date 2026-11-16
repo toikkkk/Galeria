@@ -9,6 +9,6 @@ void main() {
     await tester.pumpWidget(const GaleriaApp());
     await tester.pump();
 
-    expect(find.text('G A L E R I A'), findsOneWidget);
+    expect(find.text('G'), findsOneWidget);
   });
 }

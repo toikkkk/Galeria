@@ -1,3 +1,4 @@
+import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -41,6 +42,14 @@ class _ArRuanganScreenState extends State<ArRuanganScreen> {
   String _status = 'mencari';
   ArArtworkController? _controller;
   bool _memotret = false;
+  bool _kunci = true;
+  bool _tampilUkuran = true;
+  double? _jarak;
+
+  bool get _terpasang => _status.startsWith('terpasang');
+
+  // Bingkai (kayu + list + passe-partout) menambah 5,6 cm di tiap sisi lukisan; nilai sama dgn renderer native.
+  static const _bingkaiCm = 5.6;
 
   Karya get _karya => widget.karya ?? sampleKarya[3];
   bool get _ukuranPerkiraan => _karya.lebarCm == null || _karya.tinggiCm == null;
@@ -76,7 +85,7 @@ class _ArRuanganScreenState extends State<ArRuanganScreen> {
       if (url != null) {
         // sama dgn KaryaImage: image_url relatif (`/uploads/...`) diprefix alamat backend
         final resolved = url.startsWith('http') ? url : '$kApiBaseUrl$url';
-        final r = await http.get(Uri.parse(resolved)).timeout(const Duration(seconds: 20));
+        final r = await http.get(Uri.parse(resolved), headers: headerTunnel(resolved)).timeout(const Duration(seconds: 20));
         if (r.statusCode == 200 && r.bodyBytes.isNotEmpty) return r.bodyBytes;
         debugPrint('AR: gambar $resolved -> HTTP ${r.statusCode}');
       }
@@ -105,9 +114,12 @@ class _ArRuanganScreenState extends State<ArRuanganScreen> {
     'dinding' => 'Dinding terdeteksi (area biru). Ketuk untuk menempelkan karya.',
     'siap_instan' =>
       'Pelacakan siap. Ketuk layar untuk menempel (tanpa deteksi dinding), atau cari dinding bertekstur.',
-    'terpasang' => 'Terpasang di dinding. Ketuk titik lain untuk memindahkan; mundur untuk melihat utuh.',
-    'terpasang_instan' =>
-      'Terpasang (perkiraan jarak). Ketuk titik lain untuk memindahkan; gerakkan HP agar jarak makin akurat.',
+    'terpasang' => _kunci
+        ? 'Terpasang di dinding dan terkunci. Mundur untuk melihat utuh, atau buka kunci untuk memindahkan.'
+        : 'Terpasang di dinding. Ketuk titik lain untuk memindahkan.',
+    'terpasang_instan' => _kunci
+        ? 'Terpasang dan terkunci. Gerakkan HP pelan-pelan agar jarak makin akurat.'
+        : 'Terpasang (jarak masih perkiraan). Ketuk titik lain untuk memindahkan.',
     'tak_kena' => 'Belum bisa menempel di titik itu. Gerakkan HP pelan-pelan lalu ketuk lagi.',
     'kurang_fitur' => 'Permukaan terlalu polos. Arahkan ke area bertekstur (poster, tepi pintu, rak).',
     'terlalu_cepat' => 'Gerakan terlalu cepat. Gerakkan HP lebih pelan.',
@@ -190,6 +202,9 @@ class _ArRuanganScreenState extends State<ArRuanganScreen> {
               lebarCm: _lebarCm,
               tinggiCm: _tinggiCm,
               onStatus: _onStatus,
+              onJarak: (d) {
+                if (mounted) setState(() => _jarak = d);
+              },
               onCreated: (c) => _controller = c,
             ),
           ),
@@ -239,51 +254,7 @@ class _ArRuanganScreenState extends State<ArRuanganScreen> {
                   ),
                 ),
                 const Spacer(),
-                Container(
-                  padding: const EdgeInsets.fromLTRB(
-                    AppSpacing.screenGutter,
-                    AppSpacing.sm,
-                    AppSpacing.screenGutter,
-                    AppSpacing.lg,
-                  ),
-                  decoration: BoxDecoration(
-                    color: Colors.black.withValues(alpha: 0.55),
-                    borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
-                  ),
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          const Icon(Icons.straighten, size: 14, color: AppColors.accent),
-                          const SizedBox(width: 6),
-                          Flexible(
-                            child: Text(
-                              '${_fmt(_lebarCm)} × ${_fmt(_tinggiCm)} cm'
-                              '${_ukuranPerkiraan ? '  (ukuran perkiraan)' : ''}',
-                              style: AppTextStyles.labelSm.copyWith(color: Colors.white),
-                            ),
-                          ),
-                        ],
-                      ),
-                      const SizedBox(height: AppSpacing.sm),
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                        children: [
-                          _tool(Icons.restart_alt, 'Lepas', onTap: () => _controller?.reset()),
-                          _tool(
-                            _memotret ? Icons.hourglass_top : Icons.photo_camera,
-                            'Ambil Foto',
-                            primary: true,
-                            onTap: _ambilFoto,
-                          ),
-                          _tool(Icons.close, 'Tutup', onTap: widget.onClose),
-                        ],
-                      ),
-                    ],
-                  ),
-                ),
+                _panelBawah(),
               ],
             ),
           ),
@@ -292,7 +263,136 @@ class _ArRuanganScreenState extends State<ArRuanganScreen> {
     );
   }
 
-  static String _fmt(double v) => v == v.roundToDouble() ? v.toInt().toString() : v.toStringAsFixed(1);
+  static String _fmt(double v) => v == v.roundToDouble() ? v.toInt().toString() : v.toStringAsFixed(1).replaceAll('.', ',');
+
+  void _toggleKunci() {
+    setState(() => _kunci = !_kunci);
+    _controller?.setKunci(_kunci);
+  }
+
+  void _toggleUkuran() {
+    setState(() => _tampilUkuran = !_tampilUkuran);
+    _controller?.setUkuran(_tampilUkuran);
+  }
+
+  /// Panel bawah: identitas karya, rincian ukuran fisik (tanpa bingkai), jarak langsung, pengaturan, dan aksi.
+  Widget _panelBawah() {
+    final luas = _lebarCm * _tinggiCm / 10000; // m²
+    final diagonal = math.sqrt(_lebarCm * _lebarCm + _tinggiCm * _tinggiCm);
+    return Container(
+      padding: const EdgeInsets.fromLTRB(AppSpacing.screenGutter, AppSpacing.sm, AppSpacing.screenGutter, AppSpacing.md),
+      decoration: const BoxDecoration(
+        color: Color(0xEB2B1913),
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+      ),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Container(width: 38, height: 4, decoration: BoxDecoration(color: Colors.white24, borderRadius: BorderRadius.circular(4))),
+          const SizedBox(height: 10),
+          Row(
+            children: [
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(_karya.title, maxLines: 1, overflow: TextOverflow.ellipsis, style: AppTextStyles.headlineSm.copyWith(color: Colors.white, fontSize: 17, fontWeight: FontWeight.w800)),
+                    Text(_karya.artistName, maxLines: 1, overflow: TextOverflow.ellipsis, style: AppTextStyles.bodySm.copyWith(color: Colors.white60, fontSize: 11.5)),
+                  ],
+                ),
+              ),
+              if (_terpasang)
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 4),
+                  decoration: BoxDecoration(
+                    color: _kunci ? const Color(0xFFDBA12C) : Colors.white.withValues(alpha: 0.14),
+                    borderRadius: BorderRadius.circular(AppRadius.full),
+                  ),
+                  child: Row(mainAxisSize: MainAxisSize.min, children: [
+                    Icon(_kunci ? Icons.lock : Icons.lock_open, size: 12, color: _kunci ? const Color(0xFF3E251E) : Colors.white),
+                    const SizedBox(width: 4),
+                    Text(_kunci ? 'Terkunci' : 'Bisa dipindah', style: AppTextStyles.labelSm.copyWith(fontSize: 10.5, fontWeight: FontWeight.w800, color: _kunci ? const Color(0xFF3E251E) : Colors.white)),
+                  ]),
+                ),
+            ],
+          ),
+          const SizedBox(height: AppSpacing.sm),
+          Row(
+            children: [
+              _ukur('LEBAR', '${_fmt(_lebarCm)} cm', sorot: true),
+              _ukur('TINGGI', '${_fmt(_tinggiCm)} cm', sorot: true),
+              _ukur('DIAGONAL', '${_fmt(diagonal.roundToDouble())} cm'),
+              _ukur('LUAS', '${luas.toStringAsFixed(2).replaceAll('.', ',')} m²'),
+            ],
+          ),
+          const SizedBox(height: 8),
+          Row(
+            children: [
+              const Icon(Icons.straighten, size: 13, color: Color(0xFFF0C86A)),
+              const SizedBox(width: 5),
+              Expanded(
+                child: Text(
+                  _ukuranPerkiraan
+                      ? 'Ukuran karya belum diisi seniman; memakai perkiraan. Bingkai menambah ±${_fmt(_bingkaiCm)} cm tiap sisi.'
+                      : 'Ukuran lukisan tanpa bingkai. Bingkai menambah ±${_fmt(_bingkaiCm)} cm tiap sisi.',
+                  style: AppTextStyles.bodySm.copyWith(color: Colors.white60, fontSize: 10.5),
+                ),
+              ),
+              if (_terpasang && _jarak != null) ...[
+                const SizedBox(width: 8),
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                  decoration: BoxDecoration(color: Colors.white.withValues(alpha: 0.12), borderRadius: BorderRadius.circular(AppRadius.full)),
+                  child: Text('Jarak ±${_jarak!.toStringAsFixed(1).replaceAll('.', ',')} m', style: AppTextStyles.labelSm.copyWith(color: Colors.white, fontSize: 10.5, fontWeight: FontWeight.w700)),
+                ),
+              ],
+            ],
+          ),
+          const SizedBox(height: AppSpacing.sm),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+            children: [
+              _tool(Icons.restart_alt, 'Lepas', onTap: () {
+                _controller?.reset();
+                setState(() {
+                  _jarak = null;
+                  _status = 'mencari';
+                });
+              }),
+              _tool(_kunci ? Icons.lock : Icons.lock_open, _kunci ? 'Buka kunci' : 'Kunci', onTap: _toggleKunci, aktif: _kunci),
+              _tool(
+                _memotret ? Icons.hourglass_top : Icons.photo_camera,
+                'Ambil Foto',
+                primary: true,
+                onTap: _ambilFoto,
+              ),
+              _tool(Icons.straighten, _tampilUkuran ? 'Sembunyi ukuran' : 'Tampil ukuran', onTap: _toggleUkuran, aktif: _tampilUkuran),
+              _tool(Icons.close, 'Tutup', onTap: widget.onClose),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _ukur(String label, String nilai, {bool sorot = false}) => Expanded(
+    child: Container(
+      margin: const EdgeInsets.symmetric(horizontal: 3),
+      padding: const EdgeInsets.symmetric(vertical: 8),
+      decoration: BoxDecoration(
+        color: sorot ? const Color(0x33DBA12C) : Colors.white.withValues(alpha: 0.08),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: sorot ? const Color(0x99DBA12C) : Colors.transparent),
+      ),
+      child: Column(
+        children: [
+          Text(label, style: AppTextStyles.overline.copyWith(color: Colors.white60, fontSize: 8.5)),
+          const SizedBox(height: 2),
+          Text(nilai, maxLines: 1, overflow: TextOverflow.ellipsis, style: AppTextStyles.labelMd.copyWith(color: sorot ? const Color(0xFFF0C86A) : Colors.white, fontSize: 13.5, fontWeight: FontWeight.w800)),
+        ],
+      ),
+    ),
+  );
 
   Widget _pill(Widget child, {double? maxWidth}) => Container(
     constraints: BoxConstraints(maxWidth: maxWidth ?? double.infinity),
@@ -308,24 +408,29 @@ class _ArRuanganScreenState extends State<ArRuanganScreen> {
     IconData icon,
     String label, {
     bool primary = false,
+    bool aktif = false,
     required VoidCallback onTap,
   }) => InkWell(
     onTap: onTap,
     borderRadius: BorderRadius.circular(AppRadius.full),
-    child: Column(
-      children: [
-        Container(
-          width: primary ? 56 : 44,
-          height: primary ? 56 : 44,
-          decoration: BoxDecoration(
-            shape: BoxShape.circle,
-            color: primary ? Colors.white : Colors.white.withValues(alpha: 0.15),
+    child: SizedBox(
+      width: 62,
+      child: Column(
+        children: [
+          Container(
+            width: primary ? 56 : 44,
+            height: primary ? 56 : 44,
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              color: primary ? const Color(0xFFDBA12C) : (aktif ? const Color(0x55DBA12C) : Colors.white.withValues(alpha: 0.15)),
+              border: aktif && !primary ? Border.all(color: const Color(0xFFDBA12C), width: 1.5) : null,
+            ),
+            child: Icon(icon, color: primary ? const Color(0xFF3E251E) : (aktif ? const Color(0xFFF0C86A) : Colors.white), size: primary ? 26 : 19),
           ),
-          child: Icon(icon, color: primary ? Colors.black : Colors.white, size: primary ? 24 : 18),
-        ),
-        const SizedBox(height: 4),
-        Text(label, style: AppTextStyles.labelSm.copyWith(color: Colors.white70, fontSize: 10)),
-      ],
+          const SizedBox(height: 4),
+          Text(label, textAlign: TextAlign.center, maxLines: 2, style: AppTextStyles.labelSm.copyWith(color: Colors.white70, fontSize: 9.5, height: 1.15)),
+        ],
+      ),
     ),
   );
 }

@@ -6,6 +6,7 @@ import '../../models/karya.dart';
 import '../../models/komunitas.dart';
 import '../../services/komunitas_service.dart';
 import '../../theme/app_theme.dart';
+import '../../widgets/commerce_widgets.dart';
 import '../../utils/format.dart';
 import '../../utils/format_waktu.dart';
 import '../../widgets/event_widgets.dart';
@@ -247,8 +248,9 @@ class _CommunityDetailScreenState extends State<CommunityDetailScreen> {
   Widget build(BuildContext context) {
     final k = _k;
     return Scaffold(
-      backgroundColor: AppColors.surface,
+      backgroundColor: kLatarMarketplace,
       appBar: AppBar(
+        backgroundColor: Colors.white,
         leading: IconButton(onPressed: widget.onBack, icon: const Icon(Icons.arrow_back)),
         title: Text(k?.nama ?? 'Komunitas', style: AppTextStyles.headlineSm, overflow: TextOverflow.ellipsis),
         actions: [IconButton(onPressed: _memuat ? null : _muat, icon: const Icon(Icons.refresh))],
@@ -272,30 +274,37 @@ class _CommunityDetailScreenState extends State<CommunityDetailScreen> {
   Widget _isi(Komunitas k) {
     return ListView(
       physics: const AlwaysScrollableScrollPhysics(),
-      padding: const EdgeInsets.all(AppSpacing.screenGutter),
+      padding: const EdgeInsets.only(bottom: AppSpacing.lg),
       children: [
         _header(k),
-        const SizedBox(height: AppSpacing.sm),
-        SingleChildScrollView(
-          scrollDirection: Axis.horizontal,
+        Container(
+          color: Colors.white,
           child: Row(children: [
             for (final (i, label) in const ['Diskusi', 'Karya', 'Event', 'Anggota'].indexed)
-              Padding(
-                padding: const EdgeInsets.only(right: AppSpacing.xs),
-                child: ChoiceChip(
-                  label: Text(i == 3 && k.pemilik && (k.jumlahPermintaan ?? 0) > 0 ? 'Anggota (${k.jumlahPermintaan})' : label),
-                  selected: _tab == i,
-                  onSelected: (_) {
+              Expanded(
+                child: InkWell(
+                  onTap: () {
                     setState(() => _tab = i);
                     _muatTab();
                   },
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(vertical: 12),
+                    alignment: Alignment.center,
+                    decoration: BoxDecoration(border: Border(bottom: BorderSide(color: _tab == i ? AppColors.accent : Colors.transparent, width: 2.5))),
+                    child: Text(
+                      i == 3 && k.pemilik && (k.jumlahPermintaan ?? 0) > 0 ? 'Anggota (${k.jumlahPermintaan})' : label,
+                      style: AppTextStyles.labelMd.copyWith(fontSize: 13, color: _tab == i ? AppColors.onSurface : AppColors.muted, fontWeight: _tab == i ? FontWeight.w700 : FontWeight.w500),
+                    ),
+                  ),
                 ),
               ),
           ]),
         ),
+        const Divider(height: 1),
         const SizedBox(height: AppSpacing.sm),
         if (!k.bisaLihatIsi)
           Container(
+            margin: const EdgeInsets.symmetric(horizontal: AppSpacing.sm),
             padding: const EdgeInsets.all(AppSpacing.lg),
             decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(AppRadius.md)),
             child: Column(children: [
@@ -314,12 +323,15 @@ class _CommunityDetailScreenState extends State<CommunityDetailScreen> {
             OutlinedButton(onPressed: _muatTab, child: const Text('Coba lagi')),
           ])
         else
-          switch (_tab) {
-            0 => _diskusi(k),
-            1 => _tabKarya(),
-            2 => _tabEvent(k),
-            _ => _tabAnggota(k),
-          },
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: AppSpacing.sm),
+            child: switch (_tab) {
+              0 => _diskusi(k),
+              1 => _tabKarya(),
+              2 => _tabEvent(k),
+              _ => _tabAnggota(k),
+            },
+          ),
         const SizedBox(height: AppSpacing.xl),
       ],
     );
@@ -329,45 +341,60 @@ class _CommunityDetailScreenState extends State<CommunityDetailScreen> {
     final String? label = k.pemilik ? null : (k.anggotaAktif ? 'Keluar' : (k.menunggu ? 'Batalkan permintaan' : (k.terbuka ? 'Bergabung' : 'Ajukan bergabung')));
     return Container(
       padding: const EdgeInsets.all(AppSpacing.md),
-      decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(AppRadius.md), boxShadow: const [BoxShadow(color: Colors.black12, blurRadius: 6)]),
+      decoration: const BoxDecoration(
+        gradient: LinearGradient(colors: [Color(0xFF1C1C1C), Color(0xFF3A3326)], begin: Alignment.topLeft, end: Alignment.bottomRight),
+      ),
       child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
         Row(children: [
           Container(
-            width: 56,
-            height: 56,
+            width: 64,
+            height: 64,
             alignment: Alignment.center,
-            decoration: BoxDecoration(color: AppColors.primary, borderRadius: BorderRadius.circular(AppRadius.md)),
-            child: Text(k.inisial, style: AppTextStyles.headlineMd.copyWith(color: const Color(0xFFECC246))),
+            decoration: BoxDecoration(color: AppColors.accent, borderRadius: BorderRadius.circular(AppRadius.lg)),
+            child: Text(k.inisial, style: AppTextStyles.headlineMd.copyWith(color: AppColors.onSurface)),
           ),
           const SizedBox(width: AppSpacing.sm),
           Expanded(
             child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-              Text(k.nama, style: AppTextStyles.headlineSm),
-              Text('${k.jumlahAnggota} anggota · ${k.terbuka ? 'Terbuka' : 'Tertutup'} · oleh ${k.pemilikNama}', style: AppTextStyles.bodySm.copyWith(color: AppColors.muted, fontSize: 11)),
-              Text('Dibuat ${formatTanggal(k.dibuat)}', style: AppTextStyles.bodySm.copyWith(color: AppColors.muted, fontSize: 11)),
+              Text(k.nama, style: AppTextStyles.headlineMd.copyWith(color: Colors.white, fontSize: 20)),
+              Text('oleh ${k.pemilikNama}', style: AppTextStyles.bodySm.copyWith(color: Colors.white70)),
+              const SizedBox(height: 4),
+              Row(children: [
+                Icon(k.terbuka ? Icons.public : Icons.lock_outline, size: 13, color: Colors.white70),
+                const SizedBox(width: 4),
+                Text('${k.terbuka ? 'Terbuka' : 'Tertutup'} · dibuat ${formatTanggal(k.dibuat)}', style: AppTextStyles.bodySm.copyWith(color: Colors.white70, fontSize: 11)),
+              ]),
             ]),
           ),
         ]),
-        if (k.deskripsi != null) ...[const SizedBox(height: AppSpacing.xs), Text(k.deskripsi!, style: AppTextStyles.bodySm)],
+        const SizedBox(height: AppSpacing.sm),
+        Row(children: [
+          const Icon(Icons.groups_2_outlined, size: 16, color: AppColors.accentSoft),
+          const SizedBox(width: 6),
+          Text('${k.jumlahAnggota} anggota', style: AppTextStyles.labelMd.copyWith(color: Colors.white, fontSize: 13)),
+        ]),
+        if (k.deskripsi != null) ...[const SizedBox(height: AppSpacing.xs), Text(k.deskripsi!, style: AppTextStyles.bodySm.copyWith(color: Colors.white.withValues(alpha: 0.9), fontSize: 12.5))],
         if (k.aliran.isNotEmpty) ...[
-          const SizedBox(height: 6),
+          const SizedBox(height: 8),
           Wrap(spacing: 4, runSpacing: 4, children: [
             for (final a in k.aliran)
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-                decoration: BoxDecoration(color: AppColors.accentSoft.withValues(alpha: 0.5), borderRadius: BorderRadius.circular(AppRadius.full)),
-                child: Text(a, style: AppTextStyles.bodySm.copyWith(fontSize: 10.5)),
+                decoration: BoxDecoration(color: AppColors.accent.withValues(alpha: 0.25), borderRadius: BorderRadius.circular(AppRadius.full)),
+                child: Text(a, style: AppTextStyles.bodySm.copyWith(fontSize: 10.5, color: AppColors.accentSoft)),
               ),
           ]),
         ],
         if (k.aturan != null && k.aturan!.isNotEmpty)
-          Padding(
-            padding: const EdgeInsets.only(top: 6),
+          Theme(
+            data: Theme.of(context).copyWith(dividerColor: Colors.transparent),
             child: ExpansionTile(
               tilePadding: EdgeInsets.zero,
               childrenPadding: EdgeInsets.zero,
-              title: Text('Aturan komunitas', style: AppTextStyles.labelMd.copyWith(fontSize: 12.5)),
-              children: [Align(alignment: Alignment.centerLeft, child: Text(k.aturan!, style: AppTextStyles.bodySm))],
+              iconColor: Colors.white70,
+              collapsedIconColor: Colors.white70,
+              title: Text('Aturan komunitas', style: AppTextStyles.labelMd.copyWith(fontSize: 12.5, color: Colors.white)),
+              children: [Align(alignment: Alignment.centerLeft, child: Text(k.aturan!, style: AppTextStyles.bodySm.copyWith(color: Colors.white70)))],
             ),
           ),
         const SizedBox(height: AppSpacing.xs),
@@ -375,13 +402,22 @@ class _CommunityDetailScreenState extends State<CommunityDetailScreen> {
           if (label != null)
             Expanded(
               child: k.anggotaAktif || k.menunggu
-                  ? OutlinedButton(key: const Key('keluar_komunitas'), onPressed: _sibuk ? null : () => _keluar(k), child: Text(label))
-                  : ElevatedButton(key: const Key('gabung_komunitas'), onPressed: _sibuk ? null : () => _gabung(k), child: Text(label)),
+                  ? OutlinedButton(
+                      key: const Key('keluar_komunitas'),
+                      onPressed: _sibuk ? null : () => _keluar(k),
+                      style: OutlinedButton.styleFrom(foregroundColor: Colors.white, side: const BorderSide(color: Colors.white54)),
+                      child: Text(label))
+                  : ElevatedButton(
+                      key: const Key('gabung_komunitas'),
+                      onPressed: _sibuk ? null : () => _gabung(k),
+                      style: ElevatedButton.styleFrom(backgroundColor: AppColors.accent, foregroundColor: AppColors.onSurface),
+                      child: Text(label)),
             ),
           if (k.pemilik)
             Expanded(
-              child: OutlinedButton.icon(
+              child: ElevatedButton.icon(
                 onPressed: () => widget.onBuatEvent?.call(k),
+                style: ElevatedButton.styleFrom(backgroundColor: AppColors.accent, foregroundColor: AppColors.onSurface),
                 icon: const Icon(Icons.event_note_outlined, size: 18),
                 label: const Text('Buat event komunitas'),
               ),
@@ -572,9 +608,8 @@ class _PostKartu extends StatelessWidget {
       padding: const EdgeInsets.all(AppSpacing.sm),
       decoration: BoxDecoration(
         color: Colors.white,
-        borderRadius: BorderRadius.circular(AppRadius.md),
-        border: p.disematkan ? Border.all(color: AppColors.accent.withValues(alpha: 0.6)) : null,
-        boxShadow: const [BoxShadow(color: Colors.black12, blurRadius: 4)],
+        borderRadius: BorderRadius.circular(AppRadius.lg),
+        border: Border.all(color: p.disematkan ? AppColors.accent : AppColors.border, width: p.disematkan ? 1.4 : 1),
       ),
       child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
         if (p.disematkan)
